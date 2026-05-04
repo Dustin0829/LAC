@@ -1,0 +1,5 @@
+# Exclude large data folders
+data/
+assets/large-files/
+**/*.bin
+**/*.dat

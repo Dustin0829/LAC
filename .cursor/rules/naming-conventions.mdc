@@ -1,0 +1,82 @@
+---
+alwaysApply: true
+---
+
+# PHC — Naming & Architecture Conventions
+
+PHC is a frontend-only mock app (no backend, no Web3). All data is in `src/lib/mockData.ts` and Zustand stores under `src/lib/stores/`.
+
+## Roles
+
+Two roles only — **clipper** and **brand**. The Zustand auth store lives in `src/lib/stores/authStore.ts`. Role-gated areas are:
+
+- `src/pages/clipper/**` → `/clipper/*` routes (rendered inside `src/layouts/ClipperLayout.tsx`)
+- `src/pages/brand/**` → `/brand/*` routes (rendered inside `src/layouts/BrandLayout.tsx`)
+- `src/pages/auth/AuthPage.tsx` → `/auth`
+- `src/pages/onboarding/RoleSelectionPage.tsx` → `/onboarding/role`
+
+The single `src/components/layout/AppSidebar.tsx` handles both roles via a `role` prop.
+
+## Files
+
+### Components & pages
+
+- **PascalCase** `.tsx`: `CampaignCard.tsx`, `AppSidebar.tsx`, `ClipperLayout.tsx`
+- **Exception:** files under `src/components/ui/` follow shadcn defaults (lowercase, e.g. `button.tsx`, `dropdown-menu.tsx`)
+
+### Page colocation
+
+Each page lives in its own folder when it has multiple sub-files. Otherwise a single `*Page.tsx` is fine. Examples that already exist:
+
+- `src/pages/clipper/dashboard/DashboardPage.tsx`
+- `src/pages/brand/campaigns/CreateCampaignPage.tsx`
+
+### Hooks
+
+- File name: kebab-case after `use-`: `useAuth.ts` (this codebase keeps simple `useAuth.ts` style under `src/lib/hooks/`)
+- Exported hook: camelCase with `use` prefix.
+
+### Stores (Zustand)
+
+- camelCase, suffixed with `Store`: `authStore.ts`, `clipsStore.ts`, `campaignsStore.ts`, `paymentMethodsStore.ts`
+- Location: `src/lib/stores/`
+
+### Utilities
+
+- camelCase: `cn.ts`, `currency.ts`, `date.ts`
+- Location: `src/lib/utils/`
+
+### Mock data
+
+- All seed data lives in `src/lib/mockData.ts`. Stores import from there.
+
+## Folders
+
+- Lowercase or kebab-case: `clipper`, `brand`, `campaigns`, `bug-submission-details` (avoid in PHC).
+
+## Branding
+
+- Primary brand: **PHC — Philippine Clippers**
+- Color system uses `--primary` (violet), `--accent` (pink), and the PHC gradient utility classes:
+  - `bg-phc-gradient` — full violet → pink → orange
+  - `text-phc-gradient` — same gradient as text
+  - `bg-phc-gradient-soft` — subtle tinted background
+- Display font: `Sora` (use `font-display` utility), body font: `Inter`.
+- Logo: `public/phc-icon.svg`, `public/phc-logo.svg`.
+
+## Routes
+
+Index `/` redirects to:
+
+1. `/auth` if not signed in,
+2. `/onboarding/role` if signed in but no role,
+3. `/clipper/dashboard` or `/brand/dashboard` based on role.
+
+The route guard is `src/components/guards/ProtectedRoute.tsx` with props `index`, `guestOnly`, `requireAuth`, and `requiredRole`.
+
+## What this codebase does **not** have
+
+- No HTTP/REST/axios layer (no `src/api/*`).
+- No Solana / wallet adapters.
+- No Supabase / TanStack Query.
+- No real Xendit calls — payouts and invoices are simulated with toasts and store updates.
