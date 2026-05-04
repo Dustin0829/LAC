@@ -1,4 +1,4 @@
-# PHC — Philippine Clippers
+
 
 PHC is a clipping marketplace for Philippine creators. Brands launch campaigns, upload creative assets, and set a budget. Clippers create short-form clips from those assets and earn automatically based on verified views.
 
