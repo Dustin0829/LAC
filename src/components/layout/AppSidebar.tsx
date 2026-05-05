@@ -91,10 +91,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
     <>
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden h-dvh min-h-dvh w-64 shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:flex">
-        <div className="flex items-center gap-3 px-6 h-16 border-b border-sidebar-border">
-          <div className="h-9 w-9 rounded-xl bg-phc-gradient flex items-center justify-center">
-            <img src="/arpify-icon.svg" alt="" className="h-7 w-7" />
-          </div>
+        <div className="flex items-center px-6 h-16 border-b border-sidebar-border">
           <div className="leading-tight">
             <div className="font-display text-base font-extrabold">Arpify</div>
             <div className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">
@@ -201,10 +198,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
 
       {/* Mobile top bar */}
       <header className="md:hidden sticky top-0 z-30 flex items-center justify-between bg-background/90 backdrop-blur border-b border-border px-4 h-14">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-phc-gradient flex items-center justify-center">
-            <img src="/arpify-icon.svg" alt="" className="h-5 w-5" />
-          </div>
+        <Link to="/" className="flex items-center">
           <span className="font-display font-extrabold">Arpify</span>
         </Link>
         <DropdownMenu>

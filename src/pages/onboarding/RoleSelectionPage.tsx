@@ -72,8 +72,7 @@ export default function RoleSelectionPage() {
 
       <div className="relative mx-auto max-w-5xl px-6 py-12">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/arpify-icon.svg" alt="Arpify" className="h-9 w-9" />
+          <div className="flex items-center">
             <div>
               <div className="font-display text-lg font-extrabold leading-none">Arpify</div>
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">

@@ -94,8 +94,7 @@ export default function AuthPage() {
       <div className="relative grid min-h-screen lg:grid-cols-2">
         {/* Left: Brand panel */}
         <div className="hidden lg:flex flex-col justify-between p-12 bg-zinc-950 text-white">
-          <Link to="/" className="flex items-center gap-3">
-            <img src="/arpify-icon.svg" alt="Arpify" className="h-10 w-10" />
+          <Link to="/" className="flex items-center">
             <div>
               <div className="font-display text-xl font-extrabold leading-none">Arpify</div>
               <div className="text-xs uppercase tracking-widest opacity-80">Clipping marketplace</div>
@@ -134,8 +133,7 @@ export default function AuthPage() {
         {/* Right: Form */}
         <div className="flex items-center justify-center p-6 lg:p-12">
           <div className="w-full max-w-md">
-            <Link to="/" className="lg:hidden mb-8 flex items-center gap-3">
-              <img src="/arpify-icon.svg" alt="Arpify" className="h-9 w-9" />
+            <Link to="/" className="lg:hidden mb-8 flex items-center">
               <div className="font-display text-lg font-extrabold">Arpify</div>
             </Link>
 
