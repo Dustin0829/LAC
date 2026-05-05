@@ -1,0 +1,46 @@
+---
+description: How to choose between local React state and Zustand in the PHC mock frontend.
+alwaysApply: false
+---
+
+# React local state vs Zustand
+
+Use this to choose between `useState` / `useReducer` and Zustand in PHC. This is a frontend-only mock app: there is no server cache, no TanStack Query, and no real backend data layer.
+
+## Prefer `useState` or `useReducer` (local state)
+
+Use local React state when:
+
+- The state is scoped to one component or one screen subtree.
+- Examples: controlled form fields, upload previews, modal open state, filters, selected tabs, local validation highlights.
+- The state does not need to survive leaving the route or be read by distant siblings/layouts.
+
+Prefer controlled patterns where the parent owns state if nearby siblings must stay in sync.
+
+## Prefer Zustand (global / shared client state)
+
+Use Zustand when:
+
+- Multiple components or hooks need the same state and prop drilling would be brittle.
+- State must coordinate across routes, guards, layouts, or role-specific areas.
+- Mock entities need client-side updates, e.g. campaigns, clips, payment methods, auth role/session.
+- Page- or entity-specific UI should persist across navigation within the same session.
+
+Keep stores focused by domain: `authStore`, `campaignsStore`, `clipsStore`, `paymentMethodsStore`.
+
+## Do not use Zustand for
+
+- Form drafts that only live inside one modal and reset on close.
+- Every boolean. Default to `useState` until sharing or persistence requirements appear.
+- Data that belongs as static seed/mock definitions in `src/lib/mockData.ts`.
+
+## Summary table
+
+| Concern | Tool |
+| --- | --- |
+| Static seed/mock data | `src/lib/mockData.ts` |
+| Shared auth / role gate | Zustand (`authStore`) |
+| Mock campaigns, clips, payment methods | Focused Zustand stores |
+| One-off UI, forms, modals, filters | `useState` / `useReducer` |
+
+When in doubt, **start with local state**; introduce Zustand only when a concrete sharing or persistence requirement appears.

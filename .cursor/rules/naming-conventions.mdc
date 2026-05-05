@@ -1,66 +1,61 @@
 ---
+description: Core PHC frontend-only architecture, naming, routing, and branding conventions.
 alwaysApply: true
 ---
 
 # PHC — Naming & Architecture Conventions
 
-PHC is a frontend-only mock app (no backend, no Web3). All data is in `src/lib/mockData.ts` and Zustand stores under `src/lib/stores/`.
+PHC is a frontend-only mock app for a clipping platform. There is no backend, no Web3, no Supabase, no Axios, and no TanStack Query. All seed data lives in `src/lib/mockData.ts`; client state lives in focused Zustand stores under `src/lib/stores/`.
 
 ## Roles
 
-Two roles only — **clipper** and **brand**. The Zustand auth store lives in `src/lib/stores/authStore.ts`. Role-gated areas are:
+Use only two roles: **clipper** and **brand**.
 
 - `src/pages/clipper/**` → `/clipper/*` routes (rendered inside `src/layouts/ClipperLayout.tsx`)
 - `src/pages/brand/**` → `/brand/*` routes (rendered inside `src/layouts/BrandLayout.tsx`)
 - `src/pages/auth/AuthPage.tsx` → `/auth`
 - `src/pages/onboarding/RoleSelectionPage.tsx` → `/onboarding/role`
 
-The single `src/components/layout/AppSidebar.tsx` handles both roles via a `role` prop.
+The shared sidebar is `src/components/layout/AppSidebar.tsx`; it renders role-specific navigation via a `role` prop.
 
-## Files
+## Naming
 
-### Components & pages
+- **PascalCase** `.tsx`: `CampaignCard.tsx`, `AppSidebar.tsx`, `ClipperLayout.tsx`.
+- **Exception:** files under `src/components/ui/` follow shadcn lowercase defaults, e.g. `button.tsx`.
+- **Hooks:** keep app hooks under `src/lib/hooks/`; exported hooks use a `use` prefix.
+- **Stores:** camelCase and suffixed with `Store`, e.g. `authStore.ts`, `campaignsStore.ts`.
+- **Utilities:** camelCase under `src/lib/utils/`, e.g. `currency.ts`, `date.ts`.
+- **Assets:** kebab-case under `public/`, e.g. `phc-icon.svg`.
 
-- **PascalCase** `.tsx`: `CampaignCard.tsx`, `AppSidebar.tsx`, `ClipperLayout.tsx`
-- **Exception:** files under `src/components/ui/` follow shadcn defaults (lowercase, e.g. `button.tsx`, `dropdown-menu.tsx`)
+## Pages
 
-### Page colocation
-
-Each page lives in its own folder when it has multiple sub-files. Otherwise a single `*Page.tsx` is fine. Examples that already exist:
+Prefer the existing route folder shape:
 
 - `src/pages/clipper/dashboard/DashboardPage.tsx`
+- `src/pages/clipper/campaigns/CampaignDetailPage.tsx`
 - `src/pages/brand/campaigns/CreateCampaignPage.tsx`
 
-### Hooks
+Page-only helpers may stay in the page file below the exported page component. Shared logic belongs in `src/lib/`.
 
-- File name: kebab-case after `use-`: `useAuth.ts` (this codebase keeps simple `useAuth.ts` style under `src/lib/hooks/`)
-- Exported hook: camelCase with `use` prefix.
+## State & Data
 
-### Stores (Zustand)
-
-- camelCase, suffixed with `Store`: `authStore.ts`, `clipsStore.ts`, `campaignsStore.ts`, `paymentMethodsStore.ts`
-- Location: `src/lib/stores/`
-
-### Utilities
-
-- camelCase: `cn.ts`, `currency.ts`, `date.ts`
-- Location: `src/lib/utils/`
-
-### Mock data
-
-- All seed data lives in `src/lib/mockData.ts`. Stores import from there.
-
-## Folders
-
-- Lowercase or kebab-case: `clipper`, `brand`, `campaigns`, `bug-submission-details` (avoid in PHC).
+- Mock platform data is defined in `src/lib/mockData.ts`.
+- Stores import seed data from `mockData.ts` and own client-side updates.
+- Use local `useState` for one-screen form fields, modal state, filters, and temporary upload previews.
+- Do not add `src/api/*`, backend clients, real payment calls, or real auth providers unless the product explicitly shifts away from mock frontend-only mode.
 
 ## Branding
 
 - Primary brand: **PHC — Philippine Clippers**
-- Color system uses `--primary` (violet), `--accent` (pink), and the PHC gradient utility classes:
-  - `bg-phc-gradient` — full violet → pink → orange
-  - `text-phc-gradient` — same gradient as text
-  - `bg-phc-gradient-soft` — subtle tinted background
+- Visual direction: premium/classy SaaS marketplace, mostly black, white, slate, and restrained blue accents.
+- Secondary/accent blue:
+  - Accent: `#3B82F6`
+  - Hover: `#2563EB`
+  - Glow: `rgba(59,130,246,0.4)`
+- Keep using the existing utility names for consistency:
+  - `bg-phc-gradient` for primary blue CTA/accent surfaces
+  - `text-phc-gradient` for blue accent text
+  - `bg-phc-gradient-soft` for subtle blue-tinted panels
 - Display font: `Sora` (use `font-display` utility), body font: `Inter`.
 - Logo: `public/phc-icon.svg`, `public/phc-logo.svg`.
 
