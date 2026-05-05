@@ -427,7 +427,7 @@ export default function CreateCampaignPage() {
                 </span>
               </li>
               <li className="flex justify-between">
-                <span className="text-muted-foreground">PHC budget fee</span>
+                <span className="text-muted-foreground">Arpify budget fee</span>
                 <span className="font-semibold">
                   {formatPHP(platformFee, { decimals: false })} ({Math.round(platformFeePercent * 100)}%)
                 </span>
@@ -453,7 +453,7 @@ export default function CreateCampaignPage() {
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Launch campaign'}
           </Button>
           <p className="px-2 text-xs text-muted-foreground">
-            By launching, you agree to PHC&apos;s campaign policies. Funding is mocked for now.
+            By launching, you agree to Arpify&apos;s campaign policies. Funding is mocked for now.
           </p>
         </aside>
       </form>

@@ -19,8 +19,8 @@ interface AuthState {
   hydrate: () => void
 }
 
-const USER_KEY = 'phc.user'
-const ROLE_KEY = 'phc.role'
+const USER_KEY = 'arpify.user'
+const ROLE_KEY = 'arpify.role'
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,

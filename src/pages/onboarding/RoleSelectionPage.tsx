@@ -54,7 +54,7 @@ export default function RoleSelectionPage() {
 
   async function handleContinue() {
     if (!selected) {
-      toast.error('Pick what you want to do on PHC.')
+      toast.error('Pick what you want to do on Arpify.')
       return
     }
     setSubmitting(true)
@@ -73,11 +73,11 @@ export default function RoleSelectionPage() {
       <div className="relative mx-auto max-w-5xl px-6 py-12">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/phc-icon.svg" alt="PHC" className="h-9 w-9" />
+            <img src="/arpify-icon.svg" alt="Arpify" className="h-9 w-9" />
             <div>
-              <div className="font-display text-lg font-extrabold leading-none">PHC</div>
+              <div className="font-display text-lg font-extrabold leading-none">Arpify</div>
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                Philippine Clippers
+                Clipping marketplace
               </div>
             </div>
           </div>
@@ -98,7 +98,7 @@ export default function RoleSelectionPage() {
             Hi {user?.name || user?.email?.split('@')[0]}
           </p>
           <h1 className="mt-4 font-display text-4xl md:text-5xl font-extrabold tracking-tight">
-            How will you use <span className="text-phc-gradient">PHC</span>?
+            How will you use <span className="text-phc-gradient">Arpify</span>?
           </h1>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
             Pick one. You can change later in settings.

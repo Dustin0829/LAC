@@ -1,11 +1,11 @@
 ---
-description: Core PHC frontend-only architecture, naming, routing, and branding conventions.
+description: Core Arpify frontend-only architecture, naming, routing, and branding conventions.
 alwaysApply: true
 ---
 
-# PHC — Naming & Architecture Conventions
+# Arpify — Naming & Architecture Conventions
 
-PHC is a frontend-only mock app for a clipping platform. There is no backend, no Web3, no Supabase, no Axios, and no TanStack Query. All seed data lives in `src/lib/mockData.ts`; client state lives in focused Zustand stores under `src/lib/stores/`.
+Arpify is a frontend-only mock app for a clipping platform. There is no backend, no Web3, no Supabase, no Axios, and no TanStack Query. All seed data lives in `src/lib/mockData.ts`; client state lives in focused Zustand stores under `src/lib/stores/`.
 
 ## Roles
 
@@ -25,7 +25,7 @@ The shared sidebar is `src/components/layout/AppSidebar.tsx`; it renders role-sp
 - **Hooks:** keep app hooks under `src/lib/hooks/`; exported hooks use a `use` prefix.
 - **Stores:** camelCase and suffixed with `Store`, e.g. `authStore.ts`, `campaignsStore.ts`.
 - **Utilities:** camelCase under `src/lib/utils/`, e.g. `currency.ts`, `date.ts`.
-- **Assets:** kebab-case under `public/`, e.g. `phc-icon.svg`.
+- **Assets:** kebab-case under `public/`, e.g. `arpify-icon.svg`.
 
 ## Pages
 
@@ -46,7 +46,7 @@ Page-only helpers may stay in the page file below the exported page component. S
 
 ## Branding
 
-- Primary brand: **PHC — Philippine Clippers**
+- Primary product name (temporary): **Arpify**
 - Visual direction: premium/classy SaaS marketplace, mostly black, white, slate, and restrained blue accents.
 - Secondary/accent blue:
   - Accent: `#3B82F6`
@@ -57,7 +57,7 @@ Page-only helpers may stay in the page file below the exported page component. S
   - `text-phc-gradient` for blue accent text
   - `bg-phc-gradient-soft` for subtle blue-tinted panels
 - Display font: `Sora` (use `font-display` utility), body font: `Inter`.
-- Logo: `public/phc-icon.svg`, `public/phc-logo.svg`.
+- Logo: `public/arpify-icon.svg`, `public/arpify-logo.svg`.
 
 ## Routes
 

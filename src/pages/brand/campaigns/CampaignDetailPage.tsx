@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  Building2,
   Download,
   Eye,
   FileText,
@@ -17,6 +18,7 @@ import {
 import { toast } from 'sonner'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { mockBrandClips } from '@/lib/mockData'
+import { paymentLogoSrc } from '@/lib/constants/paymentLogos'
 import { formatPHP, formatViews, formatTimeAgo } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -201,9 +203,32 @@ export default function BrandCampaignDetailPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="xendit-invoice">Xendit invoice / payment link</SelectItem>
-                        <SelectItem value="gcash">GCash</SelectItem>
-                        <SelectItem value="maya">Maya</SelectItem>
-                        <SelectItem value="bank-transfer">Bank transfer</SelectItem>
+                        <SelectItem value="gcash">
+                          <span className="flex items-center gap-2">
+                            <img
+                              src={paymentLogoSrc({ type: 'gcash' })!}
+                              alt=""
+                              className="h-5 w-5 shrink-0 object-contain"
+                            />
+                            GCash
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="maya">
+                          <span className="flex items-center gap-2">
+                            <img
+                              src={paymentLogoSrc({ type: 'maya' })!}
+                              alt=""
+                              className="h-5 w-5 shrink-0 object-contain"
+                            />
+                            Maya
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="bank-transfer">
+                          <span className="flex items-center gap-2">
+                            <Building2 className="h-5 w-5 shrink-0 text-muted-foreground" />
+                            Bank transfer
+                          </span>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -252,7 +277,7 @@ export default function BrandCampaignDetailPage() {
           </div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-xs text-muted-foreground">PHC budget fee</p>
+          <p className="text-xs text-muted-foreground">Arpify budget fee</p>
           <p className="mt-2 font-display text-2xl font-extrabold">
             {formatPHP(platformFee, { decimals: false })}
           </p>
@@ -276,7 +301,7 @@ export default function BrandCampaignDetailPage() {
       </div>
 
       <section className="rounded-3xl border border-border bg-card p-6">
-        <h2 className="font-display text-xl font-extrabold">PHC revenue breakdown</h2>
+        <h2 className="font-display text-xl font-extrabold">Arpify revenue breakdown</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div className="rounded-2xl bg-muted/40 p-4">
             <p className="text-xs text-muted-foreground">Total brand budget</p>

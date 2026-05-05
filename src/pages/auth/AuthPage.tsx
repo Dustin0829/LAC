@@ -95,10 +95,10 @@ export default function AuthPage() {
         {/* Left: Brand panel */}
         <div className="hidden lg:flex flex-col justify-between p-12 bg-zinc-950 text-white">
           <Link to="/" className="flex items-center gap-3">
-            <img src="/phc-icon.svg" alt="PHC" className="h-10 w-10" />
+            <img src="/arpify-icon.svg" alt="Arpify" className="h-10 w-10" />
             <div>
-              <div className="font-display text-xl font-extrabold leading-none">PHC</div>
-              <div className="text-xs uppercase tracking-widest opacity-80">Philippine Clippers</div>
+              <div className="font-display text-xl font-extrabold leading-none">Arpify</div>
+              <div className="text-xs uppercase tracking-widest opacity-80">Clipping marketplace</div>
             </div>
           </Link>
 
@@ -114,7 +114,7 @@ export default function AuthPage() {
               clipping.
             </h1>
             <p className="text-lg max-w-md opacity-90">
-              Brands launch campaigns. Clippers turn raw content into viral clips. PHC pays per 1,000 views — automatically.
+              Brands launch campaigns. Clippers turn raw content into viral clips. Arpify pays per 1,000 views — automatically.
             </p>
             <div className="flex gap-3 pt-4">
               <div className="rounded-2xl bg-white/15 backdrop-blur px-5 py-4 border border-white/20">
@@ -128,15 +128,15 @@ export default function AuthPage() {
             </div>
           </div>
 
-          <div className="text-sm opacity-80">© {new Date().getFullYear()} PHC — Philippine Clippers</div>
+          <div className="text-sm opacity-80">© {new Date().getFullYear()} Arpify</div>
         </div>
 
         {/* Right: Form */}
         <div className="flex items-center justify-center p-6 lg:p-12">
           <div className="w-full max-w-md">
             <Link to="/" className="lg:hidden mb-8 flex items-center gap-3">
-              <img src="/phc-icon.svg" alt="PHC" className="h-9 w-9" />
-              <div className="font-display text-lg font-extrabold">PHC</div>
+              <img src="/arpify-icon.svg" alt="Arpify" className="h-9 w-9" />
+              <div className="font-display text-lg font-extrabold">Arpify</div>
             </Link>
 
             <div className="rounded-3xl border border-border bg-card/90 backdrop-blur p-8 shadow-xl shadow-zinc-950/5">
@@ -164,7 +164,7 @@ export default function AuthPage() {
               </div>
 
               <h2 className="mt-6 font-display text-3xl font-extrabold tracking-tight">
-                {mode === 'signup' ? 'Welcome to PHC' : 'Welcome back'}
+                {mode === 'signup' ? 'Welcome to Arpify' : 'Welcome back'}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {mode === 'signup'
@@ -261,7 +261,7 @@ export default function AuthPage() {
               </form>
 
               <p className="mt-6 text-center text-xs text-muted-foreground">
-                By continuing, you agree to PHC&apos;s Terms and Privacy Policy.
+                By continuing, you agree to Arpify&apos;s Terms and Privacy Policy.
               </p>
             </div>
           </div>

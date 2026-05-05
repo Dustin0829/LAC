@@ -1,12 +1,12 @@
+# Arpify
 
-
-PHC is a clipping marketplace for Philippine creators. Brands launch campaigns, upload creative assets, and set a budget. Clippers create short-form clips from those assets and earn automatically based on verified views.
+Arpify is a clipping marketplace for Philippine creators. Brands launch campaigns, upload creative assets, and set a budget. Clippers create short-form clips from those assets and earn automatically based on verified views.
 
 This repository is currently a **frontend-only mock prototype**. There is no backend, database, real authentication, real file storage, real view tracking, or real Xendit payment integration yet. All data is mocked in the browser through local state and seed data.
 
 ## Product Concept
 
-PHC has two roles:
+Arpify has two roles:
 
 - **Brand Owner**: Creates campaigns, funds budgets, uploads assets, reviews submitted clips, and tracks campaign performance.
 - **Clipper**: Browses active campaigns, downloads assets, posts clips on social platforms, submits clip URLs, and earns from views.
@@ -44,7 +44,7 @@ There is no per-clip cap and no minimum view threshold in the current product di
   - Estimated reach.
   - Brand rate.
   - Total budget.
-  - PHC budget fee.
+  - Arpify budget fee.
   - Payout pool.
   - Cost per view.
 - Submitted clips table with clear `Approve` and `Reject` buttons.
@@ -69,26 +69,26 @@ There is no per-clip cap and no minimum view threshold in the current product di
 
 Payouts are currently simulated. In the real product, payouts should be automatic, not manually requested by clippers. After a clip is approved and views are verified, the backend should calculate earnings and trigger payout through Xendit based on the clipper’s default payout method.
 
-## PHC Revenue Model
+## Arpify Revenue Model
 
-PHC earns in two ways:
+Arpify earns in two ways:
 
 1. **Budget fee from brand campaigns**
-   - PHC keeps a percentage of the total campaign budget.
+   - Arpify keeps a percentage of the total campaign budget.
    - Current mocked tiers:
-     - Budget below `₱50,000`: PHC keeps `20%`.
-     - Budget from `₱50,000` to `₱199,999`: PHC keeps `15%`.
-     - Budget `₱200,000+`: PHC keeps `10%`.
+     - Budget below `₱50,000`: Arpify keeps `20%`.
+     - Budget from `₱50,000` to `₱199,999`: Arpify keeps `15%`.
+     - Budget `₱200,000+`: Arpify keeps `10%`.
    - The remaining amount becomes the campaign payout pool.
 
 2. **Spread between brand rate and clipper payout rate**
    - Brands enter the gross rate per 1,000 views.
    - Clippers receive `80%` of that rate.
-   - PHC keeps the remaining `20%` spread internally.
+   - Arpify keeps the remaining `20%` spread internally.
    - Example:
      - Brand rate: `₱10 / 1,000 views`.
      - Clipper payout: `₱8 / 1,000 views`.
-     - PHC spread: `₱2 / 1,000 views`.
+     - Arpify spread: `₱2 / 1,000 views`.
 
 The UI does not expose the internal spread to clippers. Clippers only see the payout rate they can earn.
 
@@ -112,7 +112,7 @@ The UI does not expose the internal spread to clippers. Clippers only see the pa
 src/
   App.tsx                         Route definitions
   main.tsx                        React entry point
-  globals.css                     PHC theme, Tailwind setup, global utilities
+  globals.css                     Arpify theme, Tailwind setup, global utilities
   components/
     CampaignCard.tsx              Campaign card shared by brand/clipper pages
     ClipStatusBadge.tsx           Clip status UI
@@ -172,7 +172,7 @@ pnpm run lint
 
 ## Backend APIs Needed
 
-The frontend is mock-only right now, but these are the backend APIs needed to make PHC production-ready.
+The frontend is mock-only right now, but these are the backend APIs needed to make Arpify production-ready.
 
 ### Auth APIs
 
@@ -182,7 +182,7 @@ The frontend is mock-only right now, but these are the backend APIs needed to ma
 - `POST /auth/login`
   - Login with email/password.
 - `POST /auth/google`
-  - Exchange Google OAuth token for PHC session.
+  - Exchange Google OAuth token for Arpify session.
 - `POST /auth/logout`
   - Invalidate current session.
 - `GET /auth/me`
@@ -307,7 +307,7 @@ Payouts should be automatic. Clippers should not need to manually withdraw.
 - `POST /webhooks/xendit/invoices`
   - Receive invoice paid/expired events.
 - `GET /brand/campaigns/:campaignId/balance`
-  - Return total budget, PHC fee, payout pool, spent amount, remaining amount, refundable amount.
+  - Return total budget, Arpify fee, payout pool, spent amount, remaining amount, refundable amount.
 - `POST /brand/campaigns/:campaignId/refunds`
   - Request or process refund when campaign closes.
 - `GET /brand/refunds`
@@ -316,7 +316,7 @@ Payouts should be automatic. Clippers should not need to manually withdraw.
 ### Platform Revenue/Admin APIs
 
 - `GET /admin/revenue`
-  - PHC revenue summary: budget fees, per-view spread, refunds, payouts.
+  - Arpify revenue summary: budget fees, per-view spread, refunds, payouts.
 - `GET /admin/campaigns`
   - Platform-wide campaign monitoring.
 - `GET /admin/users`
@@ -367,7 +367,7 @@ Core tables/collections:
 
 ## Production Notes
 
-- All PHC revenue calculations must happen on the backend.
+- All Arpify revenue calculations must happen on the backend.
 - The frontend should only display values returned by the API.
 - Xendit secret keys must never be exposed to the browser.
 - Social view verification must be server-side.

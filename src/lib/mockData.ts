@@ -1,5 +1,5 @@
 /**
- * PHC mock data — clipping platform.
+ * Arpify mock data — clipping platform.
  * - Brands create campaigns with a `ratePer1k` (₱ per 1,000 views) and a `budget`.
  * - Clippers submit `clips` (URLs) to a campaign; clips accrue `views` over time.
  * - Earnings = views / 1000 * ratePer1k.
@@ -53,7 +53,7 @@ export interface Campaign {
   ratePer1k: number
   /** Total ₱ campaign budget paid by the brand. */
   budget: number
-  /** PHC platform fee from the campaign budget. */
+  /** Arpify platform fee from the campaign budget. */
   platformFeePercent?: number
   /** Maximum refundable portion of the total campaign budget. */
   refundablePercent?: number

@@ -1,11 +1,11 @@
 ---
-description: How to choose between local React state and Zustand in the PHC mock frontend.
+description: How to choose between local React state and Zustand in the Arpify mock frontend.
 alwaysApply: false
 ---
 
 # React local state vs Zustand
 
-Use this to choose between `useState` / `useReducer` and Zustand in PHC. This is a frontend-only mock app: there is no server cache, no TanStack Query, and no real backend data layer.
+Use this to choose between `useState` / `useReducer` and Zustand in Arpify. This is a frontend-only mock app: there is no server cache, no TanStack Query, and no real backend data layer.
 
 ## Prefer `useState` or `useReducer` (local state)
 

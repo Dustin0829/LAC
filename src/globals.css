@@ -10,7 +10,7 @@
 }
 
 :root {
-  /* PHC Brand: premium black, warm white, restrained slate */
+  /* Arpify UI tokens (premium black / slate + blue accent) */
   --primary: oklch(0.18 0.01 260);
   --primary-foreground: oklch(0.99 0 0);
 
