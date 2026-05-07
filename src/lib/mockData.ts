@@ -59,6 +59,10 @@ export interface Campaign {
   refundablePercent?: number
   /** ₱ already paid out (computed from approved/paid clips) */
   spent: number
+  /** Cumulative views across all clips on this campaign (mock aggregate). */
+  campaignViews: number
+  /** Target view volume the campaign is aiming for (goal bar). */
+  estimatedReach: number
   platforms: Platform[]
   niches: ContentNiche[]
   status: CampaignStatus
@@ -149,6 +153,8 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.15,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 18230,
+    campaignViews: 340_000,
+    estimatedReach: 620_000,
     platforms: ['tiktok', 'instagram'],
     niches: ['food', 'lifestyle'],
     status: 'active',
@@ -196,6 +202,8 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.15,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 41200,
+    campaignViews: 368_000,
+    estimatedReach: 600_000,
     platforms: ['tiktok', 'youtube'],
     niches: ['gaming', 'entertainment'],
     status: 'active',
@@ -235,6 +243,8 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.2,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 8950,
+    campaignViews: 118_000,
+    estimatedReach: 290_000,
     platforms: ['tiktok', 'instagram'],
     niches: ['lifestyle', 'fashion'],
     status: 'active',
@@ -263,6 +273,8 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.2,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 12400,
+    campaignViews: 198_000,
+    estimatedReach: 460_000,
     platforms: ['tiktok', 'youtube', 'instagram'],
     niches: ['finance', 'education'],
     status: 'active',
@@ -291,6 +303,8 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.2,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 24500,
+    campaignViews: 212_000,
+    estimatedReach: 228_000,
     platforms: ['tiktok', 'youtube'],
     niches: ['tech', 'entertainment'],
     status: 'paused',
@@ -315,6 +329,8 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.2,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 0,
+    campaignViews: 8_200,
+    estimatedReach: 420_000,
     platforms: ['tiktok', 'instagram'],
     niches: ['fitness', 'lifestyle'],
     status: 'active',

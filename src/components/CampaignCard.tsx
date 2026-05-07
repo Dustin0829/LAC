@@ -1,18 +1,12 @@
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, TrendingUp, Wallet } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { formatPHP } from '@/lib/utils'
-import {
-  getPlatformFeePercent,
-  NICHE_LABEL,
-  PLATFORM_LABEL,
-  type Campaign,
-} from '@/lib/mockData'
+import { formatPHP, formatViews } from '@/lib/utils'
+import { NICHE_LABEL, PLATFORM_LABEL, type Campaign } from '@/lib/mockData'
 
 interface CampaignCardProps {
   campaign: Campaign
   to: string
-  /** Show the spent vs budget bar (for brand). */
+  /** Brand dashboard cards show gross ₱/1k; clipper cards show net ₱/1k. */
   showProgress?: boolean
 }
 
@@ -24,13 +18,9 @@ const STATUS_STYLES: Record<Campaign['status'], string> = {
 }
 
 export function CampaignCard({ campaign, to, showProgress = false }: CampaignCardProps) {
-  const platformFeePercent = campaign.platformFeePercent ?? getPlatformFeePercent(campaign.budget)
-  const payoutPool = showProgress
-    ? campaign.budget
-    : Math.max(0, campaign.budget - campaign.budget * platformFeePercent)
-  const remaining = Math.max(0, payoutPool - campaign.spent)
-  const progressPct = payoutPool > 0 ? Math.min(100, (campaign.spent / payoutPool) * 100) : 0
   const displayRatePer1k = showProgress ? campaign.brandRatePer1k ?? campaign.ratePer1k : campaign.ratePer1k
+  const goal = Math.max(0, campaign.estimatedReach)
+  const viewsProgress = goal > 0 ? Math.min(100, (campaign.campaignViews / goal) * 100) : 0
 
   return (
     <Link
@@ -106,49 +96,26 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
           ))}
         </div>
 
-        {showProgress ? (
-          <div className="mt-5 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Budget used</span>
-              <span className="font-semibold">
-                {formatPHP(campaign.spent, { decimals: false })} / {formatPHP(campaign.budget, { decimals: false })}
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full bg-phc-gradient transition-all"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
+        <div className="mt-5 space-y-2">
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <span className="text-muted-foreground shrink-0">Views toward estimated reach</span>
+            <span className="font-semibold tabular-nums text-right">
+              {formatViews(campaign.campaignViews)}
+              <span className="mx-1 font-normal text-muted-foreground">/</span>
+              {goal > 0 ? formatViews(goal) : '—'}
+            </span>
           </div>
-        ) : (
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-muted/50 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Wallet className="h-3.5 w-3.5" />
-                Budget left
-              </div>
-              <p className="mt-1 font-display text-sm font-extrabold">
-                {formatPHP(remaining, { decimals: false })}
-              </p>
-            </div>
-            <div className="rounded-xl bg-muted/50 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <TrendingUp className="h-3.5 w-3.5" />
-                Per view
-              </div>
-              <p className="mt-1 font-display text-sm font-extrabold">
-                ₱{(campaign.ratePer1k / 1000).toFixed(3)}
-              </p>
-            </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-phc-gradient transition-all"
+              style={{ width: `${goal > 0 ? viewsProgress : 0}%` }}
+              role="progressbar"
+              aria-valuenow={goal > 0 ? Math.round(viewsProgress) : 0}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Campaign views versus estimated reach"
+            />
           </div>
-        )}
-
-        <div className="mt-5 flex items-center justify-between border-t border-border pt-4 text-sm">
-          <span className="text-muted-foreground">View campaign</span>
-          <span className="flex items-center gap-1 font-semibold text-phc-gradient">
-            Open <ArrowUpRight className="h-4 w-4" />
-          </span>
         </div>
       </div>
     </Link>

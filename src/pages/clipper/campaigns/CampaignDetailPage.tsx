@@ -4,7 +4,7 @@ import {
   ArrowLeft,
   Calendar,
   Download,
-  Wallet,
+  Eye,
   ExternalLink,
   FileText,
   CheckCircle2,
@@ -33,8 +33,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { formatPHP, formatDate } from '@/lib/utils'
-import { getPlatformFeePercent, NICHE_LABEL, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
+import { formatPHP, formatDate, formatViews } from '@/lib/utils'
+import { NICHE_LABEL, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -65,10 +65,9 @@ export default function ClipperCampaignDetailPage() {
     )
   }
 
-  const platformFeePercent = campaign.platformFeePercent ?? getPlatformFeePercent(campaign.budget)
-  const payoutPool = Math.max(0, campaign.budget - campaign.budget * platformFeePercent)
-  const remaining = Math.max(0, payoutPool - campaign.spent)
-  const progressPct = payoutPool > 0 ? Math.min(100, (campaign.spent / payoutPool) * 100) : 0
+  const reachGoal = Math.max(0, campaign.estimatedReach)
+  const reachProgressPct =
+    reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -224,16 +223,14 @@ export default function ClipperCampaignDetailPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <Wallet className="h-3.5 w-3.5" /> Payout pool remaining
+            <Eye className="h-3.5 w-3.5" /> Estimated reach progress
           </p>
-          <p className="mt-2 font-display text-2xl font-extrabold">
-            {formatPHP(remaining, { decimals: false })}
-          </p>
+          <p className="mt-2 font-display text-2xl font-extrabold">{formatViews(campaign.campaignViews)}</p>
           <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-            <div className="h-full bg-phc-gradient" style={{ width: `${progressPct}%` }} />
+            <div className="h-full rounded-full bg-phc-gradient" style={{ width: `${reachProgressPct}%` }} />
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {progressPct.toFixed(0)}% of {formatPHP(payoutPool, { decimals: false })} used
+            {reachProgressPct.toFixed(0)}% of {reachGoal > 0 ? formatViews(reachGoal) : '—'} estimated reach
           </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">

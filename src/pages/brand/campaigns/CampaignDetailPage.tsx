@@ -7,13 +7,13 @@ import {
   Eye,
   FileText,
   Loader2,
-  Wallet,
   Plus,
   Pause,
   Play,
   CheckCircle2,
   XCircle,
   ExternalLink,
+  Target,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
@@ -79,7 +79,9 @@ export default function BrandCampaignDetailPage() {
   const platformFee = campaign.budget * platformFeePercent
   const payoutPool = Math.max(0, campaign.budget - platformFee)
   const remaining = Math.max(0, payoutPool - campaign.spent)
-  const progress = payoutPool > 0 ? Math.min(100, (campaign.spent / payoutPool) * 100) : 0
+  const reachGoal = Math.max(0, campaign.estimatedReach)
+  const reachProgressPct =
+    reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0
   const submissions = mockBrandClips.filter((c) => c.campaignId === campaign.id)
   const totalViews = submissions.reduce((s, c) => s + c.views, 0)
 
@@ -267,14 +269,15 @@ export default function BrandCampaignDetailPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <Wallet className="h-3.5 w-3.5" /> Payout pool left
+            <Target className="h-3.5 w-3.5" /> Estimated reach progress
           </p>
-          <p className="mt-2 font-display text-2xl font-extrabold">
-            {formatPHP(remaining, { decimals: false })}
-          </p>
+          <p className="mt-2 font-display text-2xl font-extrabold">{formatViews(campaign.campaignViews)}</p>
           <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-            <div className="h-full bg-phc-gradient" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full bg-phc-gradient" style={{ width: `${reachProgressPct}%` }} />
           </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {reachProgressPct.toFixed(0)}% of {reachGoal > 0 ? formatViews(reachGoal) : '—'} estimated reach
+          </p>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-xs text-muted-foreground">Arpify budget fee</p>

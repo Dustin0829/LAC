@@ -131,6 +131,8 @@ export default function CreateCampaignPage() {
       platformFeePercent,
       refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
       spent: 0,
+      campaignViews: 0,
+      estimatedReach: Math.max(totalReach, 1),
       platforms,
       niches,
       status: 'active',
