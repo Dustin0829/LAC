@@ -1,46 +1,45 @@
 ---
-description: How to choose between local React state and Zustand in the Arpify mock frontend.
 alwaysApply: false
 ---
 
 # React local state vs Zustand
 
-Use this to choose between `useState` / `useReducer` and Zustand in Arpify. This is a frontend-only mock app: there is no server cache, no TanStack Query, and no real backend data layer.
+Use this to choose between `useState` / `useReducer` and Zustand for **client UI state**. **Server-backed data** belongs in TanStack Query (`useQuery` / `useMutation`), not duplicated in Zustand unless there is a deliberate offline/cache extension pattern.
 
 ## Prefer `useState` or `useReducer` (local state)
 
 Use local React state when:
 
-- The state is scoped to one component or one screen subtree.
-- Examples: controlled form fields, upload previews, modal open state, filters, selected tabs, local validation highlights.
-- The state does not need to survive leaving the route or be read by distant siblings/layouts.
+- The state is **simple and scoped to one component or one screen subtree**, and you can pass props or callbacks without awkward drilling (typically one or two levels).
+- Examples: a toggle, a controlled input’s transient value, **short-lived UI** such as “copied to clipboard”, modal open **only when no other surface needs that same flag**, local validation highlights.
+- The state **does not need to survive** leaving the route or **does not need to be read** by distant siblings/layouts without props.
 
-Prefer controlled patterns where the parent owns state if nearby siblings must stay in sync.
+Prefer **controlled patterns** where the parent owns state if two siblings must stay in sync—still often `useState` in the parent rather than global store.
 
 ## Prefer Zustand (global / shared client state)
 
 Use Zustand when:
 
-- Multiple components or hooks need the same state and prop drilling would be brittle.
-- State must coordinate across routes, guards, layouts, or role-specific areas.
-- Mock entities need client-side updates, e.g. campaigns, clips, payment methods, auth role/session.
-- Page- or entity-specific UI should persist across navigation within the same session.
+- **Multiple components or hooks** need the same state and prop-drilling would be brittle (sidebars, headers, guards, cross-route consumers).
+- You need **coordinated updates** across modules (auth session, role-gated UI, cross-feature toggles).
+- **Page- or entity-specific UI should persist across navigation** within the same session—for example returning to a campaign detail screen and restoring filters, draft edits, or panel state keyed by `campaignId`. Prefer **namespaced keys** (`record[id]`) instead of one flat blob when multiple entities exist.
+- **Draft / optimistic overlays** that must merge with server data and survive until save or invalidate (see `campaignEditsStore`).
 
-Keep stores focused by domain: `authStore`, `campaignsStore`, `clipsStore`, `paymentMethodsStore`.
+Avoid growing a single god-store; split domains (`authStore`, `campaignEditsStore`, `submissionOverridesStore`, etc.) with focused actions.
 
 ## Do not use Zustand for
 
-- Form drafts that only live inside one modal and reset on close.
-- Every boolean. Default to `useState` until sharing or persistence requirements appear.
-- Data that belongs as static seed/mock definitions in `src/lib/mockData.ts`.
+- **Fetched entities and loading/error flags**—use TanStack Query.
+- **Form drafts** that only live inside one modal and reset on close—unless product requires persistence across navigation.
+- **Every boolean**—default to `useState` until sharing or persistence requirements appear.
 
 ## Summary table
 
-| Concern | Tool |
-| --- | --- |
-| Static seed/mock data | `src/lib/mockData.ts` |
-| Shared auth / role gate | Zustand (`authStore`) |
-| Mock campaigns, clips, payment methods | Focused Zustand stores |
-| One-off UI, forms, modals, filters | `useState` / `useReducer` |
+| Concern                                           | Tool                                        |
+| ------------------------------------------------- | ------------------------------------------- |
+| API data, cache, invalidation                     | TanStack Query                              |
+| Shared auth / profile gate                        | Zustand (e.g. `authStore`)                  |
+| Draft edits / listing toggles spanning sections   | Zustand when shared or persisted per entity |
+| One-off UI (copy toast, single modal on one page) | `useState`                                  |
 
 When in doubt, **start with local state**; introduce Zustand only when a concrete sharing or persistence requirement appears.

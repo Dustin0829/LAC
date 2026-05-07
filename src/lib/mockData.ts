@@ -1,11 +1,11 @@
 /**
- * Arpify mock data — clipping platform.
- * - Brands create campaigns with a `ratePer1k` (₱ per 1,000 views) and a `budget`.
- * - Clippers submit `clips` (URLs) to a campaign; clips accrue `views` over time.
- * - Earnings = views / 1000 * ratePer1k.
+ * Arpify mock data — UI-only MVP prototype.
+ * - Brands set gross ₱/1k (`brandRatePer1k`); brand UI shows that headline rate.
+ * - Creator UI shows net ₱/1k after the 20% platform fee (`ratePer1k` / `creatorHeadlineRatePer1k`).
+ * - Creators submit `clips` (URLs); earnings use the net rate × verified views / 1,000.
  */
 
-export type Platform = 'tiktok' | 'youtube' | 'instagram' | 'facebook'
+export type Platform = 'tiktok' | 'facebook'
 export type ContentNiche =
   | 'gaming'
   | 'entertainment'
@@ -18,18 +18,50 @@ export type ContentNiche =
   | 'education'
 export type CampaignStatus = 'active' | 'paused' | 'ended' | 'draft'
 export type ClipStatus = 'pending' | 'approved' | 'rejected' | 'paid'
+export type WeeklyPackageStatus = 'ready' | 'released' | 'paying' | 'done'
 
 export const CLIPPER_PAYOUT_PERCENT = 0.8
-export const DEFAULT_REFUNDABLE_PERCENT = 0.8
+export const CREATOR_PAYOUT_PERCENT = CLIPPER_PAYOUT_PERCENT
+export const INTAKE_FEE_PERCENT = 0.15
+export const PERFORMANCE_FEE_PERCENT = 0.2
+export const DEFAULT_REFUNDABLE_PERCENT = 1
 
-export function getPlatformFeePercent(totalBudget: number): number {
-  if (totalBudget >= 200_000) return 0.1
-  if (totalBudget >= 50_000) return 0.15
-  return 0.2
+export function getPlatformFeePercent(): number {
+  return INTAKE_FEE_PERCENT
 }
 
 export function getClipperRatePer1k(brandRatePer1k: number): number {
-  return Math.round(brandRatePer1k * CLIPPER_PAYOUT_PERCENT * 100) / 100
+  return Math.round(brandRatePer1k * CREATOR_PAYOUT_PERCENT * 100) / 100
+}
+
+/** Brand-facing ₱/1k on cards/detail: gross rate the brand configured at creation (before creator net split). */
+export function brandHeadlineRatePer1k(
+  campaign: Pick<Campaign, 'brandRatePer1k' | 'ratePer1k'>
+): number {
+  return campaign.brandRatePer1k ?? campaign.ratePer1k
+}
+
+/** Creator-facing ₱/1k on discover/detail: brand gross per 1k minus the 20% platform performance fee (when gross is set). */
+export function creatorHeadlineRatePer1k(
+  campaign: Pick<Campaign, 'brandRatePer1k' | 'ratePer1k'>
+): number {
+  if (
+    typeof campaign.brandRatePer1k === 'number' &&
+    Number.isFinite(campaign.brandRatePer1k) &&
+    campaign.brandRatePer1k > 0
+  ) {
+    return getClipperRatePer1k(campaign.brandRatePer1k)
+  }
+  return campaign.ratePer1k
+}
+
+export function getNetSpendable(grossFunding: number): number {
+  return Math.round(grossFunding * (1 - INTAKE_FEE_PERCENT))
+}
+
+export function getAvailableBalance(campaign: Pick<Campaign, 'budget' | 'spent' | 'reservedBalance' | 'availableBalance'>): number {
+  if (typeof campaign.availableBalance === 'number') return campaign.availableBalance
+  return Math.max(0, getNetSpendable(campaign.budget) - campaign.spent - (campaign.reservedBalance ?? 0))
 }
 
 export interface CampaignAsset {
@@ -49,16 +81,19 @@ export interface Campaign {
   description: string
   /** Gross ₱ per 1,000 views paid by the brand. */
   brandRatePer1k?: number
-  /** Net ₱ per 1,000 views shown/paid to clippers. */
+  /** Net ₱ per 1,000 views shown/paid to creators. */
   ratePer1k: number
   /** Total ₱ campaign budget paid by the brand. */
   budget: number
-  /** Arpify platform fee from the campaign budget. */
+  /** Arpify intake fee from confirmed campaign funding. */
   platformFeePercent?: number
   /** Maximum refundable portion of the total campaign budget. */
   refundablePercent?: number
   /** ₱ already paid out (computed from approved/paid clips) */
   spent: number
+  availableBalance?: number
+  reservedBalance?: number
+  minimumPublishBalance?: number
   /** Cumulative views across all clips on this campaign (mock aggregate). */
   campaignViews: number
   /** Target view volume the campaign is aiming for (goal bar). */
@@ -68,11 +103,14 @@ export interface Campaign {
   status: CampaignStatus
   startDate: string
   endDate: string
+  /** When true, the brand runs the campaign until budget / reach goal is exhausted (no fixed calendar end). */
+  runsUntilGoal?: boolean
+  goalLabel?: string
   /** Sample/reference URL */
   sampleUrl?: string
   /** Asset/raw footage source URL */
   assetUrl?: string
-  /** Uploaded campaign files clippers can use in their edits. */
+  /** Uploaded campaign files creators can use in their edits. */
   assets?: CampaignAsset[]
   rules: string[]
   /** Cover image / thumbnail color seed */
@@ -90,11 +128,15 @@ export interface Clip {
   brandName: string
   clipperId: string
   clipperName: string
-  /** Submitted clip URL (TikTok/YouTube/etc) */
+  /** Submitted clip URL (TikTok/Facebook only in MVP) */
   url: string
   platform: Platform
   /** Current view count (mocked) */
   views: number
+  viewsPaidThrough?: number
+  deltaViews?: number
+  trustFlag?: string
+  rejectionReason?: string
   /** Earnings = views/1000 * ratePer1k. */
   earnings: number
   status: ClipStatus
@@ -102,6 +144,39 @@ export interface Clip {
   reviewedAt?: string
   paidAt?: string
   thumbnailColor: string
+}
+
+export interface CreatorPlatformLink {
+  platform: Platform
+  label: string
+  handle: string
+  status: 'connected' | 'reconnect'
+  connectedAt?: string
+}
+
+export interface WeeklyPayoutLine {
+  id: string
+  clipId: string
+  creatorName: string
+  campaignId: string
+  campaignTitle: string
+  platform: Platform
+  openingViews: number
+  verifiedAtCutoff: number
+  deltaViews: number
+  grossAccrual: number
+  creatorNet: number
+  platformFee: number
+  flag?: string
+  status: 'ready' | 'held' | 'released' | 'paid' | 'failed'
+}
+
+export interface WeeklyPayoutPackage {
+  id: string
+  campaignId: string
+  periodLabel: string
+  status: WeeklyPackageStatus
+  lines: WeeklyPayoutLine[]
 }
 
 export interface PaymentMethod {
@@ -153,9 +228,12 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.15,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 18230,
+    availableBalance: 12520,
+    reservedBalance: 11650,
+    minimumPublishBalance: 10000,
     campaignViews: 340_000,
     estimatedReach: 620_000,
-    platforms: ['tiktok', 'instagram'],
+    platforms: ['tiktok', 'facebook'],
     niches: ['food', 'lifestyle'],
     status: 'active',
     startDate: daysAgo(8),
@@ -195,21 +273,24 @@ export const mockCampaigns: Campaign[] = [
     brandLogoColor: 'from-neutral-950 to-zinc-700',
     title: 'MLBB Tournament Highlights — Earn per 1k views',
     description:
-      'Cut highlights from the Hyperion Cup matches. Best plays, hype moments, funny fails. Drop on TikTok or YouTube Shorts.',
+      'Cut highlights from the Hyperion Cup matches. Best plays, hype moments, funny fails. Drop on TikTok or Facebook Reels.',
     brandRatePer1k: 150,
     ratePer1k: 120,
     budget: 80000,
     platformFeePercent: 0.15,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 41200,
+    availableBalance: 18600,
+    reservedBalance: 8200,
+    minimumPublishBalance: 10000,
     campaignViews: 368_000,
     estimatedReach: 600_000,
-    platforms: ['tiktok', 'youtube'],
+    platforms: ['tiktok', 'facebook'],
     niches: ['gaming', 'entertainment'],
     status: 'active',
     startDate: daysAgo(14),
     endDate: daysFromNow(10),
-    sampleUrl: 'https://youtube.com/shorts/hyperion-sample',
+    sampleUrl: 'https://www.facebook.com/reel/hyperion-sample',
     assetUrl: 'https://drive.google.com/folder/hyperion-vods',
     assets: [
       {
@@ -243,9 +324,12 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.2,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 8950,
+    availableBalance: 15820,
+    reservedBalance: 730,
+    minimumPublishBalance: 10000,
     campaignViews: 118_000,
     estimatedReach: 290_000,
-    platforms: ['tiktok', 'instagram'],
+    platforms: ['tiktok', 'facebook'],
     niches: ['lifestyle', 'fashion'],
     status: 'active',
     startDate: daysAgo(4),
@@ -273,9 +357,12 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.2,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 12400,
+    availableBalance: 18800,
+    reservedBalance: 2800,
+    minimumPublishBalance: 10000,
     campaignViews: 198_000,
     estimatedReach: 460_000,
-    platforms: ['tiktok', 'youtube', 'instagram'],
+    platforms: ['tiktok', 'facebook'],
     niches: ['finance', 'education'],
     status: 'active',
     startDate: daysAgo(20),
@@ -303,9 +390,12 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.2,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 24500,
+    availableBalance: 0,
+    reservedBalance: 0,
+    minimumPublishBalance: 10000,
     campaignViews: 212_000,
     estimatedReach: 228_000,
-    platforms: ['tiktok', 'youtube'],
+    platforms: ['tiktok', 'facebook'],
     niches: ['tech', 'entertainment'],
     status: 'paused',
     startDate: daysAgo(45),
@@ -329,9 +419,12 @@ export const mockCampaigns: Campaign[] = [
     platformFeePercent: 0.2,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
     spent: 0,
+    availableBalance: 29750,
+    reservedBalance: 0,
+    minimumPublishBalance: 10000,
     campaignViews: 8_200,
     estimatedReach: 420_000,
-    platforms: ['tiktok', 'instagram'],
+    platforms: ['tiktok', 'facebook'],
     niches: ['fitness', 'lifestyle'],
     status: 'active',
     startDate: daysAgo(2),
@@ -354,6 +447,8 @@ export const mockClips: Clip[] = [
     url: 'https://www.tiktok.com/@you/video/01',
     platform: 'tiktok',
     views: 142_300,
+    viewsPaidThrough: 120_000,
+    deltaViews: 22_300,
     earnings: 4500,
     status: 'paid',
     submittedAt: daysAgo(7),
@@ -371,6 +466,8 @@ export const mockClips: Clip[] = [
     url: 'https://www.tiktok.com/@you/video/02',
     platform: 'tiktok',
     views: 38_200,
+    viewsPaidThrough: 0,
+    deltaViews: 38_200,
     earnings: 4584,
     status: 'approved',
     submittedAt: daysAgo(3),
@@ -384,9 +481,12 @@ export const mockClips: Clip[] = [
     brandName: 'Hyperion Esports',
     clipperId: 'me',
     clipperName: 'You',
-    url: 'https://youtube.com/shorts/abc',
-    platform: 'youtube',
+    url: 'https://www.facebook.com/reel/abc',
+    platform: 'facebook',
     views: 9_400,
+    viewsPaidThrough: 0,
+    deltaViews: 9_400,
+    trustFlag: 'Metrics pending: waiting for first verified cutoff.',
     earnings: 1128,
     status: 'pending',
     submittedAt: daysAgo(1),
@@ -402,6 +502,8 @@ export const mockClips: Clip[] = [
     url: 'https://www.tiktok.com/@you/video/04',
     platform: 'tiktok',
     views: 21_500,
+    viewsPaidThrough: 12_000,
+    deltaViews: 9_500,
     earnings: 1612.5,
     status: 'approved',
     submittedAt: daysAgo(5),
@@ -418,6 +520,9 @@ export const mockClips: Clip[] = [
     url: 'https://www.tiktok.com/@you/video/05',
     platform: 'tiktok',
     views: 1_200,
+    viewsPaidThrough: 0,
+    deltaViews: 0,
+    rejectionReason: 'Post was uploaded before the campaign became active.',
     earnings: 0,
     status: 'rejected',
     submittedAt: daysAgo(10),
@@ -426,7 +531,7 @@ export const mockClips: Clip[] = [
   },
 ]
 
-/** Brand POV: simulated submissions from various clippers on this brand’s campaigns. */
+/** Brand POV: simulated creator submissions on this brand’s campaigns. */
 export const mockBrandClips: Clip[] = [
   {
     id: 'bclip-001',
@@ -438,6 +543,8 @@ export const mockBrandClips: Clip[] = [
     url: 'https://www.tiktok.com/@mika/video/01',
     platform: 'tiktok',
     views: 234_000,
+    viewsPaidThrough: 188_000,
+    deltaViews: 46_000,
     earnings: 4500,
     status: 'paid',
     submittedAt: daysAgo(8),
@@ -455,6 +562,9 @@ export const mockBrandClips: Clip[] = [
     url: 'https://www.tiktok.com/@diego/video/01',
     platform: 'tiktok',
     views: 92_000,
+    viewsPaidThrough: 50_000,
+    deltaViews: 42_000,
+    trustFlag: 'Unusual view spike: review engagement before release.',
     earnings: 4500,
     status: 'approved',
     submittedAt: daysAgo(5),
@@ -468,9 +578,11 @@ export const mockBrandClips: Clip[] = [
     brandName: 'Kape Manila',
     clipperId: 'clipper-3',
     clipperName: 'Anna L.',
-    url: 'https://www.instagram.com/reel/xyz',
-    platform: 'instagram',
+    url: 'https://www.facebook.com/reel/xyz',
+    platform: 'facebook',
     views: 6_400,
+    viewsPaidThrough: 0,
+    deltaViews: 6_400,
     earnings: 576,
     status: 'pending',
     submittedAt: daysAgo(1),
@@ -486,6 +598,9 @@ export const mockBrandClips: Clip[] = [
     url: 'https://www.tiktok.com/@rico/video/01',
     platform: 'tiktok',
     views: 1_100,
+    viewsPaidThrough: 0,
+    deltaViews: 0,
+    rejectionReason: 'Creator submitted from an account that does not match their linked profile.',
     earnings: 0,
     status: 'rejected',
     submittedAt: daysAgo(2),
@@ -534,10 +649,67 @@ export const mockBrandPerformance = [
   { week: 'W6', views: 156_000, payout: 14_040 },
 ]
 
+export const mockCreatorPlatformLinks: CreatorPlatformLink[] = [
+  {
+    platform: 'tiktok',
+    label: 'TikTok',
+    handle: '@demo_creator',
+    status: 'connected',
+    connectedAt: daysAgo(18),
+  },
+  {
+    platform: 'facebook',
+    label: 'Facebook',
+    handle: 'facebook.com/demo.creator',
+    status: 'reconnect',
+    connectedAt: daysAgo(41),
+  },
+]
+
+export const mockWeeklyPayoutPackages: WeeklyPayoutPackage[] = [
+  {
+    id: 'pkg-001',
+    campaignId: 'cmp-001',
+    periodLabel: 'May 1-7, 2026',
+    status: 'ready',
+    lines: [
+      {
+        id: 'line-001',
+        clipId: 'bclip-002',
+        creatorName: 'Diego C.',
+        campaignId: 'cmp-001',
+        campaignTitle: 'Bagong Latte Drop',
+        platform: 'tiktok',
+        openingViews: 50_000,
+        verifiedAtCutoff: 92_000,
+        deltaViews: 42_000,
+        grossAccrual: 420,
+        creatorNet: 336,
+        platformFee: 84,
+        flag: 'Unusual view spike: low engagement ratio.',
+        status: 'ready',
+      },
+      {
+        id: 'line-002',
+        clipId: 'bclip-003',
+        creatorName: 'Anna L.',
+        campaignId: 'cmp-001',
+        campaignTitle: 'Bagong Latte Drop',
+        platform: 'facebook',
+        openingViews: 0,
+        verifiedAtCutoff: 6_400,
+        deltaViews: 6_400,
+        grossAccrual: 64,
+        creatorNet: 51.2,
+        platformFee: 12.8,
+        status: 'ready',
+      },
+    ],
+  },
+]
+
 export const PLATFORM_LABEL: Record<Platform, string> = {
   tiktok: 'TikTok',
-  youtube: 'YouTube',
-  instagram: 'Instagram',
   facebook: 'Facebook',
 }
 

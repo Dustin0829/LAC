@@ -1,28 +1,10 @@
+import { useMemo } from 'react'
 import { ClipStatusBadge } from '@/components/ClipStatusBadge'
 import { StatCard } from '@/components/StatCard'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { mockEarningsTrend } from '@/lib/mockData'
 import { useClipsStore } from '@/lib/stores/clipsStore'
-import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import { formatDate, formatPHP, formatViews } from '@/lib/utils'
-import { ArrowDownToLine, Loader2, Sparkles, Wallet } from 'lucide-react'
-import { useState } from 'react'
+import { Banknote, Sparkles, Wallet } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -32,18 +14,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { toast } from 'sonner'
 
 export default function ClipperEarningsPage() {
-  const clips = useClipsStore((s) => s.clips)
-  const updateClip = useClipsStore((s) => s.updateClip)
-  const methods = usePaymentMethodsStore((s) => s.methods)
-  const [open, setOpen] = useState(false)
-  const [amount, setAmount] = useState('')
-  const [selectedMethodId, setSelectedMethodId] = useState(
-    methods.find((m) => m.isDefault)?.id ?? methods[0]?.id ?? ''
+  const allClips = useClipsStore((s) => s.clips)
+  const clips = useMemo(
+    () => allClips.filter((clip) => clip.clipperId === 'me'),
+    [allClips]
   )
-  const [submitting, setSubmitting] = useState(false)
 
   const totalEarned = clips.reduce((s, c) => s + c.earnings, 0)
   const paid = clips
@@ -63,108 +40,24 @@ export default function ClipperEarningsPage() {
     )
     .slice(0, 8)
 
-  async function handleWithdraw(e: React.FormEvent) {
-    e.preventDefault()
-    const amt = Number(amount)
-    if (!amt || amt <= 0) return toast.error('Enter a valid amount.')
-    if (amt > available) return toast.error(`Maximum available: ${formatPHP(available)}`)
-    if (!selectedMethodId) return toast.error('Pick a payout method.')
-    setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 700))
-    // Mark approved clips as paid up to the requested amount (simple mock).
-    let remaining = amt
-    clips
-      .filter((c) => c.status === 'approved')
-      .forEach((c) => {
-        if (remaining <= 0) return
-        if (c.earnings <= remaining) {
-          updateClip(c.id, { status: 'paid', paidAt: new Date().toISOString() })
-          remaining -= c.earnings
-        }
-      })
-    toast.success(`Withdrawal of ${formatPHP(amt)} sent — should arrive within 24h.`)
-    setSubmitting(false)
-    setOpen(false)
-    setAmount('')
-  }
-
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Earnings</p>
-          <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold">
-            Your <span className="text-phc-gradient">payday</span> tracker
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Withdraw to your default GCash or bank. Powered by Xendit (mocked).
-          </p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-phc-gradient text-white" disabled={available <= 0}>
-              <ArrowDownToLine className="h-4 w-4" /> Withdraw
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Withdraw funds</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleWithdraw} className="space-y-4 pt-2">
-              <div className="rounded-xl bg-phc-gradient-soft p-4">
-                <p className="text-xs text-muted-foreground">Available to withdraw</p>
-                <p className="font-display text-2xl font-extrabold text-phc-gradient">
-                  {formatPHP(available)}
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="amount">Amount (₱)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Pay to</Label>
-                <Select value={selectedMethodId} onValueChange={setSelectedMethodId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pick a payout method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {methods.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {methods.length === 0 && (
-                  <p className="text-xs text-amber-600">
-                    Add a payout method in Account → Payment Methods first.
-                  </p>
-                )}
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-phc-gradient text-white"
-                disabled={submitting}
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirm withdrawal'}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+      <div>
+        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Earnings</p>
+        <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold">
+          Your <span className="text-phc-gradient">payday</span> tracker
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Earnings are based on new verified views since the last paid-through watermark. Brands
+          release payouts weekly after review.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Available"
           value={formatPHP(available, { decimals: false })}
-          hint="Approved, ready to withdraw"
+          hint="Approved — next automatic payout"
           icon={Wallet}
           accent="violet"
         />
@@ -179,7 +72,7 @@ export default function ClipperEarningsPage() {
           label="Paid out"
           value={formatPHP(paid, { decimals: false })}
           hint="All-time"
-          icon={ArrowDownToLine}
+          icon={Banknote}
           accent="emerald"
         />
         <StatCard
@@ -193,7 +86,7 @@ export default function ClipperEarningsPage() {
       <div className="rounded-3xl border border-border bg-card p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-xl font-extrabold">Weekly earnings</h2>
-          <p className="text-sm text-muted-foreground">Last 6 weeks</p>
+          <p className="text-sm text-muted-foreground">Mock payout windows</p>
         </div>
         <div className="h-64">
           <ResponsiveContainer>
@@ -232,7 +125,7 @@ export default function ClipperEarningsPage() {
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-6 py-3 font-medium">Campaign</th>
-                <th className="px-6 py-3 font-medium hidden sm:table-cell">Views</th>
+                <th className="px-6 py-3 font-medium hidden sm:table-cell">Delta views</th>
                 <th className="px-6 py-3 font-medium">Amount</th>
                 <th className="px-6 py-3 font-medium">Status</th>
                 <th className="px-6 py-3 font-medium hidden md:table-cell">Date</th>
@@ -245,7 +138,12 @@ export default function ClipperEarningsPage() {
                     <p className="font-medium line-clamp-1">{c.campaignTitle}</p>
                     <p className="text-xs text-muted-foreground">{c.brandName}</p>
                   </td>
-                  <td className="px-6 py-4 hidden sm:table-cell">{formatViews(c.views)}</td>
+                  <td className="px-6 py-4 hidden sm:table-cell">
+                    {formatViews(c.deltaViews ?? c.views)}
+                    <p className="text-[11px] text-muted-foreground">
+                      paid through {formatViews(c.viewsPaidThrough ?? 0)}
+                    </p>
+                  </td>
                   <td className="px-6 py-4 font-display font-bold text-phc-gradient">
                     {formatPHP(c.earnings, { decimals: false })}
                   </td>

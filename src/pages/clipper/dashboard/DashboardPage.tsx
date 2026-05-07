@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Wallet,
@@ -16,10 +17,10 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { useClipsStore } from '@/lib/stores/clipsStore'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
-import { mockEarningsTrend } from '@/lib/mockData'
+import { creatorHeadlineRatePer1k, mockEarningsTrend } from '@/lib/mockData'
 import { formatPHP, formatViews } from '@/lib/utils'
 import { StatCard } from '@/components/StatCard'
 import { ClipStatusBadge } from '@/components/ClipStatusBadge'
@@ -28,7 +29,11 @@ import { Button } from '@/components/ui/button'
 
 export default function ClipperDashboardPage() {
   const { user } = useAuth()
-  const clips = useClipsStore((s) => s.clips)
+  const allClips = useClipsStore((s) => s.clips)
+  const clips = useMemo(
+    () => allClips.filter((clip) => clip.clipperId === 'me'),
+    [allClips]
+  )
   const campaigns = useCampaignsStore((s) => s.campaigns)
 
   const totalEarnings = clips.reduce((sum, c) => sum + c.earnings, 0)
@@ -47,13 +52,13 @@ export default function ClipperDashboardPage() {
         <div>
           <p className="inline-flex items-center gap-1.5 rounded-full bg-phc-gradient-soft px-3 py-1 text-xs font-medium text-foreground">
             <Sparkles className="h-3 w-3" />
-            Clipper
+            Creator
           </p>
           <h1 className="mt-3 font-display text-3xl md:text-4xl font-extrabold tracking-tight">
-            Hey {user?.name?.split(' ')[0] || 'there'}, ready to clip? <span className="text-phc-gradient">Let’s go.</span>
+            Hey {user?.name?.split(' ')[0] || 'there'}, ready to earn from verified views? <span className="text-phc-gradient">Let’s go.</span>
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Track your clips, your views, and your earnings — all in one place.
+            Track submissions, verified view deltas, and weekly payout status in one place.
           </p>
         </div>
         <div className="flex gap-2">
@@ -66,36 +71,48 @@ export default function ClipperDashboardPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total earnings"
-          value={formatPHP(totalEarnings, { decimals: false })}
-          hint={`${formatPHP(pendingEarnings, { decimals: false })} pending`}
-          icon={Wallet}
-          accent="violet"
-        />
-        <StatCard
-          label="Paid out"
-          value={formatPHP(paidEarnings, { decimals: false })}
-          hint="Sent to your default payout"
-          icon={TrendingUp}
-          accent="emerald"
-        />
-        <StatCard
-          label="Total views"
-          value={formatViews(totalViews)}
-          hint="Across all clips"
-          icon={Eye}
-          accent="pink"
-        />
-        <StatCard
-          label="Active clips"
-          value={clips.length}
-          hint={`${clips.filter((c) => c.status === 'pending').length} pending review`}
-          icon={Scissors}
-          accent="orange"
-        />
+      {/* Stats — two summary cards */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-3xl border border-border bg-card p-4 sm:p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatCard
+              className="border-0 bg-muted/30 shadow-none"
+              label="Total earnings"
+              value={formatPHP(totalEarnings, { decimals: false })}
+              hint={`${formatPHP(pendingEarnings, { decimals: false })} pending`}
+              icon={Wallet}
+              accent="violet"
+            />
+            <StatCard
+              className="border-0 bg-muted/30 shadow-none"
+              label="Paid out"
+              value={formatPHP(paidEarnings, { decimals: false })}
+              hint="Sent to your default payout"
+              icon={TrendingUp}
+              accent="emerald"
+            />
+          </div>
+        </div>
+        <div className="rounded-3xl border border-border bg-card p-4 sm:p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatCard
+              className="border-0 bg-muted/30 shadow-none"
+              label="Total views"
+              value={formatViews(totalViews)}
+              hint="Across all clips"
+              icon={Eye}
+              accent="pink"
+            />
+            <StatCard
+              className="border-0 bg-muted/30 shadow-none"
+              label="Active clips"
+              value={clips.length}
+              hint={`${clips.filter((c) => c.status === 'pending').length} pending review`}
+              icon={Scissors}
+              accent="orange"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Earnings chart */}
@@ -233,7 +250,7 @@ export default function ClipperDashboardPage() {
                     {c.title}
                   </p>
                   <p className="mt-2 text-sm font-display font-extrabold">
-                    {formatPHP(c.ratePer1k, { decimals: false })}
+                    {formatPHP(creatorHeadlineRatePer1k(c), { decimals: false })}
                     <span className="text-xs font-medium text-muted-foreground"> / 1K views</span>
                   </p>
                 </div>

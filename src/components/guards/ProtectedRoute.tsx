@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth } from '@/lib/hooks/use-auth'
 import type { UserRole } from '@/lib/stores/authStore'
 
 function AuthLoading() {

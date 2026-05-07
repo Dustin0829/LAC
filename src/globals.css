@@ -4,60 +4,60 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, monospace;
 }
 
 :root {
-  /* Arpify UI tokens (premium black / slate + blue accent) */
-  --primary: oklch(0.18 0.01 260);
-  --primary-foreground: oklch(0.99 0 0);
+  /* Vyro-inspired Arpify UI tokens */
+  --primary: #00ABF4;
+  --primary-foreground: #FFFFFF;
 
-  --accent: #3B82F6;
-  --accent-foreground: oklch(0.99 0 0);
+  --accent: #00ABF4;
+  --accent-foreground: #FFFFFF;
 
-  --secondary: #3B82F6;
-  --secondary-foreground: oklch(0.99 0 0);
+  --secondary: #0EA5E9;
+  --secondary-foreground: #FFFFFF;
 
-  --background: oklch(0.985 0.002 260);
-  --foreground: oklch(0.16 0.008 260);
+  --background: #F4F7F9;
+  --foreground: #000000;
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.008 260);
+  --card: #FFFFFF;
+  --card-foreground: #000000;
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.008 260);
+  --popover: #FFFFFF;
+  --popover-foreground: #000000;
 
-  --muted: oklch(0.955 0.003 260);
-  --muted-foreground: oklch(0.48 0.01 260);
+  --muted: #F4F7F9;
+  --muted-foreground: #636D79;
 
   --destructive: oklch(0.6 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --success: oklch(0.7 0.18 150);
+  --success: #C0FF73;
   --warning: oklch(0.75 0.17 70);
 
-  --border: oklch(0.9 0.004 260);
-  --input: oklch(0.95 0.003 260);
-  --ring: #3B82F6;
+  --border: #DDE5ED;
+  --input: #DDE5ED;
+  --ring: #00ABF4;
 
-  --chart-1: #3B82F6;
-  --chart-2: #2563EB;
+  --chart-1: #00ABF4;
+  --chart-2: #0EA5E9;
   --chart-3: oklch(0.64 0.012 260);
   --chart-4: oklch(0.7 0.18 150);
   --chart-5: oklch(0.6 0.22 25);
 
-  --radius: 0.875rem;
+  --radius: 1.125rem;
 
-  --sidebar: oklch(0.145 0.006 260);
-  --sidebar-foreground: oklch(0.95 0.003 260);
-  --sidebar-primary: oklch(0.95 0.003 260);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.25 0.006 260);
-  --sidebar-accent-foreground: oklch(0.99 0 0);
-  --sidebar-border: oklch(0.25 0.006 260);
-  --sidebar-ring: #3B82F6;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #00ABF4;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F4F7F9;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #DDE5ED;
+  --sidebar-ring: #00ABF4;
 }
 
 .dark {
@@ -89,8 +89,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Sora', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -147,28 +147,28 @@
   }
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
 }
 
 @layer utilities {
   .bg-phc-gradient {
-    background-color: #3B82F6;
-    background-image: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-    box-shadow: 0 18px 40px -22px rgba(59, 130, 246, 0.4);
+    background-color: #00ABF4;
+    background-image: linear-gradient(135deg, #00ABF4 0%, #0EA5E9 100%);
+    box-shadow: rgba(0, 0, 0, 0.12) 0px 3px 8px 0px;
   }
   .bg-phc-gradient:hover {
-    background-color: #2563EB;
-    background-image: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    background-color: #0EA5E9;
+    background-image: linear-gradient(135deg, #0EA5E9 0%, #00ABF4 100%);
   }
   .text-phc-gradient {
-    background-image: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+    background-image: linear-gradient(135deg, #00ABF4 0%, #0EA5E9 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
   .bg-phc-gradient-soft {
-    background-image: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.08) 100%);
+    background-image: linear-gradient(135deg, rgba(0, 171, 244, 0.14) 0%, rgba(216, 231, 242, 0.65) 100%);
   }
   .bg-grid-soft {
     background-image:

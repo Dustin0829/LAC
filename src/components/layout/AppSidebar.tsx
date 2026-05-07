@@ -8,13 +8,13 @@ import {
   LogOut,
   type LucideIcon,
   ArrowLeftRight,
-  Plus,
   Building2,
   Video,
+  ClipboardList,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore, type UserRole } from '@/lib/stores/authStore'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -43,7 +43,7 @@ const CLIPPER_NAV: NavItem[] = [
 const BRAND_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/brand/dashboard', icon: LayoutDashboard },
   { label: 'Campaigns', to: '/brand/campaigns', icon: Video },
-  { label: 'New Campaign', to: '/brand/campaigns/new', icon: Plus },
+  { label: 'Clip submissions', to: '/brand/submissions', icon: ClipboardList },
   { label: 'Account', to: '/brand/account', icon: User },
 ]
 
@@ -81,7 +81,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
     const next: UserRole = role === 'brand' ? 'clipper' : 'brand'
     setRole(next)
     navigate(next === 'brand' ? '/brand/dashboard' : '/clipper/dashboard', { replace: true })
-    toast.success(`Switched to ${next === 'brand' ? 'Brand Owner' : 'Clipper'}`)
+    toast.success(`Switched to ${next === 'brand' ? 'Brand' : 'Creator'}`)
   }
 
   const userInitials = getInitials(user?.name, user?.email)
@@ -95,7 +95,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
           <div className="leading-tight">
             <div className="font-display text-base font-extrabold">Arpify</div>
             <div className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">
-              {role === 'brand' ? 'Brand' : 'Clipper'}
+              {role === 'brand' ? 'Brand' : 'Creator'}
             </div>
           </div>
         </div>
@@ -112,14 +112,14 @@ export function AppSidebar({ role }: AppSidebarProps) {
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-sidebar-accent text-white shadow-sm'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-white'
+                    ? 'bg-primary text-white shadow-[rgba(0,0,0,0.12)_0px_3px_8px_0px]'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-foreground'
                 )}
               >
                 <Icon className="h-4 w-4" />
                 <span>{item.label}</span>
                 {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-phc-gradient" />
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
                 )}
               </Link>
             )
@@ -137,7 +137,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">{displayName}</p>
+                  <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
                   <p className="truncate text-[11px] text-sidebar-foreground/60">{user?.email}</p>
                 </div>
               </button>
@@ -153,7 +153,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
               <DropdownMenuItem onClick={handleSwitchRole} className="cursor-pointer">
                 {role === 'brand' ? (
                   <>
-                    <Scissors className="h-4 w-4" /> Switch to Clipper
+                    <Scissors className="h-4 w-4" /> Switch to Creator
                   </>
                 ) : (
                   <>
@@ -185,7 +185,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
                 to={item.to}
                 className={cn(
                   'flex flex-col items-center gap-1 py-3 text-[10px] font-medium',
-                  isActive ? 'text-white' : 'text-sidebar-foreground/60'
+                  isActive ? 'text-primary' : 'text-sidebar-foreground/60'
                 )}
               >
                 <Icon className="h-5 w-5" />
@@ -222,7 +222,7 @@ export function AppSidebar({ role }: AppSidebarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSwitchRole} className="cursor-pointer">
               <ArrowLeftRight className="h-4 w-4" />
-              Switch to {role === 'brand' ? 'Clipper' : 'Brand'}
+              Switch to {role === 'brand' ? 'Creator' : 'Brand'}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleSignOut}

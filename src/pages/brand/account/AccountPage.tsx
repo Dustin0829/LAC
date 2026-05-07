@@ -1,5 +1,5 @@
 import { BadgeCheck } from 'lucide-react'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSection'

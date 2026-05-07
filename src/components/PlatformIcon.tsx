@@ -1,3 +1,5 @@
+import { Tiktok, Facebook } from '@thesvg/react'
+import { cn } from '@/lib/utils'
 import type { Platform } from '@/lib/mockData'
 
 interface PlatformIconProps {
@@ -5,26 +7,24 @@ interface PlatformIconProps {
   className?: string
 }
 
-const COLORS: Record<Platform, string> = {
-  tiktok: 'bg-black text-white',
-  youtube: 'bg-red-600 text-white',
-  instagram: 'bg-zinc-900 text-white',
-  facebook: 'bg-blue-600 text-white',
-}
-
-const LETTERS: Record<Platform, string> = {
-  tiktok: 'TT',
-  youtube: 'YT',
-  instagram: 'IG',
-  facebook: 'FB',
-}
-
 export function PlatformIcon({ platform, className = 'h-7 w-7' }: PlatformIconProps) {
+  const Icon = platform === 'tiktok' ? Tiktok : Facebook
   return (
     <div
-      className={`${className} ${COLORS[platform]} rounded-lg flex items-center justify-center text-[10px] font-extrabold`}
+      className={cn(
+        className,
+        'flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card p-1',
+        platform === 'tiktok' && 'bg-black',
+        platform === 'facebook' && 'border-transparent bg-[#1877F2]'
+      )}
+      aria-hidden
     >
-      {LETTERS[platform]}
+      <Icon
+        className={cn(
+          'h-[82%] w-[82%] max-h-full max-w-full',
+          platform === 'facebook' && 'brightness-0 invert'
+        )}
+      />
     </div>
   )
 }

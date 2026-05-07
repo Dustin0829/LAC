@@ -127,7 +127,7 @@ src/
     RootLayout.tsx
   lib/
     mockData.ts                   All mock campaigns, clips, assets, payment methods
-    hooks/useAuth.ts
+    hooks/use-auth.ts
     stores/                       Zustand stores
     utils/                        Formatting and class helpers
   pages/

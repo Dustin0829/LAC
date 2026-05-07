@@ -3,18 +3,18 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Calendar,
-  Download,
   Eye,
   ExternalLink,
-  FileText,
   CheckCircle2,
+  Link2,
   Send,
   Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { useClipsStore } from '@/lib/stores/clipsStore'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
+import { useAuth } from '@/lib/hooks/use-auth'
 import {
   Dialog,
   DialogContent,
@@ -34,12 +34,20 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { formatPHP, formatDate, formatViews } from '@/lib/utils'
-import { NICHE_LABEL, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
+import {
+  creatorHeadlineRatePer1k,
+  NICHE_LABEL,
+  PLATFORM_LABEL,
+  type Platform,
+} from '@/lib/mockData'
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+function isValidClipUrl(value: string): boolean {
+  try {
+    const u = new URL(value)
+    return (u.protocol === 'http:' || u.protocol === 'https:') && Boolean(u.hostname)
+  } catch {
+    return false
+  }
 }
 
 export default function ClipperCampaignDetailPage() {
@@ -47,12 +55,17 @@ export default function ClipperCampaignDetailPage() {
   const navigate = useNavigate()
   const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === id))
   const addClip = useClipsStore((s) => s.addClip)
+  const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
+  const connectPlatform = useCreatorProfileStore((s) => s.connectPlatform)
   const { user } = useAuth()
 
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [platform, setPlatform] = useState<Platform>('tiktok')
   const [submitting, setSubmitting] = useState(false)
+  const connectedPlatforms = platformLinks
+    .filter((link) => link.status === 'connected')
+    .map((link) => link.platform)
 
   if (!campaign) {
     return (
@@ -68,10 +81,23 @@ export default function ClipperCampaignDetailPage() {
   const reachGoal = Math.max(0, campaign.estimatedReach)
   const reachProgressPct =
     reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0
+  const creatorRatePer1k = creatorHeadlineRatePer1k(campaign)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!url.trim() || !campaign) return
+    if (!isValidClipUrl(url.trim())) {
+      toast.error('Paste a full clip link starting with https:// (e.g. TikTok or Facebook).')
+      return
+    }
+    if (!campaign.platforms.includes(platform)) {
+      toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} clips.`)
+      return
+    }
+    if (!connectedPlatforms.includes(platform)) {
+      connectPlatform(platform)
+      toast.success(`${PLATFORM_LABEL[platform]} connected for future submissions.`)
+    }
     setSubmitting(true)
     await new Promise((r) => setTimeout(r, 600))
     addClip({
@@ -79,17 +105,19 @@ export default function ClipperCampaignDetailPage() {
       campaignId: campaign.id,
       campaignTitle: campaign.title,
       brandName: campaign.brandName,
-      clipperId: user?.id ?? 'me',
+      clipperId: 'me',
       clipperName: user?.name ?? 'You',
       url: url.trim(),
       platform,
       views: 0,
+      viewsPaidThrough: 0,
+      deltaViews: 0,
       earnings: 0,
       status: 'pending',
       submittedAt: new Date().toISOString(),
       thumbnailColor: campaign.coverColor,
     })
-    toast.success('Clip submitted! We’ll start tracking views.')
+    toast.success('Clip submitted! Brand review comes first, then verified views can accrue.')
     setSubmitting(false)
     setOpen(false)
     setUrl('')
@@ -150,15 +178,17 @@ export default function ClipperCampaignDetailPage() {
 
           <div className="mt-8 flex flex-wrap gap-3">
             <div className="rounded-2xl bg-white/15 backdrop-blur border border-white/20 px-5 py-3">
-              <p className="text-xs uppercase tracking-widest opacity-80">Rate</p>
+              <p className="text-xs uppercase tracking-widest opacity-80">Your rate</p>
               <p className="font-display text-2xl font-extrabold">
-                {formatPHP(campaign.ratePer1k, { decimals: false })}
+                {formatPHP(creatorRatePer1k, { decimals: false })}
                 <span className="text-sm font-medium opacity-80"> / 1K views</span>
               </p>
             </div>
             <div className="rounded-2xl bg-white/15 backdrop-blur border border-white/20 px-5 py-3">
-              <p className="text-xs uppercase tracking-widest opacity-80">Payout cap</p>
-              <p className="font-display text-2xl font-extrabold">No cap</p>
+              <p className="text-xs uppercase tracking-widest opacity-80">Platforms</p>
+              <p className="font-display text-lg font-extrabold">
+                {campaign.platforms.map((p) => PLATFORM_LABEL[p]).join(' / ')}
+              </p>
             </div>
           </div>
 
@@ -194,7 +224,7 @@ export default function ClipperCampaignDetailPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {(['tiktok', 'youtube', 'instagram', 'facebook'] as const).map((p) => (
+                      {campaign.platforms.map((p) => (
                         <SelectItem key={p} value={p}>
                           {PLATFORM_LABEL[p]}
                         </SelectItem>
@@ -203,15 +233,17 @@ export default function ClipperCampaignDetailPage() {
                   </Select>
                 </div>
                 <div className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
-                  We&apos;ll review your clip and start tracking views once approved. Payout happens
-                  automatically based on verified views.
+                  {connectedPlatforms.includes(platform)
+                    ? `${PLATFORM_LABEL[platform]} is already connected on your profile, so this submit reuses it.`
+                    : `Demo will connect ${PLATFORM_LABEL[platform]} once, save it on your profile, and reuse it next time.`}
+                  {' '}Brand review happens before verified views accrue.
                 </div>
                 <Button
                   type="submit"
                   className="w-full bg-phc-gradient text-white hover:opacity-90"
                   disabled={submitting}
                 >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit clip'}
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : connectedPlatforms.includes(platform) ? 'Submit clip' : `Connect ${PLATFORM_LABEL[platform]} & submit`}
                 </Button>
               </form>
             </DialogContent>
@@ -238,83 +270,30 @@ export default function ClipperCampaignDetailPage() {
             <Calendar className="h-3.5 w-3.5" /> Window
           </p>
           <p className="mt-2 font-display text-base font-bold">
-            {formatDate(campaign.startDate)} → {formatDate(campaign.endDate)}
+            {campaign.runsUntilGoal ? (
+              <>
+                {formatDate(campaign.startDate)} →{' '}
+                <span className="text-phc-gradient">Until goal is reached</span>
+              </>
+            ) : (
+              <>
+                {formatDate(campaign.startDate)} → {formatDate(campaign.endDate)}
+              </>
+            )}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <section className="rounded-3xl border border-border bg-card p-6">
-            <h2 className="font-display text-xl font-extrabold">Rules</h2>
-            <ul className="mt-4 space-y-3">
-              {campaign.rules.map((rule) => (
-                <li key={rule} className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
-                  <span className="text-sm">{rule}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {(campaign.assets?.length || campaign.assetUrl || campaign.sampleUrl) && (
-            <section className="rounded-3xl border border-border bg-card p-6">
-              <h2 className="font-display text-xl font-extrabold">Assets & resources</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Use these brand-provided files when making your clips.
-              </p>
-              <div className="mt-4 space-y-3">
-                {campaign.assets?.map((asset) => (
-                  <a
-                    key={asset.id}
-                    href={asset.url}
-                    download={asset.name}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 hover:bg-muted transition-colors"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{asset.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {asset.type || 'File'} · {formatBytes(asset.size)}
-                      </p>
-                    </div>
-                    <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </a>
-                ))}
-                {campaign.assetUrl && (
-                  <a
-                    href={campaign.assetUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3 hover:bg-muted transition-colors"
-                  >
-                    <span className="font-medium">Source / raw footage</span>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                )}
-                {campaign.sampleUrl && (
-                  <a
-                    href={campaign.sampleUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3 hover:bg-muted transition-colors"
-                  >
-                    <span className="font-medium">Sample winning clip</span>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                )}
-              </div>
-            </section>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <section className="rounded-3xl border border-border bg-card p-6">
-            <h2 className="font-display text-base font-extrabold">Platforms</h2>
+      <div className="grid gap-6 md:grid-cols-2">
+        <section className="rounded-3xl border border-border bg-card p-6 space-y-6">
+          <div>
+            <h2 className="font-display text-xl font-extrabold">Platforms &amp; niches</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Enabled platforms and the categories this campaign is looking for.
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Platforms</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {campaign.platforms.map((p) => (
                 <Badge key={p} className="bg-foreground text-background">
@@ -322,9 +301,9 @@ export default function ClipperCampaignDetailPage() {
                 </Badge>
               ))}
             </div>
-          </section>
-          <section className="rounded-3xl border border-border bg-card p-6">
-            <h2 className="font-display text-base font-extrabold">Niche</h2>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Content niches</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {campaign.niches.map((n) => (
                 <Badge key={n} variant="secondary">
@@ -332,8 +311,65 @@ export default function ClipperCampaignDetailPage() {
                 </Badge>
               ))}
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-border bg-card p-6 space-y-6">
+          <div>
+            <h2 className="font-display text-xl font-extrabold">Rules &amp; assets</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              What to follow when clipping, plus the brand&apos;s shared link for materials.
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Rules</p>
+            <ul className="mt-3 space-y-3">
+              {campaign.rules.map((rule) => (
+                <li key={rule} className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
+                  <span className="text-sm">{rule}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Assets</p>
+            <p className="mt-1 text-xs text-muted-foreground">Link only — the brand shares a folder URL; individual files aren&apos;t listed here.</p>
+            <div className="mt-3 space-y-3">
+              {campaign.assetUrl?.trim() ? (
+                <a
+                  href={campaign.assetUrl.trim()}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 transition-colors hover:bg-muted"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
+                    <Link2 className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">Brand asset link</p>
+                    <p className="truncate text-xs text-muted-foreground">{campaign.assetUrl.trim()}</p>
+                  </div>
+                  <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </a>
+              ) : null}
+              {campaign.sampleUrl ? (
+                <a
+                  href={campaign.sampleUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3 transition-colors hover:bg-muted"
+                >
+                  <span className="font-medium">Sample reference clip</span>
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                </a>
+              ) : null}
+              {!campaign.assetUrl?.trim() && !campaign.sampleUrl ? (
+                <p className="text-sm text-muted-foreground">No asset link from the brand for this campaign yet.</p>
+              ) : null}
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )

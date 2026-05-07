@@ -1,77 +1,119 @@
 ---
-description: Core Arpify frontend-only architecture, naming, routing, and branding conventions.
 alwaysApply: true
 ---
 
-# Arpify — Naming & Architecture Conventions
+# Naming Conventions
 
-Arpify is a frontend-only mock app for a clipping platform. There is no backend, no Web3, no Supabase, no Axios, and no TanStack Query. All seed data lives in `src/lib/mockData.ts`; client state lives in focused Zustand stores under `src/lib/stores/`.
+Follow these conventions for all new and renamed files and constants.
 
-## Roles
+## Pages, Layouts & Components (`.tsx`)
 
-Use only two roles: **clipper** and **brand**.
+- **Convention:** PascalCase
+- **Examples:** `LoginPage.tsx`, `BrandLayout.tsx`, `AppSidebar.tsx`, `RejectApplicationModal.tsx`, `RootLayout.tsx`
+- **Exception:** Do not rename files under `src/components/ui/` — they follow shadcn’s default (e.g. `button.tsx`, `dropdown-menu.tsx`). New components outside `components/ui` use PascalCase.
 
-- `src/pages/clipper/**` → `/clipper/*` routes (rendered inside `src/layouts/ClipperLayout.tsx`)
-- `src/pages/brand/**` → `/brand/*` routes (rendered inside `src/layouts/BrandLayout.tsx`)
-- `src/pages/auth/AuthPage.tsx` → `/auth`
-- `src/pages/onboarding/RoleSelectionPage.tsx` → `/onboarding/role`
+## Hooks (custom hooks & TanStack Query hooks)
 
-The shared sidebar is `src/components/layout/AppSidebar.tsx`; it renders role-specific navigation via a `role` prop.
+### App / UI hooks
 
-## Naming
+- **File name:** kebab-case after the `use-` prefix: `use-<name>.ts`
+- **Examples:** `use-mock-data.ts`, `use-auth.ts`
+- **Location:** `src/lib/hooks/`
 
-- **PascalCase** `.tsx`: `CampaignCard.tsx`, `AppSidebar.tsx`, `ClipperLayout.tsx`.
-- **Exception:** files under `src/components/ui/` follow shadcn lowercase defaults, e.g. `button.tsx`.
-- **Hooks:** keep app hooks under `src/lib/hooks/`; exported hooks use a `use` prefix.
-- **Stores:** camelCase and suffixed with `Store`, e.g. `authStore.ts`, `campaignsStore.ts`.
-- **Utilities:** camelCase under `src/lib/utils/`, e.g. `currency.ts`, `date.ts`.
-- **Assets:** kebab-case under `public/`, e.g. `arpify-icon.svg`.
+### API query hooks (`src/api/queries/`)
 
-## Pages
+| Scope | Folder | File name | Exported hook (examples) |
+| --- | --- | --- | --- |
+| **Shared** (auth, utilities) | `queries/` root | `use-<feature>.ts` | `useAuthSync`, `useAuthMe` |
+| **Clipper** | `queries/clipper/` | `use-<feature>.ts` | `useClipperDashboard` (from `use-dashboard.ts`) |
+| **Brand** | `queries/brand/` | `use-<feature>.ts` | `useBrandDashboard` (from `use-dashboard.ts`) |
 
-Prefer the existing route folder shape:
+Rules:
 
-- `src/pages/clipper/dashboard/DashboardPage.tsx`
-- `src/pages/clipper/campaigns/CampaignDetailPage.tsx`
-- `src/pages/brand/campaigns/CreateCampaignPage.tsx`
+- **File name:** always `use-<kebab-case-feature>.ts` (e.g. `use-dashboard.ts`, `use-auth.ts`). Do **not** repeat the role in the file name when the file already lives under `clipper/` or `brand/`.
+- **Exported hook:** camelCase, `use` prefix. Include **role** in the hook name when it is role-specific (`useClipperDashboard`, `useBrandCampaigns`) so call sites stay explicit.
+- Do **not** suffix with the underlying TanStack API (`Mutation`, `Query`) — name by intent (`useAuthSync`, not `useAuthSyncMutation`).
 
-Page-only helpers may stay in the page file below the exported page component. Shared logic belongs in `src/lib/`.
+## API services (`src/api/services/`)
 
-## State & Data
+| Scope | Example path | File name |
+| --- | --- | --- |
+| Shared | `services/auth.ts`, `services/campaigns.ts` | `<domain>.ts` or existing name |
+| Clipper | `services/clipper/dashboard.ts` | kebab-case or short domain: `dashboard.ts`, `submissions.ts` |
+| Brand | `services/brand/dashboard.ts` | same as clipper |
 
-- Mock platform data is defined in `src/lib/mockData.ts`.
-- Stores import seed data from `mockData.ts` and own client-side updates.
-- Use local `useState` for one-screen form fields, modal state, filters, and temporary upload previews.
-- Do not add `src/api/*`, backend clients, real payment calls, or real auth providers unless the product explicitly shifts away from mock frontend-only mode.
+- **Functions:** `camelCase` — `getClipperDashboard`, `postAuthSync`.
+- Do **not** prefix the filename with `clipper-` or `brand-` when it already sits under `clipper/` or `brand/`.
 
-## Branding
+## API types (`src/api/types/`)
 
-- Primary product name (temporary): **Arpify**
-- Visual direction: premium/classy SaaS marketplace, mostly black, white, slate, and restrained blue accents.
-- Secondary/accent blue:
-  - Accent: `#3B82F6`
-  - Hover: `#2563EB`
-  - Glow: `rgba(59,130,246,0.4)`
-- Keep using the existing utility names for consistency:
-  - `bg-phc-gradient` for primary blue CTA/accent surfaces
-  - `text-phc-gradient` for blue accent text
-  - `bg-phc-gradient-soft` for subtle blue-tinted panels
-- Display font: `Sora` (use `font-display` utility), body font: `Inter`.
-- Logo: `public/arpify-icon.svg`, `public/arpify-logo.svg`.
+| Scope | Example path |
+| --- | --- |
+| Shared | `types/global.types.ts`, `types/auth.types.ts`, `types/campaign.types.ts` |
+| Clipper | `types/clipper/dashboard.types.ts` |
+| Brand | `types/brand/profile.types.ts` |
 
-## Routes
+- **File name:** `<feature>.types.ts` (kebab-case or camelCase **feature** segment; be consistent with existing files in the same folder).
+- **Type names:** PascalCase — `ClipperDashboardData`, `AuthMeData`.
 
-Index `/` redirects to:
+## Type-only modules (non-API)
 
-1. `/auth` if not signed in,
-2. `/onboarding/role` if signed in but no role,
-3. `/clipper/dashboard` or `/brand/dashboard` based on role.
+- **File name:** `<name>.types.ts`
+- **Location:** e.g. colocated types elsewhere — follow the same `*.types.ts` pattern.
 
-The route guard is `src/components/guards/ProtectedRoute.tsx` with props `index`, `guestOnly`, `requireAuth`, and `requiredRole`.
+## Utility & Logic Files (`.ts`)
 
-## What this codebase does **not** have
+- **Convention:** camelCase
+- **Examples:** `mockData.ts`, `walletAddress.ts`, `paymentMethodIcons.ts`, `authStore.ts`
+- **Applies to:** utils (under `src/lib/utils/`: e.g. `cn.ts`, `currency.ts`, `date.ts`, `displayName.ts`, `isLikelyHttpUrl.ts`), stores, validations (under `src/lib/validations/`), constants (under `src/lib/constants/`: e.g. `paymentMethodIcons.ts`), domain helper folders (e.g. **`src/lib/campaigns/`** — camelCase filenames like `createCampaignPayload.ts`), and other non-component modules (excluding hooks and `*.types.ts` files above)
 
-- No HTTP/REST/axios layer (no `src/api/*`).
-- No Solana / wallet adapters.
-- No Supabase / TanStack Query.
-- No real Xendit calls — payouts and invoices are simulated with toasts and store updates.
+## Providers (React context / app wrappers)
+
+- **Location:** `src/providers/` (e.g. auth, wallet) or `src/lib/providers/` (e.g. TanStack Query)
+- **Convention:** PascalCase for component files (e.g. `AuthProvider.tsx`, `QueryProvider.tsx`)
+
+## Constants
+
+- **In code:** UPPER_SNAKE_CASE (e.g. `MAX_RETRIES`, `DEFAULT_PAGE_SIZE`)
+- **Location:** Constant data and config live under `src/lib/constants/` (e.g. `paymentMethodIcons.ts`); file names stay camelCase
+
+## Route guards / layout-level components
+
+- **Location:** `src/components/guards/` (e.g. `ProtectedRoute.tsx` — use `index`, `guestOnly`, or `requiredRole` props).
+
+## Page structure (colocate page-specific components)
+
+- Prefer **page folder + index**: `pages/<role>/<PageName>/index.tsx` plus any page-specific components in the same folder (e.g. `ApplicationStatusBadge.tsx`, `RejectApplicationModal.tsx` inside `pages/brand/ApplicationsPage/`). This avoids putting page-only components in `src/components/`.
+- **One folder per URL area** when routes share a base path — do not split list vs detail vs modals into sibling folders (`campaign-details/`, `create-campaign/`, …) for the same feature.
+  - **Brand** — **`pages/brand/campaigns/`**: `CampaignsPage.tsx`, `CreateCampaignPage.tsx`, `CampaignDetailPage.tsx`, page-specific pieces colocated in the same folder where practical.
+  - **Clipper** — **`pages/clipper/campaigns/`**: `CampaignsPage.tsx`, `CampaignDetailPage.tsx`, colocated pieces (`SubmitReportModal.tsx`, `ShareCampaignModal.tsx`, …). Same pattern: one folder per `/campaigns` route tree.
+- **Page-only helpers** — Pure functions that are **not** reused elsewhere (and are unlikely to be) may stay in the page file. Put them **below** the default-exported page component, using `function helperName() { ... }` so hoisting stays safe. Types used only by that page usually sit **above** the component. Logic that is **reusable** across routes or roles belongs under **`src/lib/campaigns/`** (or another domain folder under `src/lib/`); **prefer extending an existing related file** (e.g. `createCampaignPayload.ts`, `createCampaignFormHelpers.ts`, `createCampaignPayoutTiers.ts`) before adding a new `lib/campaigns/*.ts` module.
+
+## Folders
+
+- Use **lowercase** for single words: `brand`, `clipper`, `utils`, `hooks`
+- Use **kebab-case** for multi-word folders: `payment-methods`, `mock-data` (optional; lowercase is also acceptable)
+- Under `src/api/`, use fixed segments **`clipper`** and **`brand`** (not `clippers` / `brands`).
+
+## Assets (images, icons, SVGs)
+
+- **Convention:** kebab-case
+- **Examples:** `security-bank.svg`, `bdo.svg`, `maribank.png`
+- **Applies to:** Files under `assets/` (e.g. `assets/banks/`, `assets/crypto/`, `assets/devices/`, `assets/e-wallets/`)
+
+## Quick Reference
+
+| Type | Convention | Example |
+| --- | --- | --- |
+| Page / layout / component (`.tsx`, except `components/ui`) | PascalCase | `CampaignsPage.tsx` |
+| API query file (shared) | `use-<kebab>.ts` at `api/queries/` | `use-auth.ts` |
+| API query file (clipper/brand) | `use-<kebab>.ts` under `api/queries/clipper/` or `brand/` | `clipper/use-dashboard.ts` |
+| API service (clipper/brand) | `<domain>.ts` under `api/services/clipper/` | `clipper/dashboard.ts` |
+| API types (clipper/brand) | `<feature>.types.ts` under `api/types/clipper/` | `clipper/dashboard.types.ts` |
+| Hook files (app, `lib/hooks`) | `use-<kebab>.ts` | `use-auth.ts` |
+| Type modules | `<name>.types.ts` | `auth.types.ts` |
+| Utility / logic (`.ts`) | camelCase | `mockData.ts` |
+| Domain helpers (`lib/campaigns/`, etc.) | camelCase | `createCampaignPayload.ts` |
+| Constants | UPPER_SNAKE_CASE | `MAX_RETRIES` |
+| Folders | lowercase / kebab-case | `brand`, `clipper` |
+| Assets (images, icons) | kebab-case | `security-bank.svg` |

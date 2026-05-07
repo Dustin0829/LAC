@@ -16,9 +16,10 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import { useAuth } from '@/lib/hooks/useAuth'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
-import { mockBrandClips, mockBrandPerformance } from '@/lib/mockData'
+import { useClipsStore } from '@/lib/stores/clipsStore'
+import { mockBrandPerformance } from '@/lib/mockData'
 import { formatPHP, formatViews } from '@/lib/utils'
 import { StatCard } from '@/components/StatCard'
 import { Button } from '@/components/ui/button'
@@ -28,11 +29,12 @@ import { PlatformIcon } from '@/components/PlatformIcon'
 export default function BrandDashboardPage() {
   const { user } = useAuth()
   const campaigns = useCampaignsStore((s) => s.campaigns)
+  const clips = useClipsStore((s) => s.clips)
   const active = campaigns.filter((c) => c.status === 'active')
   const totalBudget = campaigns.reduce((s, c) => s + c.budget, 0)
   const totalSpent = campaigns.reduce((s, c) => s + c.spent, 0)
   const totalViews = mockBrandPerformance[mockBrandPerformance.length - 1]?.views ?? 0
-  const recentClips = mockBrandClips.slice(0, 5)
+  const recentClips = clips.slice(0, 5)
 
   return (
     <div className="space-y-8">
@@ -46,7 +48,7 @@ export default function BrandDashboardPage() {
             <span className="text-phc-gradient">flying.</span>
           </h1>
           <p className="mt-2 text-muted-foreground">
-            See what clippers are submitting and how your reach is growing.
+            See what creators are submitting, how your funded pool is moving, and what needs review.
           </p>
         </div>
         <Button asChild className="bg-phc-gradient text-white">
@@ -56,35 +58,47 @@ export default function BrandDashboardPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Active campaigns"
-          value={active.length}
-          hint={`${campaigns.length} total`}
-          icon={Video}
-          accent="violet"
-        />
-        <StatCard
-          label="Total budget"
-          value={formatPHP(totalBudget, { decimals: false })}
-          hint={`${formatPHP(totalSpent, { decimals: false })} spent`}
-          icon={Wallet}
-          accent="emerald"
-        />
-        <StatCard
-          label="Total views"
-          value={formatViews(totalViews)}
-          hint="Last 6 weeks"
-          icon={Eye}
-          accent="pink"
-        />
-        <StatCard
-          label="Avg CPV"
-          value="₱0.09"
-          hint="Cost per view, blended"
-          icon={TrendingUp}
-          accent="orange"
-        />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-3xl border border-border bg-card p-4 sm:p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatCard
+              className="border-0 bg-muted/30 shadow-none"
+              label="Active campaigns"
+              value={active.length}
+              hint={`${campaigns.length} total`}
+              icon={Video}
+              accent="violet"
+            />
+            <StatCard
+              className="border-0 bg-muted/30 shadow-none"
+              label="Total budget"
+              value={formatPHP(totalBudget, { decimals: false })}
+              hint={`${formatPHP(totalSpent, { decimals: false })} spent`}
+              icon={Wallet}
+              accent="emerald"
+            />
+          </div>
+        </div>
+        <div className="rounded-3xl border border-border bg-card p-4 sm:p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatCard
+              className="border-0 bg-muted/30 shadow-none"
+              label="Total views"
+              value={formatViews(totalViews)}
+              hint="Last 6 weeks"
+              icon={Eye}
+              accent="pink"
+            />
+            <StatCard
+              className="border-0 bg-muted/30 shadow-none"
+              label="Avg CPV"
+              value="₱0.09"
+              hint="Cost per view, blended"
+              icon={TrendingUp}
+              accent="orange"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Performance chart */}
@@ -154,7 +168,7 @@ export default function BrandDashboardPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-5 py-3 font-medium">Clipper</th>
+                <th className="px-5 py-3 font-medium">Creator</th>
                 <th className="px-5 py-3 font-medium hidden md:table-cell">Campaign</th>
                 <th className="px-5 py-3 font-medium">Views</th>
                 <th className="px-5 py-3 font-medium">Earnings</th>

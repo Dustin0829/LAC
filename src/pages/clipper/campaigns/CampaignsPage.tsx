@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { CampaignCard } from '@/components/CampaignCard'
 import {
   PLATFORM_LABEL,
+  creatorHeadlineRatePer1k,
   type Platform,
 } from '@/lib/mockData'
 
@@ -38,7 +39,7 @@ export default function ClipperCampaignsPage() {
       list = list.filter((c) => c.platforms.includes(platform))
     }
     list = [...list].sort((a, b) => {
-      if (sort === 'rate') return b.ratePer1k - a.ratePer1k
+      if (sort === 'rate') return creatorHeadlineRatePer1k(b) - creatorHeadlineRatePer1k(a)
       if (sort === 'budget') return b.budget - b.spent - (a.budget - a.spent)
       return new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
     })
@@ -55,7 +56,8 @@ export default function ClipperCampaignsPage() {
           Find your next <span className="text-phc-gradient">payday</span>
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Browse active campaigns. Pick one. Start clipping. Get paid per 1,000 views.
+          Browse active campaigns before connecting socials. Rates shown are your net earn per 1,000 verified views after the
+          platform fee on the brand&apos;s payout.
         </p>
       </div>
 
@@ -72,7 +74,7 @@ export default function ClipperCampaignsPage() {
         </div>
         <div className="flex items-center gap-2 overflow-x-auto">
           <div className="flex rounded-full border border-border bg-card p-1">
-            {(['all', 'tiktok', 'youtube', 'instagram', 'facebook'] as const).map((p) => (
+            {(['all', 'tiktok', 'facebook'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPlatform(p)}

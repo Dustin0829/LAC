@@ -1,0 +1,93 @@
+---
+description: How to integrate backend HTTP APIs — services, types, TanStack Query hooks, and UI usage.
+alwaysApply: true
+---
+
+# API layer & backend integration
+
+Use this flow whenever you add or change REST endpoints consumed by the web app.
+
+## Folder layout (shared vs clipper vs brand)
+
+Split **by audience** so routes for the same role stay together. **Shared** = used by more than one role or auth/infrastructure.
+
+| Location                    | Purpose                                                                                                                                                                                                                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/api/client.ts`         | Shared Axios instance (base URL, JSON, auth header, error unwrap). **Do not** add per-request `Authorization` — the client reads the JWT from the auth store.                                                                                                                |
+| `src/api/config.ts`         | Env-based URLs (`getAPIBaseURL`, Solana RPC, etc.).                                                                                                                                                                                                                          |
+| `src/api/supabaseClient.ts` | Supabase browser client **only** for auth/session — not for general CRUD over app tables.                                                                                                                                                                                    |
+| **`src/api/types/`**        | See [Types](#types-srcapitypes) below — `global.types.ts`, `auth.types.ts` at the **root** of `types/` = shared; role subfolders for clipper/brand-only DTOs.                                                                                                                |
+| **`src/api/schema/`**       | Shared **Zod** schemas for request bodies and wizard forms (e.g. `campaigns.schema.ts`). Keep validators next to related types under `types/` conceptually, but colocate Zod in **`schema/`** so pages import `@/api/schema/...` instead of defining schemas under `pages/`. |
+| **`src/api/services/`**     | HTTP service functions (no React). **Root files** (`auth.ts`, `campaigns.ts`, …) = shared; **`services/clipper/`**, **`services/brand/`** = role-specific modules (e.g. `clipper/dashboard.ts`).                                                                              |
+| **`src/api/queries/`**      | TanStack Query hooks (queries **and** mutations). **`use-auth.ts`**, **`use-authenticated-query.ts`** at the **root** = shared; **`queries/clipper/`**, **`queries/brand/`** = role-specific hooks.                                                                          |
+| **`src/lib/campaigns/`**    | Campaign-specific **pure** helpers (wizard **payload** → API body, **draft** localStorage parse/merge, **share** meta, payout/download-link helpers, mock/UI mappers from API payloads). Import types/schemas from `@/api/...`; do not put Zod definitions here. When adding helpers, **extend an existing file** in this folder when it fits (same domain: payload, form helpers, tiers, etc.) before creating a new module.                                                               |
+
+General UI, stores, and guards stay under `src/lib/`, `src/providers/`, `src/components/` — see `naming-conventions.mdc`.
+
+## Standard pipeline (new backend feature)
+
+1. **Types** — Add payload/request types under `src/api/types/` (shared at root or under `types/clipper/` / `types/brand/`). Reuse `ApiSuccess<T>` from `src/api/types/global.types.ts` when the backend wraps responses as `{ success, message, data }`.
+2. **Service** — Add a thin function: `api.get` / `api.post` / …, return unwrapped `data` (or the agreed shape). Place the file under **`services/`** root if cross-role, or **`services/clipper/`** / **`services/brand/`** if the route is role-specific.
+3. **Queries** — Add `useQuery` / `useInfiniteQuery` / `useMutation` hooks under **`queries/`** root (shared) or **`queries/clipper/`** / **`queries/brand/`**. Export **stable query keys** for cache invalidation.
+4. **UI** — Import hooks from `@/api/queries/...` only. Prefer queries over calling services from components.
+
+## Services (`src/api/services/`)
+
+- **Naming:** `camelCase` functions: `getX`, `postX`, `patchX`, `deleteX`.
+- **Imports:** `import api from '@/api/client'` or a relative path to `../client` / `../../client` depending on depth.
+- **No React** — services must stay framework-agnostic for tests and reuse.
+- **Paths:** Match the backend (e.g. `'/campaigns/:id'` — interpolate `id` in the function).
+- **Errors:** Rely on the Axios response interceptor in `client.ts` (rejects with `Error(message)`).
+
+### Where to put a new service file
+
+| Backend route scope                                  | Service path example                                        |
+| ---------------------------------------------------- | ----------------------------------------------------------- |
+| Shared (e.g. `/auth/sync`, public `/campaigns` list) | `src/api/services/auth.ts`, `src/api/services/campaigns.ts` |
+| Clipper-only (e.g. `GET /clipper/dashboard`)          | `src/api/services/clipper/dashboard.ts`                     |
+| Brand-only (e.g. `GET /brand/dashboard`)             | `src/api/services/brand/dashboard.ts`                       |
+
+## Schemas (`src/api/schema/`)
+
+- **Zod** — Form and API validation schemas, `z.infer` types, and `superRefine` / resolvers only. **Defaults**, **placeholders**, **field-id mapping**, **submit helpers**, **draft merge**, **payload builders**, and **OG/share** helpers live under **`src/lib/campaigns/`**.
+- **Imports** — Pages and components may import from `@/api/schema/...`; do not re-export schema from `pages/` as the source of truth.
+
+## Types (`src/api/types/`)
+
+- **Shared** — Files at **`types/` root**: `global.types.ts`, `auth.types.ts`, and cross-cutting domain types (e.g. `campaign.types.ts`) until split intentionally.
+- **Clipper** — `src/api/types/clipper/<feature>.types.ts` (e.g. `dashboard.types.ts`).
+- **Brand** — `src/api/types/brand/<feature>.types.ts`.
+- Export request bodies and response **payload** types (what lives inside `data`).
+- Shared wrappers: `ApiSuccess<T>`, `ApiErrorBody` in `global.types.ts`.
+
+## Queries (`src/api/queries/`)
+
+- **Shared** — Root files: `use-auth.ts`, `use-authenticated-query.ts` (no role in the filename; used by all roles).
+- **Clipper** — `src/api/queries/clipper/use-<feature>.ts` (e.g. `use-dashboard.ts` → exports `useClipperDashboard`).
+- **Brand** — `src/api/queries/brand/use-<feature>.ts` (e.g. `use-dashboard.ts` → exports `useBrandDashboard`). **Brand campaign** list + all related mutations (`useCreateBrandCampaignMutation`, `usePatchBrandCampaignMutation`, fund/list/top-up, etc.) live in **`use-campaigns.ts` only** — do not add split files like `use-create-brand-campaign.ts`.
+- **Exports:** Hooks use camelCase with a `use` prefix; for role-specific hooks, include the role in the **hook name** (`useClipperDashboard`, `useBrandDashboard`).
+- **Query keys:** Colocate key factories with the hook file; use them in `queryKey` and inside the same module for `queryClient.invalidateQueries` / optimistic updates after mutations.
+- **Auth-gated queries:** Use **`useAuthenticatedQuery`** from `src/api/queries/use-authenticated-query.ts` (requires JWT + optional `enabled`). If the query key must include the token (e.g. `authMeKey(token)`), call **`useAuthAccessToken()`** in that hook alongside `useAuthenticatedQuery`.
+- **Mutations:** Define **`useMutation`** in **`src/api/queries/**`** (not in pages or generic components). Use `mutationKey`where helpful;`retry: false` for auth or non-idempotent actions unless product says otherwise. **`useQueryClient`**, **`cancelQueries`**, **`setQueryData`**, and **`invalidateQueries`** belong **inside** those query hooks — not in **`src/pages/`** or **`src/components/`**. If the UI needs a side effect (e.g. open a modal on a specific error), expose it via **hook options\*\* (callbacks) or return values from the hook, and keep the page thin.
+
+## Pages & components
+
+- Prefer **`const { data, isPending, error } = useX()`** from `@/api/queries/...` for server state.
+- **Do not** call **`useQueryClient()`** in **`src/pages/`** or **`src/components/`** — all cache reads/writes for TanStack Query live in **`src/api/queries/**`** (inside `useQuery`, `useMutation`, or small helpers used only from those hooks).
+- Use **`useMutation`** from **`@/api/queries/...`** for server actions; toasts and query invalidation live in the hook unless product asks for page-local behavior (then use optional callbacks passed into the hook).
+- Local UI state stays in component state or `src/lib/hooks/` — not in services.
+- **Page-only pure helpers** — If a helper stays in a page file, put it **below** the exported page component (see `naming-conventions.mdc`). Reusable campaign logic goes to **`src/lib/campaigns/`**, preferring existing files over new ones.
+
+## Exceptions & legacy
+
+- **`src/api/services/campaigns.ts`** — mock/store blend for the hackathon UI; treat as **shared** service. When replacing with real HTTP, keep exports stable or migrate incrementally.
+- **Zustand** — Browser/app-side state that is not server cache (auth mirror, UI flags). Do not mirror server lists when TanStack Query can own them.
+
+## Checklist before opening a PR
+
+- [ ] New endpoints have types under `src/api/types/` (correct **shared** root vs **`clipper/`** / **`brand/`** subfolder); shared Zod schemas live under **`src/api/schema/`** when the UI or services need validation beyond TypeScript; campaign wizard mappers and share meta live under **`src/lib/{feature}/`**.
+- [ ] Service functions live under `src/api/services/` (shared root or **`clipper/`** / **`brand/`**) and use `api` from `client.ts`.
+- [ ] TanStack Query hooks live under `src/api/queries/` (shared root or **`clipper/`** / **`brand/`**) and are what pages/components import.
+- [ ] Pages and **`src/components/`** do not use **`useQueryClient`**; mutations that touch the cache are defined in **`src/api/queries/**`**.
+- [ ] Query keys are exported and reusable for invalidation.
+- [ ] No secrets in the frontend; only `VITE_*` env vars as documented in `.env.example`.

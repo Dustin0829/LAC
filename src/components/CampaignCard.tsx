@@ -1,7 +1,13 @@
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { formatPHP, formatViews } from '@/lib/utils'
-import { NICHE_LABEL, PLATFORM_LABEL, type Campaign } from '@/lib/mockData'
+import {
+  brandHeadlineRatePer1k,
+  creatorHeadlineRatePer1k,
+  NICHE_LABEL,
+  PLATFORM_LABEL,
+  type Campaign,
+} from '@/lib/mockData'
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -18,7 +24,9 @@ const STATUS_STYLES: Record<Campaign['status'], string> = {
 }
 
 export function CampaignCard({ campaign, to, showProgress = false }: CampaignCardProps) {
-  const displayRatePer1k = showProgress ? campaign.brandRatePer1k ?? campaign.ratePer1k : campaign.ratePer1k
+  const displayRatePer1k = showProgress
+    ? brandHeadlineRatePer1k(campaign)
+    : creatorHeadlineRatePer1k(campaign)
   const goal = Math.max(0, campaign.estimatedReach)
   const viewsProgress = goal > 0 ? Math.min(100, (campaign.campaignViews / goal) * 100) : 0
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { mockClips, type Clip } from '@/lib/mockData'
+import { mockBrandClips, mockClips, type Clip } from '@/lib/mockData'
 
 interface ClipsState {
   clips: Clip[]
@@ -8,7 +8,7 @@ interface ClipsState {
 }
 
 export const useClipsStore = create<ClipsState>((set) => ({
-  clips: mockClips,
+  clips: [...mockBrandClips, ...mockClips],
   addClip: (clip) => set((s) => ({ clips: [clip, ...s.clips] })),
   updateClip: (id, patch) =>
     set((s) => ({

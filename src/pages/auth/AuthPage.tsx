@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Loader2, Mail, Lock, User } from 'lucide-react'
+import { Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-
-type Mode = 'signin' | 'signup'
+import { cn } from '@/lib/utils'
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" {...props}>
@@ -34,10 +32,7 @@ export default function AuthPage() {
   const navigate = useNavigate()
   const signIn = useAuthStore((s) => s.signIn)
   const role = useAuthStore((s) => s.role)
-  const [mode, setMode] = useState<Mode>('signup')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
@@ -49,24 +44,25 @@ export default function AuthPage() {
     }
   }
 
-  async function handleEmailAuth(e: React.FormEvent) {
+  async function handleEmailContinue(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim() || !password.trim()) {
-      toast.error('Please enter your email and password.')
+    if (!email.trim()) {
+      toast.error('Please enter your email.')
       return
     }
-    if (mode === 'signup' && !name.trim()) {
-      toast.error('Please enter your name.')
+    const trimmed = email.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error('Please enter a valid email address.')
       return
     }
     setSubmitting(true)
     await new Promise((r) => setTimeout(r, 600))
     signIn({
       id: `user-${Date.now()}`,
-      email: email.trim(),
-      name: name.trim() || email.split('@')[0],
+      email: trimmed,
+      name: trimmed.split('@')[0],
     })
-    toast.success(mode === 'signup' ? 'Account created!' : 'Welcome back!')
+    toast.success('Verification sent. Demo: code accepted and session created.')
     setSubmitting(false)
     afterAuth()
   }
@@ -86,95 +82,70 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
       <div className="absolute inset-0 bg-grid-soft pointer-events-none" />
       <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-zinc-900/8 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-zinc-500/10 blur-3xl pointer-events-none" />
 
-      <div className="relative grid min-h-screen lg:grid-cols-2">
-        {/* Left: Brand panel */}
-        <div className="hidden lg:flex flex-col justify-between p-12 bg-zinc-950 text-white">
-          <Link to="/" className="flex items-center">
-            <div>
-              <div className="font-display text-xl font-extrabold leading-none">Arpify</div>
-              <div className="text-xs uppercase tracking-widest opacity-80">Clipping marketplace</div>
-            </div>
-          </Link>
-
-          <div className="space-y-6">
-            <p className="inline-flex w-fit rounded-full border border-white/15 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-white/70">
-              Make your brand viral
-            </p>
-            <h1 className="font-display text-5xl font-extrabold leading-tight">
-              Build reach
-              <br />
-              with verified
-              <br />
-              clipping.
-            </h1>
-            <p className="text-lg max-w-md opacity-90">
-              Brands launch campaigns. Clippers turn raw content into viral clips. Arpify pays per 1,000 views — automatically.
-            </p>
-            <div className="flex gap-3 pt-4">
-              <div className="rounded-2xl bg-white/15 backdrop-blur px-5 py-4 border border-white/20">
-                <div className="font-display text-2xl font-extrabold">₱90+</div>
-                <div className="text-xs opacity-80">per 1,000 views</div>
-              </div>
-              <div className="rounded-2xl bg-white/15 backdrop-blur px-5 py-4 border border-white/20">
-                <div className="font-display text-2xl font-extrabold">24h</div>
-                <div className="text-xs opacity-80">payout via GCash</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-sm opacity-80">© {new Date().getFullYear()} Arpify</div>
-        </div>
-
-        {/* Right: Form */}
-        <div className="flex items-center justify-center p-6 lg:p-12">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
-            <Link to="/" className="lg:hidden mb-8 flex items-center">
-              <div className="font-display text-lg font-extrabold">Arpify</div>
+            <Link to="/" className="mb-8 flex flex-col items-center text-center transition-opacity hover:opacity-80">
+              <span className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">Arpify</span>
+              <span className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
+                Verified views marketplace
+              </span>
             </Link>
 
             <div className="rounded-3xl border border-border bg-card/90 backdrop-blur p-8 shadow-xl shadow-zinc-950/5">
-              <div className="mb-1 inline-flex rounded-full bg-muted p-1 text-sm">
-                <button
-                  className={`rounded-full px-4 py-1.5 transition-all ${
-                    mode === 'signup'
-                      ? 'bg-phc-gradient text-white shadow-md'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  onClick={() => setMode('signup')}
-                >
-                  Create account
-                </button>
-                <button
-                  className={`rounded-full px-4 py-1.5 transition-all ${
-                    mode === 'signin'
-                      ? 'bg-phc-gradient text-white shadow-md'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  onClick={() => setMode('signin')}
-                >
-                  Sign in
-                </button>
-              </div>
-
-              <h2 className="mt-6 font-display text-3xl font-extrabold tracking-tight">
-                {mode === 'signup' ? 'Welcome to Arpify' : 'Welcome back'}
+              <h2 className="font-display text-center text-3xl font-extrabold tracking-tight">
+                Continue to Arpify
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {mode === 'signup'
-                  ? 'Sign up in seconds and start earning from clips.'
-                  : 'Sign in to continue clipping.'}
+              <p className="mt-2 text-center text-sm text-muted-foreground">
+                One path for new and returning users. Enter your email and we’ll send a code.
               </p>
+              <form onSubmit={handleEmailContinue} className="mt-6 space-y-4">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Email"
+                    className={cn('h-12 pl-10')}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    aria-label="Email"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={submitting || googleLoading}
+                  className="h-12 w-full bg-phc-gradient text-white"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    'Continue'
+                  )}
+                </Button>
+              </form>
+
+              <div className="my-6 flex items-center gap-4">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs lowercase text-muted-foreground">or</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
 
               <Button
                 type="button"
-                variant="outline"
                 size="lg"
-                className="mt-6 w-full justify-center gap-3"
+                className="h-12 w-full gap-3 bg-card text-foreground border border-border hover:bg-muted"
                 onClick={() => void handleGoogle()}
                 disabled={googleLoading || submitting}
               >
@@ -186,84 +157,19 @@ export default function AuthPage() {
                 Continue with Google
               </Button>
 
-              <div className="my-6 flex items-center gap-4">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs uppercase tracking-widest text-muted-foreground">or</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-
-              <form onSubmit={handleEmailAuth} className="space-y-4">
-                {mode === 'signup' && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="name">Full name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="name"
-                        placeholder="Juan Dela Cruz"
-                        className="pl-9"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-                <div className="space-y-1.5">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      className="pl-9"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      autoComplete="email"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      className="pl-9"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full bg-phc-gradient text-white hover:opacity-90"
-                  disabled={submitting || googleLoading}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {mode === 'signup' ? 'Creating account…' : 'Signing in…'}
-                    </>
-                  ) : mode === 'signup' ? (
-                    'Create account'
-                  ) : (
-                    'Sign in'
-                  )}
-                </Button>
-              </form>
-
-              <p className="mt-6 text-center text-xs text-muted-foreground">
-                By continuing, you agree to Arpify&apos;s Terms and Privacy Policy.
+              <p className="mt-6 text-center text-xs text-muted-foreground leading-relaxed">
+                By continuing, you confirm that you have reviewed and agree to Arpify&apos;s{' '}
+                <span className="underline underline-offset-2">Terms of Service</span>
+                {' and '}
+                <span className="underline underline-offset-2">Privacy Policy</span>.
               </p>
             </div>
           </div>
         </div>
+
+        <footer className="shrink-0 px-6 pb-8 text-center text-sm text-muted-foreground">
+          © {new Date().getFullYear()} Arpify
+        </footer>
       </div>
     </div>
   )
