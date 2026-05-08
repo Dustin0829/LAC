@@ -1,6 +1,5 @@
 import { BadgeCheck, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSection'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
@@ -22,21 +21,12 @@ export default function ClipperAccountPage() {
 
       {/* Profile card */}
       <section className="rounded-3xl border border-border bg-card p-6 md:p-8">
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          <Avatar className="h-20 w-20">
-            <AvatarImage src={user?.avatarUrl} />
-            <AvatarFallback className="bg-phc-gradient text-white text-2xl font-bold font-display">
-              {user?.name?.charAt(0)?.toUpperCase() ?? user?.email?.charAt(0)?.toUpperCase() ?? 'U'}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <h2 className="font-display text-2xl font-extrabold">{user?.name ?? 'Your name'}</h2>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-500 text-white px-3 py-1 text-xs font-semibold shadow-sm shadow-blue-500/30">
-              <BadgeCheck className="h-3 w-3" /> Creator
-            </p>
-          </div>
-          <Button variant="outline">Edit profile</Button>
+        <div>
+          <h2 className="font-display text-2xl font-extrabold">{user?.name ?? 'Your name'}</h2>
+          <p className="text-sm text-muted-foreground">{user?.email}</p>
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-blue-500 text-white px-3 py-1 text-xs font-semibold shadow-sm shadow-blue-500/30">
+            <BadgeCheck className="h-3 w-3" /> Creator
+          </p>
         </div>
       </section>
 
