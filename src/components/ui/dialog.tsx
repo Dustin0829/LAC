@@ -40,12 +40,12 @@ const DialogContent = React.forwardRef<
     >
       <div
         className={cn(
-          'pointer-events-auto relative grid w-full max-w-lg gap-4 border bg-background py-6 px-4 shadow-lg md:w-full duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 rounded-2xl',
+          'pointer-events-auto relative mx-auto grid w-full min-w-0 max-h-[min(90dvh,calc(100dvh-2rem))] max-w-[calc(100vw-2rem)] gap-4 overflow-y-auto rounded-2xl border bg-background px-4 py-6 shadow-lg sm:max-w-lg sm:px-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           className
         )}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-6 top-6 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-6 sm:top-6">
           <X className="h-5 w-5" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

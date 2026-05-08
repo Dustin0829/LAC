@@ -173,8 +173,11 @@ export function AppSidebar({ role }: AppSidebarProps) {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar text-sidebar-foreground border-t border-sidebar-border">
-        <div className="grid" style={{ gridTemplateColumns: `repeat(${navigation.length}, 1fr)` }}>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-sidebar-border bg-sidebar text-sidebar-foreground pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div
+          className="grid w-full"
+          style={{ gridTemplateColumns: `repeat(${navigation.length}, minmax(0, 1fr))` }}
+        >
           {navigation.map((item) => {
             const Icon = item.icon
             const isActive =
@@ -184,12 +187,12 @@ export function AppSidebar({ role }: AppSidebarProps) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  'flex flex-col items-center gap-1 py-3 text-[10px] font-medium',
+                  'flex min-h-13 min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-center text-[9px] font-medium leading-tight sm:text-[10px]',
                   isActive ? 'text-primary' : 'text-sidebar-foreground/60'
                 )}
               >
-                <Icon className="h-5 w-5" />
-                {item.label}
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className="line-clamp-2 w-full hyphens-auto">{item.label}</span>
               </Link>
             )
           })}

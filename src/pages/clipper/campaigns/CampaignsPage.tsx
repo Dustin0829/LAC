@@ -87,19 +87,19 @@ export default function ClipperCampaignsPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-b border-border pb-3">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="shrink-0 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">{filtered.length}</span> active campaigns
         </p>
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+        <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
           {SORTS.map((s) => (
             <Button
               key={s.id}
               variant={sort === s.id ? 'default' : 'ghost'}
               size="sm"
               className={
-                sort === s.id ? 'bg-phc-gradient text-white hover:opacity-90' : 'text-muted-foreground'
+                sort === s.id ? 'shrink-0 bg-phc-gradient text-white hover:opacity-90' : 'shrink-0 text-muted-foreground'
               }
               onClick={() => setSort(s.id)}
             >

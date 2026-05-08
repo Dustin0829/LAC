@@ -82,9 +82,9 @@ export default function MyClipsPage() {
         </Button>
       </div>
 
-      {/* Tabs — same pattern as brand campaign detail */}
-      <div className="border-b border-border" role="tablist" aria-label="Filter clips by status">
-        <div className="flex">
+      {/* Tabs — scroll on narrow viewports so labels stay full (no ellipsis) */}
+      <div className="min-w-0 border-b border-border" role="tablist" aria-label="Filter clips by status">
+        <div className="-mx-1 flex gap-0.5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:justify-center sm:gap-1 sm:overflow-x-visible sm:px-0">
           {TABS.map((t) => {
             const isActive = tab === t.id
             const count = counts[t.id as keyof typeof counts] ?? 0
@@ -99,12 +99,12 @@ export default function MyClipsPage() {
                 aria-controls="clip-tabpanel"
                 onClick={() => setTab(t.id)}
                 className={cn(
-                  'relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 py-3.5 text-xs font-semibold transition-colors sm:gap-2 sm:px-4 sm:text-sm',
+                  'relative flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-3.5 text-xs font-semibold transition-colors sm:gap-2 sm:px-4 sm:text-sm',
                   isActive ? 'text-blue-600' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-                <span className="truncate">
+                <span>
                   {t.label}
                   <span className="ml-1 tabular-nums text-xs font-medium opacity-80">({count})</span>
                 </span>

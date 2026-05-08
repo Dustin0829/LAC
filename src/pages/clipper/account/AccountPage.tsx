@@ -47,24 +47,31 @@ export default function ClipperAccountPage() {
             TikTok and Meta/Facebook are connected once and reused for future clip submissions.
           </p>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid min-w-0 gap-3 md:grid-cols-2">
           {platformLinks.map((link) => (
-            <div key={link.platform} className="rounded-2xl border border-border bg-muted/40 p-4">
-              <div className="flex items-center gap-3">
-                <PlatformIcon platform={link.platform} className="h-8 w-8" />
-                <div className="min-w-0 flex-1">
+            <div key={link.platform} className="min-w-0 rounded-2xl border border-border bg-muted/40 p-4">
+              <div className="flex min-w-0 items-start gap-3">
+                <PlatformIcon platform={link.platform} className="h-8 w-8 shrink-0" />
+                <div className="min-w-0 flex-1 space-y-2">
                   <p className="font-semibold">{link.label}</p>
-                  <p className="truncate text-xs text-muted-foreground">{link.handle}</p>
+                  <p className="break-all text-xs text-muted-foreground sm:truncate sm:break-normal">
+                    {link.handle}
+                  </p>
+                  {link.status === 'connected' ? (
+                    <span className="inline-flex whitespace-nowrap rounded-full bg-[#C0FF73] px-3 py-1 text-xs font-semibold text-black">
+                      Connected
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-fit shrink-0 whitespace-nowrap"
+                      onClick={() => reconnectPlatform(link.platform)}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" /> Reconnect
+                    </Button>
+                  )}
                 </div>
-                {link.status === 'connected' ? (
-                  <span className="rounded-full bg-[#C0FF73] px-3 py-1 text-xs font-semibold text-black">
-                    Connected
-                  </span>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={() => reconnectPlatform(link.platform)}>
-                    <RefreshCw className="h-3.5 w-3.5" /> Reconnect
-                  </Button>
-                )}
               </div>
             </div>
           ))}

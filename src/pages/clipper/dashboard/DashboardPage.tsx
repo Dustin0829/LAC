@@ -101,10 +101,10 @@ export default function ClipperDashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="inline-flex items-center gap-1.5 rounded-full bg-phc-gradient-soft px-3 py-1 text-xs font-medium text-foreground">
             <Sparkles className="h-3 w-3" />
             Creator
@@ -121,7 +121,7 @@ export default function ClipperDashboardPage() {
             )}
           </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link to="/clipper/clips">My clips</Link>
           </Button>
@@ -174,7 +174,7 @@ export default function ClipperDashboardPage() {
             </Select>
           </div>
         </div>
-        <div className="h-72 w-full">
+        <div className="h-72 w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%" key={earningsRange}>
             <AreaChart data={earningsChartData} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
               <defs>
@@ -224,8 +224,8 @@ export default function ClipperDashboardPage() {
             </Button>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-3xl border border-border bg-card">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-5 py-3 font-medium">Campaign</th>

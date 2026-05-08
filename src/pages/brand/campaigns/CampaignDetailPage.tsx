@@ -296,7 +296,7 @@ export default function BrandCampaignDetailPage() {
   }
 
   return (
-    <div className="space-y-8 rounded-2xl bg-muted/35 px-4 py-6 sm:px-5 sm:py-8 md:-mx-2 md:px-6">
+    <div className="min-w-0 max-w-full space-y-8 rounded-2xl bg-muted/35 px-4 py-6 sm:px-5 sm:py-8 md:-mx-2 md:px-6">
       <div>
         <Link
           to="/brand/campaigns"
@@ -307,8 +307,8 @@ export default function BrandCampaignDetailPage() {
       </div>
 
       {/* Campaign summary */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+        <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
             <div
               className={cn(
@@ -319,10 +319,10 @@ export default function BrandCampaignDetailPage() {
               <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', statusUi.dot)} aria-hidden />
               {campaign.status}
             </div>
-            <h1 className="font-display text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
+            <h1 className="min-w-0 wrap-break-word font-display text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
               {campaign.title}
             </h1>
-            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-[15px]">
+            <p className="max-w-full min-w-0 wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-[15px]">
               {campaign.description}
             </p>
           </div>
@@ -356,7 +356,7 @@ export default function BrandCampaignDetailPage() {
                   <Plus className="h-4 w-4" /> Add funds
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Add funds to campaign</DialogTitle>
                   <DialogDescription>
@@ -475,8 +475,8 @@ export default function BrandCampaignDetailPage() {
         </div>
       </div>
 
-      <div className="border-b border-border" role="tablist" aria-label="Campaign sections">
-        <div className="flex">
+      <div className="min-w-0 border-b border-border" role="tablist" aria-label="Campaign sections">
+        <div className="-mx-1 flex gap-0.5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:justify-center sm:gap-1 sm:overflow-x-visible sm:px-0">
           <button
             type="button"
             role="tab"
@@ -484,14 +484,14 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'details'}
             onClick={() => setCampaignTab('details')}
             className={cn(
-              'relative flex min-w-0 flex-1 items-center justify-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
+              'relative flex shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
               campaignTab === 'details'
                 ? 'text-blue-600'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Shield className="h-4 w-4 shrink-0" />
-            <span className="truncate">Campaign details</span>
+            <span>Campaign details</span>
             {campaignTab === 'details' ? (
               <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-blue-600 sm:left-4 sm:right-4" />
             ) : null}
@@ -503,14 +503,14 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'funds'}
             onClick={() => setCampaignTab('funds')}
             className={cn(
-              'relative flex min-w-0 flex-1 items-center justify-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
+              'relative flex shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
               campaignTab === 'funds'
                 ? 'text-blue-600'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Wallet className="h-4 w-4 shrink-0" />
-            <span className="truncate">Campaign funds</span>
+            <span>Campaign funds</span>
             {campaignTab === 'funds' ? (
               <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-blue-600 sm:left-4 sm:right-4" />
             ) : null}
@@ -522,14 +522,14 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'clips'}
             onClick={() => setCampaignTab('clips')}
             className={cn(
-              'relative flex min-w-0 flex-1 items-center justify-center gap-2 px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
+              'relative flex shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
               campaignTab === 'clips'
                 ? 'text-blue-600'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Play className="h-4 w-4 shrink-0" />
-            <span className="truncate">
+            <span>
               Submitted clips
               <span className="ml-1 tabular-nums text-xs font-medium opacity-80">
                 ({submissions.length})
@@ -544,47 +544,47 @@ export default function BrandCampaignDetailPage() {
 
       {campaignTab === 'details' ? (
         <div
-          className="grid gap-6 md:grid-cols-2"
+          className="grid min-w-0 gap-6 md:grid-cols-2"
           role="tabpanel"
           aria-labelledby="campaign-tab-details"
         >
-          <section className="space-y-6 rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
-            <div className="flex gap-4">
+          <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
+            <div className="flex min-w-0 gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
                 <Megaphone className="h-5 w-5" aria-hidden />
               </div>
               <div className="min-w-0">
                 <h2 className="font-display text-xl font-extrabold tracking-tight">Campaign details</h2>
-                <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+                <p className="mt-1 wrap-break-word text-sm text-muted-foreground leading-relaxed">
                   Where creators can post for this campaign.
                 </p>
               </div>
             </div>
-            <div className="h-px w-full bg-border" aria-hidden />
+            <div className="h-px w-full min-w-0 bg-border" aria-hidden />
 
-            <div className="space-y-2">
-              <h3 className="font-display text-xl font-extrabold leading-tight tracking-tight md:text-2xl">
+            <div className="min-w-0 space-y-2">
+              <h3 className="wrap-break-word font-display text-xl font-extrabold leading-tight tracking-tight md:text-2xl">
                 {campaign.title}
               </h3>
-              <p className="max-w-prose text-sm leading-relaxed text-muted-foreground md:text-[15px]">
+              <p className="max-w-full min-w-0 wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-[15px]">
                 {campaign.description}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-muted/25 px-4 py-5 md:px-5">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex gap-3">
+            <div className="min-w-0 rounded-2xl border border-border/80 bg-muted/25 px-4 py-5 md:px-5">
+              <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
                     <Monitor className="h-5 w-5" aria-hidden />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-display font-extrabold text-foreground">Platforms</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="mt-0.5 wrap-break-word text-xs text-muted-foreground">
                       Where your content can be posted.
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-end gap-5 sm:justify-end">
+                <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-5 sm:justify-end">
                   {campaign.platforms.map((p) => (
                     <div key={p} className="flex flex-col items-center gap-1.5">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-card shadow-sm">
@@ -599,15 +599,15 @@ export default function BrandCampaignDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 rounded-2xl border border-violet-200/80 bg-violet-50/90 px-4 py-4 dark:border-violet-900/40 dark:bg-violet-950/35">
+            <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-violet-200/80 bg-violet-50/90 px-4 py-4 dark:border-violet-900/40 dark:bg-violet-950/35 sm:items-center sm:gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-200/80 text-violet-700 dark:bg-violet-900/60 dark:text-violet-200">
                 <Sparkles className="h-5 w-5" aria-hidden />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-display font-extrabold text-violet-950 dark:text-violet-50">
+                <p className="wrap-break-word font-display font-extrabold text-violet-950 dark:text-violet-50">
                   The more engaging your content, the higher your payout.
                 </p>
-                <p className="mt-0.5 text-sm leading-snug text-violet-800/90 dark:text-violet-200/90">
+                <p className="mt-0.5 wrap-break-word text-sm leading-snug text-violet-800/90 dark:text-violet-200/90">
                   Focus on creativity, authenticity, and high-quality clips.
                 </p>
               </div>
@@ -618,8 +618,8 @@ export default function BrandCampaignDetailPage() {
             </div>
           </section>
 
-          <section className="space-y-6 rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+          <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
               <div className="flex min-w-0 gap-4">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
                   <Shield className="h-5 w-5" aria-hidden />
@@ -647,10 +647,12 @@ export default function BrandCampaignDetailPage() {
                   {campaign.rules.map((rule, i) => (
                     <li
                       key={i}
-                      className="flex gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed"
+                      className="flex min-w-0 gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed"
                     >
-                      <span className="font-display font-extrabold text-phc-gradient tabular-nums">{i + 1}.</span>
-                      <span>{rule}</span>
+                      <span className="shrink-0 font-display font-extrabold text-phc-gradient tabular-nums">
+                        {i + 1}.
+                      </span>
+                      <span className="min-w-0 wrap-break-word">{rule}</span>
                     </li>
                   ))}
                 </ul>
@@ -674,7 +676,7 @@ export default function BrandCampaignDetailPage() {
                   href={campaign.assetUrl.trim()}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 flex items-center gap-3 rounded-2xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted"
+                  className="mt-3 flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted"
                 >
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
                     <Link2 className="h-5 w-5" />
@@ -781,7 +783,7 @@ export default function BrandCampaignDetailPage() {
               if (!open) setIsRefunding(false)
             }}
           >
-            <DialogContent className="max-w-md">
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Refund available balance?</DialogTitle>
                 <DialogDescription>
@@ -1052,7 +1054,7 @@ export default function BrandCampaignDetailPage() {
           if (!open) setIsConfirmingRelease(false)
         }}
       >
-        <DialogContent className="flex h-[min(92vh,900px)] max-h-[min(92vh,900px)] w-full max-w-5xl flex-col gap-0 overflow-hidden p-0 pt-6 sm:pt-8">
+        <DialogContent className="flex h-[min(92vh,900px)] max-h-[min(92vh,900px)] w-full max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 pt-6 sm:max-w-5xl sm:pt-8">
           <div className="border-border shrink-0 border-b px-6 py-5 pr-14 sm:px-8 sm:py-6 sm:pr-16">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
               <DialogHeader className="min-w-0 flex-1 space-y-2 pr-2 text-left">
@@ -1221,7 +1223,7 @@ export default function BrandCampaignDetailPage() {
           if (!open) resetWeeklyExcludeDialog()
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
               Exclude{' '}

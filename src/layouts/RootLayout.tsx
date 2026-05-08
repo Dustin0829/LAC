@@ -3,7 +3,7 @@ import { Toaster } from 'sonner'
 
 export default function RootLayout() {
   return (
-    <div className="h-full bg-background text-foreground antialiased">
+    <div className="h-full min-h-0 w-full overflow-x-hidden bg-background text-foreground antialiased">
       <Outlet />
       <Toaster
         position="bottom-right"

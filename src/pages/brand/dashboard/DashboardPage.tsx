@@ -83,9 +83,9 @@ export default function BrandDashboardPage() {
   )
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="inline-flex items-center gap-1.5 rounded-full bg-phc-gradient-soft px-3 py-1 text-xs font-medium">
             Brand Owner
           </p>
@@ -94,7 +94,7 @@ export default function BrandDashboardPage() {
             <span className="text-phc-gradient">flying.</span>
           </h1>
         </div>
-        <Button asChild className="bg-phc-gradient text-white">
+        <Button asChild className="w-full shrink-0 bg-phc-gradient text-white sm:w-auto">
           <Link to="/brand/campaigns/new">
             <Plus className="h-4 w-4" /> New campaign
           </Link>
@@ -151,7 +151,7 @@ export default function BrandDashboardPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="h-72">
+        <div className="h-72 w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%" key={performanceRange}>
             <AreaChart data={performanceChartData} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
               <defs>
@@ -206,8 +206,8 @@ export default function BrandDashboardPage() {
             See all <ArrowUpRight className="inline h-3.5 w-3.5" />
           </Link>
         </div>
-        <div className="overflow-hidden rounded-3xl border border-border bg-card">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-3xl border border-border bg-card">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-5 py-3 font-medium">Creator</th>
