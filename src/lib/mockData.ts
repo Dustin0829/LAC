@@ -7,7 +7,7 @@
 
 export type Platform = 'tiktok' | 'facebook'
 export type CampaignStatus = 'active' | 'paused' | 'ended' | 'draft'
-export type ClipStatus = 'pending' | 'approved' | 'rejected' | 'paid'
+export type ClipStatus = 'pending' | 'rejected' | 'paid'
 export type WeeklyPackageStatus = 'ready' | 'released' | 'paying' | 'done'
 
 export const CLIPPER_PAYOUT_PERCENT = 0.8
@@ -79,7 +79,7 @@ export interface Campaign {
   platformFeePercent?: number
   /** Maximum refundable portion of the total campaign budget. */
   refundablePercent?: number
-  /** ₱ already paid out (computed from approved/paid clips) */
+  /** ₱ already paid out (computed from paid clips in dashboards) */
   spent: number
   availableBalance?: number
   reservedBalance?: number
@@ -452,7 +452,7 @@ export const mockClips: Clip[] = [
     viewsPaidThrough: 0,
     deltaViews: 38_200,
     earnings: 4584,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(3),
     reviewedAt: daysAgo(2),
     thumbnailColor: COVER_COLORS[5],
@@ -488,7 +488,7 @@ export const mockClips: Clip[] = [
     viewsPaidThrough: 12_000,
     deltaViews: 9_500,
     earnings: 1612.5,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(5),
     reviewedAt: daysAgo(4),
     thumbnailColor: COVER_COLORS[1],
@@ -549,7 +549,7 @@ export const mockBrandClips: Clip[] = [
     deltaViews: 42_000,
     trustFlag: 'Unusual view spike: review engagement before release.',
     earnings: 4500,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(5),
     reviewedAt: daysAgo(4),
     thumbnailColor: COVER_COLORS[1],
@@ -603,7 +603,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 33_000,
     deltaViews: 12_000,
     earnings: 1080,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(6),
     reviewedAt: daysAgo(5),
     thumbnailColor: COVER_COLORS[2],
@@ -621,7 +621,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 16_200,
     deltaViews: 8_000,
     earnings: 720,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(4),
     reviewedAt: daysAgo(3),
     thumbnailColor: COVER_COLORS[3],
@@ -639,7 +639,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 96_000,
     deltaViews: 22_000,
     earnings: 1980,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(7),
     reviewedAt: daysAgo(6),
     thumbnailColor: COVER_COLORS[1],
@@ -657,7 +657,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 8_300,
     deltaViews: 3_200,
     earnings: 288,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(3),
     reviewedAt: daysAgo(2),
     thumbnailColor: COVER_COLORS[5],
@@ -675,7 +675,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 73_000,
     deltaViews: 15_000,
     earnings: 1350,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(5),
     reviewedAt: daysAgo(4),
     thumbnailColor: COVER_COLORS[0],
@@ -693,7 +693,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 32_000,
     deltaViews: 9_000,
     earnings: 810,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(2),
     reviewedAt: daysAgo(1),
     thumbnailColor: COVER_COLORS[4],
@@ -711,7 +711,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 12_800,
     deltaViews: 5_000,
     earnings: 450,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(6),
     reviewedAt: daysAgo(5),
     thumbnailColor: COVER_COLORS[2],
@@ -729,7 +729,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 58_000,
     deltaViews: 18_000,
     earnings: 1620,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(4),
     reviewedAt: daysAgo(3),
     thumbnailColor: COVER_COLORS[3],
@@ -747,7 +747,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 38_400,
     deltaViews: 14_000,
     earnings: 1260,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(3),
     reviewedAt: daysAgo(2),
     thumbnailColor: COVER_COLORS[1],
@@ -765,7 +765,7 @@ export const mockBrandClips: Clip[] = [
     viewsPaidThrough: 5_100,
     deltaViews: 4_500,
     earnings: 405,
-    status: 'approved',
+    status: 'pending',
     submittedAt: daysAgo(1),
     reviewedAt: daysAgo(1),
     thumbnailColor: COVER_COLORS[5],

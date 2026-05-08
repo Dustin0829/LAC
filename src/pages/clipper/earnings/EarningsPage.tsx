@@ -1,10 +1,18 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ClipStatusBadge } from '@/components/ClipStatusBadge'
+import { PlatformIcon } from '@/components/PlatformIcon'
 import { StatCard } from '@/components/StatCard'
-import { mockEarningsTrend } from '@/lib/mockData'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { mockEarningsTrend, PLATFORM_LABEL } from '@/lib/mockData'
 import { useClipsStore } from '@/lib/stores/clipsStore'
 import { formatDate, formatPHP, formatViews } from '@/lib/utils'
-import { Banknote, Sparkles, Wallet } from 'lucide-react'
+import { Clock, Scissors, Wallet } from 'lucide-react'
 import {
   Bar,
   BarChart,
@@ -15,24 +23,47 @@ import {
   YAxis,
 } from 'recharts'
 
+type ChartRange = 'weekly' | 'monthly' | 'yearly'
+
+function sliceEarningsTrend(range: ChartRange) {
+  if (range === 'weekly') return mockEarningsTrend.slice(-2)
+  if (range === 'monthly') return mockEarningsTrend.slice(-4)
+  return mockEarningsTrend
+}
+
+function barChartRowsForRange(range: ChartRange) {
+  return sliceEarningsTrend(range).map((row) => ({
+    ...row,
+    period: row.week,
+  }))
+}
+
+const chartRangeLabel: Record<ChartRange, string> = {
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+}
+
 export default function ClipperEarningsPage() {
   const allClips = useClipsStore((s) => s.clips)
   const clips = useMemo(
     () => allClips.filter((clip) => clip.clipperId === 'me'),
     [allClips]
   )
+  const [chartRange, setChartRange] = useState<ChartRange>('monthly')
+
+  const barChartData = useMemo(() => barChartRowsForRange(chartRange), [chartRange])
+  const rangeBarTotal = barChartData.reduce((s, row) => s + row.earnings, 0)
 
   const totalEarned = clips.reduce((s, c) => s + c.earnings, 0)
-  const paid = clips
+  const paidTotal = clips
     .filter((c) => c.status === 'paid')
     .reduce((s, c) => s + c.earnings, 0)
-  const pending = totalEarned - paid
-  const available = clips
-    .filter((c) => c.status === 'approved')
-    .reduce((s, c) => s + c.earnings, 0)
+  const unpaidTotal = Math.max(0, totalEarned - paidTotal)
+  const ongoingSubmissionCount = clips.filter((c) => c.status === 'pending').length
 
   const recentTransactions = [...clips]
-    .filter((c) => c.status === 'paid' || c.status === 'approved')
+    .filter((c) => c.status === 'paid' || (c.status === 'pending' && c.reviewedAt))
     .sort(
       (a, b) =>
         new Date(b.paidAt ?? b.reviewedAt ?? b.submittedAt).getTime() -
@@ -47,52 +78,63 @@ export default function ClipperEarningsPage() {
         <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold">
           Your <span className="text-phc-gradient">payday</span> tracker
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          Earnings are based on new verified views since the last paid-through watermark. Brands
-          release payouts weekly after review.
-        </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          label="Available"
-          value={formatPHP(available, { decimals: false })}
-          hint="Approved — next automatic payout"
-          icon={Wallet}
+          label="Ongoing Submission"
+          value={ongoingSubmissionCount}
+          hint="Clips in review or accruing"
+          icon={Scissors}
           accent="violet"
         />
         <StatCard
-          label="Pending"
-          value={formatPHP(pending, { decimals: false })}
-          hint="Awaiting review or payout"
-          icon={Sparkles}
-          accent="orange"
-        />
-        <StatCard
-          label="Paid out"
-          value={formatPHP(paid, { decimals: false })}
-          hint="All-time"
-          icon={Banknote}
-          accent="emerald"
-        />
-        <StatCard
-          label="Lifetime"
+          label="Lifetime Earnings"
           value={formatPHP(totalEarned, { decimals: false })}
           icon={Wallet}
           accent="pink"
         />
+        <StatCard
+          label="Pending"
+          value={formatPHP(unpaidTotal, { decimals: false })}
+          hint="Not yet paid out"
+          icon={Clock}
+          accent="orange"
+        />
       </div>
 
       <div className="rounded-3xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl font-extrabold">Weekly earnings</h2>
-          <p className="text-sm text-muted-foreground">Mock payout windows</p>
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-display text-xl font-extrabold">Weekly earnings</h2>
+            <p className="text-sm text-muted-foreground">
+              Mock payout windows · {chartRangeLabel[chartRange]}
+            </p>
+          </div>
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="text-left sm:text-right">
+              <p className="text-xs text-muted-foreground">In range</p>
+              <p className="font-display text-lg font-extrabold text-phc-gradient tabular-nums">
+                {formatPHP(rangeBarTotal, { decimals: false })}
+              </p>
+            </div>
+            <Select value={chartRange} onValueChange={(v) => setChartRange(v as ChartRange)}>
+              <SelectTrigger className="w-full sm:w-44" aria-label="Chart date range">
+                <SelectValue placeholder="Date range" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="h-64">
-          <ResponsiveContainer>
-            <BarChart data={mockEarningsTrend} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height="100%" key={chartRange}>
+            <BarChart data={barChartData} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-              <XAxis dataKey="week" stroke="currentColor" className="text-xs" />
+              <XAxis dataKey="period" stroke="currentColor" className="text-xs" />
               <YAxis stroke="currentColor" className="text-xs" />
               <Tooltip
                 contentStyle={{
@@ -102,9 +144,9 @@ export default function ClipperEarningsPage() {
                 }}
                 formatter={(v: number) => [formatPHP(v, { decimals: false }), 'Earnings']}
               />
-              <Bar dataKey="earnings" radius={[8, 8, 0, 0]} fill="url(#barFill)" />
+              <Bar dataKey="earnings" radius={[8, 8, 0, 0]} fill="url(#earningsBarFill)" />
               <defs>
-                <linearGradient id="barFill" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="earningsBarFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#3B82F6" />
                   <stop offset="100%" stopColor="#2563EB" />
                 </linearGradient>
@@ -114,7 +156,7 @@ export default function ClipperEarningsPage() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-border bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-3xl border border-border bg-card">
         <div className="flex items-center justify-between p-6">
           <h2 className="font-display text-xl font-extrabold">Recent transactions</h2>
         </div>
@@ -125,6 +167,7 @@ export default function ClipperEarningsPage() {
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-6 py-3 font-medium">Campaign</th>
+                <th className="px-6 py-3 font-medium">Platform</th>
                 <th className="px-6 py-3 font-medium hidden sm:table-cell">Delta views</th>
                 <th className="px-6 py-3 font-medium">Amount</th>
                 <th className="px-6 py-3 font-medium">Status</th>
@@ -138,19 +181,27 @@ export default function ClipperEarningsPage() {
                     <p className="font-medium line-clamp-1">{c.campaignTitle}</p>
                     <p className="text-xs text-muted-foreground">{c.brandName}</p>
                   </td>
+                  <td className="px-6 py-4 align-middle">
+                    <div className="flex items-center gap-2">
+                      <PlatformIcon platform={c.platform} className="h-7 w-7" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {PLATFORM_LABEL[c.platform]}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 hidden sm:table-cell">
                     {formatViews(c.deltaViews ?? c.views)}
                     <p className="text-[11px] text-muted-foreground">
                       paid through {formatViews(c.viewsPaidThrough ?? 0)}
                     </p>
                   </td>
-                  <td className="px-6 py-4 font-display font-bold text-phc-gradient">
+                  <td className="px-6 py-4 font-display font-bold tabular-nums text-phc-gradient">
                     {formatPHP(c.earnings, { decimals: false })}
                   </td>
                   <td className="px-6 py-4">
                     <ClipStatusBadge status={c.status} />
                   </td>
-                  <td className="px-6 py-4 hidden md:table-cell">
+                  <td className="px-6 py-4 hidden md:table-cell tabular-nums text-muted-foreground">
                     {formatDate(c.paidAt ?? c.reviewedAt ?? c.submittedAt)}
                   </td>
                 </tr>

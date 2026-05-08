@@ -42,7 +42,7 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
   return (
     <Link
       to={to}
-      className="group relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/15"
+      className="group relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:border-blue-500/40 hover:shadow-xl hover:shadow-blue-500/15"
     >
       {/* Cover */}
       <div className={`relative h-40 overflow-hidden bg-linear-to-br ${campaign.coverColor}`}>
@@ -76,8 +76,8 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        <div>
+      <div className="flex min-h-0 flex-1 flex-col p-5">
+        <div className="shrink-0">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {campaign.brandName}
           </p>
@@ -86,9 +86,13 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
           </h3>
         </div>
 
-        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{campaign.description}</p>
+        <p className="mt-2 line-clamp-2 shrink-0 text-sm text-muted-foreground">
+          {campaign.description}
+        </p>
 
-        <div className="mt-5 space-y-3">
+        <div className="min-h-0 flex-1" aria-hidden />
+
+        <div className="mt-5 shrink-0 space-y-3">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Goal

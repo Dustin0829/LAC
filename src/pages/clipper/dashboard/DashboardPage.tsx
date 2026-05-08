@@ -1,12 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Wallet,
   Eye,
   Scissors,
-  TrendingUp,
   ArrowUpRight,
   Sparkles,
+  CircleAlert,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -26,24 +26,79 @@ import { StatCard } from '@/components/StatCard'
 import { ClipStatusBadge } from '@/components/ClipStatusBadge'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+type PerformanceRange = 'weekly' | 'monthly' | 'yearly'
+
+function sliceEarningsTrend(range: PerformanceRange) {
+  if (range === 'weekly') return mockEarningsTrend.slice(-2)
+  if (range === 'monthly') return mockEarningsTrend.slice(-4)
+  return mockEarningsTrend
+}
+
+function earningsChartRowsForRange(range: PerformanceRange) {
+  return sliceEarningsTrend(range).map((row) => ({
+    ...row,
+    period: row.week,
+  }))
+}
+
+const earningsRangeLabel: Record<PerformanceRange, string> = {
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+}
 
 export default function ClipperDashboardPage() {
   const { user } = useAuth()
+  const firstName = user?.name?.split(' ')[0] || 'there'
   const allClips = useClipsStore((s) => s.clips)
   const clips = useMemo(
     () => allClips.filter((clip) => clip.clipperId === 'me'),
     [allClips]
   )
   const campaigns = useCampaignsStore((s) => s.campaigns)
+  const [earningsRange, setEarningsRange] = useState<PerformanceRange>('monthly')
+  const [attention, setAttention] = useState<{ title: string; body: string } | null>(null)
+
+  const earningsChartData = useMemo(
+    () => earningsChartRowsForRange(earningsRange),
+    [earningsRange]
+  )
+  const rangeEarningsTotal = earningsChartData.reduce((s, row) => s + row.earnings, 0)
 
   const totalEarnings = clips.reduce((sum, c) => sum + c.earnings, 0)
-  const paidEarnings = clips
-    .filter((c) => c.status === 'paid')
-    .reduce((sum, c) => sum + c.earnings, 0)
-  const pendingEarnings = totalEarnings - paidEarnings
   const totalViews = clips.reduce((sum, c) => sum + c.views, 0)
-  const recent = clips.slice(0, 4)
+  const activeClipsCount = clips.filter((c) => c.status !== 'rejected').length
+  const recent = useMemo(
+    () =>
+      [...clips]
+        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+        .slice(0, 5),
+    [clips]
+  )
   const featured = campaigns.filter((c) => c.status === 'active').slice(0, 3)
+
+  function openAttention(clip: (typeof clips)[number]) {
+    const body = [clip.rejectionReason, clip.trustFlag].filter(Boolean).join('\n\n')
+    if (!body.trim()) return
+    const title =
+      clip.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
+    setAttention({ title, body })
+  }
 
   return (
     <div className="space-y-8">
@@ -55,11 +110,16 @@ export default function ClipperDashboardPage() {
             Creator
           </p>
           <h1 className="mt-3 font-display text-3xl md:text-4xl font-extrabold tracking-tight">
-            Hey {user?.name?.split(' ')[0] || 'there'}, ready to earn from verified views? <span className="text-phc-gradient">Let’s go.</span>
+            {clips.length === 0 ? (
+              <>
+                Welcome, <span className="text-phc-gradient">{firstName}</span>!
+              </>
+            ) : (
+              <>
+                Welcome back, <span className="text-phc-gradient">{firstName}</span>!
+              </>
+            )}
           </h1>
-          <p className="mt-2 text-muted-foreground">
-            Track submissions, verified view deltas, and weekly payout status in one place.
-          </p>
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline">
@@ -71,75 +131,60 @@ export default function ClipperDashboardPage() {
         </div>
       </div>
 
-      {/* Stats — two summary cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-3xl border border-border bg-card p-4 sm:p-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard
-              className="border-0 bg-muted/30 shadow-none"
-              label="Total earnings"
-              value={formatPHP(totalEarnings, { decimals: false })}
-              hint={`${formatPHP(pendingEarnings, { decimals: false })} pending`}
-              icon={Wallet}
-              accent="violet"
-            />
-            <StatCard
-              className="border-0 bg-muted/30 shadow-none"
-              label="Paid out"
-              value={formatPHP(paidEarnings, { decimals: false })}
-              hint="Sent to your default payout"
-              icon={TrendingUp}
-              accent="emerald"
-            />
-          </div>
-        </div>
-        <div className="rounded-3xl border border-border bg-card p-4 sm:p-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard
-              className="border-0 bg-muted/30 shadow-none"
-              label="Total views"
-              value={formatViews(totalViews)}
-              hint="Across all clips"
-              icon={Eye}
-              accent="pink"
-            />
-            <StatCard
-              className="border-0 bg-muted/30 shadow-none"
-              label="Active clips"
-              value={clips.length}
-              hint={`${clips.filter((c) => c.status === 'pending').length} pending review`}
-              icon={Scissors}
-              accent="orange"
-            />
-          </div>
-        </div>
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          label="Total earnings"
+          value={formatPHP(totalEarnings, { decimals: false })}
+          icon={Wallet}
+          accent="violet"
+        />
+        <StatCard label="Total views" value={formatViews(totalViews)} icon={Eye} accent="pink" />
+        <StatCard label="Active clips" value={activeClipsCount} icon={Scissors} accent="orange" />
       </div>
 
       {/* Earnings chart */}
       <div className="rounded-3xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="font-display text-xl font-extrabold">Earnings over time</h2>
-            <p className="text-sm text-muted-foreground">Last 6 weeks</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">This month</p>
-            <p className="font-display text-2xl font-extrabold text-phc-gradient">
-              {formatPHP(mockEarningsTrend.reduce((s, w) => s + w.earnings, 0), { decimals: false })}
+            <p className="text-sm text-muted-foreground">
+              Verified accrual · {earningsRangeLabel[earningsRange]}
             </p>
           </div>
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:gap-4">
+            <div className="text-left sm:text-right">
+              <p className="text-xs text-muted-foreground">In range</p>
+              <p className="font-display text-2xl font-extrabold text-phc-gradient">
+                {formatPHP(rangeEarningsTotal, { decimals: false })}
+              </p>
+            </div>
+            <Select
+              value={earningsRange}
+              onValueChange={(v) => setEarningsRange(v as PerformanceRange)}
+            >
+              <SelectTrigger className="w-full sm:w-44" aria-label="Date range">
+                <SelectValue placeholder="Date range" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="h-64 w-full">
-          <ResponsiveContainer>
-            <AreaChart data={mockEarningsTrend} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
+        <div className="h-72 w-full">
+          <ResponsiveContainer width="100%" height="100%" key={earningsRange}>
+            <AreaChart data={earningsChartData} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
               <defs>
-                <linearGradient id="earningsFill" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="clipperEarningsFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.32} />
                   <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-              <XAxis dataKey="week" stroke="currentColor" className="text-xs text-muted-foreground" />
+              <XAxis dataKey="period" stroke="currentColor" className="text-xs text-muted-foreground" />
               <YAxis stroke="currentColor" className="text-xs text-muted-foreground" />
               <Tooltip
                 contentStyle={{
@@ -154,7 +199,7 @@ export default function ClipperDashboardPage() {
                 dataKey="earnings"
                 stroke="#3B82F6"
                 strokeWidth={3}
-                fill="url(#earningsFill)"
+                fill="url(#clipperEarningsFill)"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -183,38 +228,62 @@ export default function ClipperDashboardPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Clip</th>
-                  <th className="px-5 py-3 font-medium hidden sm:table-cell">Campaign</th>
+                  <th className="px-5 py-3 font-medium">Campaign</th>
+                  <th className="px-5 py-3 font-medium">Platform</th>
                   <th className="px-5 py-3 font-medium">Views</th>
                   <th className="px-5 py-3 font-medium">Earnings</th>
                   <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 w-24 text-center font-medium">Warning</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {recent.map((clip) => (
-                  <tr key={clip.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <PlatformIcon platform={clip.platform} className="h-7 w-7" />
-                        <div className="min-w-0">
-                          <p className="font-medium truncate max-w-[200px]">{clip.url.split('/').pop()}</p>
-                          <p className="text-xs text-muted-foreground sm:hidden">{clip.brandName}</p>
+                {recent.map((clip) => {
+                  const hasAttention = Boolean(clip.trustFlag || clip.rejectionReason)
+                  return (
+                    <tr key={clip.id} className="transition-colors hover:bg-muted/30">
+                      <td className="max-w-0 px-5 py-4">
+                        <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {clip.brandName}
+                        </p>
+                        <p className="truncate font-medium text-foreground" title={clip.campaignTitle}>
+                          {clip.campaignTitle}
+                        </p>
+                      </td>
+                      <td className="px-5 py-4 align-middle">
+                        <div className="flex justify-start">
+                          <PlatformIcon platform={clip.platform} className="h-7 w-7" />
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 hidden sm:table-cell">
-                      <p className="text-foreground">{clip.brandName}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">{clip.campaignTitle}</p>
-                    </td>
-                    <td className="px-5 py-4 font-display font-bold">{formatViews(clip.views)}</td>
-                    <td className="px-5 py-4 font-display font-bold text-phc-gradient">
-                      {formatPHP(clip.earnings, { decimals: false })}
-                    </td>
-                    <td className="px-5 py-4">
-                      <ClipStatusBadge status={clip.status} />
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-5 py-4 font-display font-bold tabular-nums">
+                        {formatViews(clip.views)}
+                      </td>
+                      <td className="px-5 py-4 font-display font-bold text-phc-gradient tabular-nums">
+                        {formatPHP(clip.earnings, { decimals: false })}
+                      </td>
+                      <td className="px-5 py-4">
+                        <ClipStatusBadge status={clip.status} />
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        {hasAttention ? (
+                          <button
+                            type="button"
+                            onClick={() => openAttention(clip)}
+                            className="inline-flex rounded-full p-1 text-amber-600 transition-colors hover:bg-amber-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            aria-label={
+                              clip.status === 'rejected'
+                                ? 'View rejection reason'
+                                : 'View attention note'
+                            }
+                          >
+                            <CircleAlert className="h-4 w-4" strokeWidth={2} />
+                          </button>
+                        ) : (
+                          <span className="inline-block w-6" aria-hidden />
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -259,6 +328,22 @@ export default function ClipperDashboardPage() {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={attention !== null}
+        onOpenChange={(open) => {
+          if (!open) setAttention(null)
+        }}
+      >
+        <DialogContent className="rounded-3xl border-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">{attention?.title ?? ''}</DialogTitle>
+            <DialogDescription className="whitespace-pre-wrap text-left text-base text-foreground">
+              {attention?.body ?? ''}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

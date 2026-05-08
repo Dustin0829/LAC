@@ -55,10 +55,6 @@ export default function ClipperCampaignsPage() {
         <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold tracking-tight">
           Find your next <span className="text-phc-gradient">payday</span>
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          Browse active campaigns before connecting socials. Rates shown are your net earn per 1,000 verified views after the
-          platform fee on the brand&apos;s payout.
-        </p>
       </div>
 
       {/* Filters */}

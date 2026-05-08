@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { Clock, CheckCircle2, XCircle, BadgeCheck } from 'lucide-react'
+import { Clock, XCircle, BadgeCheck } from 'lucide-react'
 import type { ClipStatus } from '@/lib/mockData'
 
 const STYLES: Record<ClipStatus, { className: string; label: string; Icon: typeof Clock }> = {
@@ -7,11 +7,6 @@ const STYLES: Record<ClipStatus, { className: string; label: string; Icon: typeo
     className: 'bg-amber-50 text-amber-700 border-amber-200',
     label: 'Pending',
     Icon: Clock,
-  },
-  approved: {
-    className: 'bg-blue-50 text-blue-700 border-blue-200',
-    label: 'Approved',
-    Icon: CheckCircle2,
   },
   rejected: {
     className: 'bg-red-50 text-red-700 border-red-200',
@@ -26,7 +21,6 @@ const STYLES: Record<ClipStatus, { className: string; label: string; Icon: typeo
 }
 
 export function ClipStatusBadge({ status }: { status: ClipStatus }) {
-  if (status === 'approved') return null
   const cfg = STYLES[status]
   const Icon = cfg.Icon
   return (

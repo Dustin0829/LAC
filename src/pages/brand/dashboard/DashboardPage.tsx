@@ -71,7 +71,14 @@ export default function BrandDashboardPage() {
   const avgCostPerView =
     totalReached > 0 ? totalSpent / totalReached : null
   const recentClips = useMemo(
-    () => clips.filter((c) => c.status !== 'approved').slice(0, 5),
+    () =>
+      [...clips]
+        .filter((c) => c.status === 'pending' || c.status === 'rejected')
+        .sort(
+          (a, b) =>
+            new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+        )
+        .slice(0, 5),
     [clips]
   )
 
