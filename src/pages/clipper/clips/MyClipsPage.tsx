@@ -166,7 +166,7 @@ export default function MyClipsPage() {
                       >
                         <PlatformIcon
                           platform={clip.platform}
-                          className="absolute bottom-0.5 right-0.5 h-5 w-5 ring-2 ring-card"
+                          className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 ring-2 ring-card"
                         />
                       </div>
                     </td>

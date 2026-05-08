@@ -51,7 +51,7 @@ export default function ClipperAccountPage() {
           {platformLinks.map((link) => (
             <div key={link.platform} className="rounded-2xl border border-border bg-muted/40 p-4">
               <div className="flex items-center gap-3">
-                <PlatformIcon platform={link.platform} className="h-10 w-10" />
+                <PlatformIcon platform={link.platform} className="h-8 w-8" />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{link.label}</p>
                   <p className="truncate text-xs text-muted-foreground">{link.handle}</p>

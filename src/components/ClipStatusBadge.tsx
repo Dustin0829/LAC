@@ -5,7 +5,7 @@ import type { ClipStatus } from '@/lib/mockData'
 const STYLES: Record<ClipStatus, { className: string; label: string; Icon: typeof Clock }> = {
   pending: {
     className: 'bg-amber-50 text-amber-700 border-amber-200',
-    label: 'Pending review',
+    label: 'Pending',
     Icon: Clock,
   },
   approved: {
@@ -26,6 +26,7 @@ const STYLES: Record<ClipStatus, { className: string; label: string; Icon: typeo
 }
 
 export function ClipStatusBadge({ status }: { status: ClipStatus }) {
+  if (status === 'approved') return null
   const cfg = STYLES[status]
   const Icon = cfg.Icon
   return (

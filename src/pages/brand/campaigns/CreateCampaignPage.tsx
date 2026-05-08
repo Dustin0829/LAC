@@ -27,27 +27,14 @@ import { useAuth } from '@/lib/hooks/use-auth'
 import { paymentLogoSrc } from '@/lib/constants/paymentLogos'
 import {
   PLATFORM_LABEL,
-  NICHE_LABEL,
   DEFAULT_REFUNDABLE_PERCENT,
   getClipperRatePer1k,
   getPlatformFeePercent,
   type Platform,
-  type ContentNiche,
 } from '@/lib/mockData'
 import { formatPHP } from '@/lib/utils'
 
 const PLATFORMS: Platform[] = ['tiktok', 'facebook']
-const NICHES: ContentNiche[] = [
-  'gaming',
-  'entertainment',
-  'lifestyle',
-  'tech',
-  'food',
-  'fashion',
-  'fitness',
-  'finance',
-  'education',
-]
 
 const COVER_COLORS = [
   'from-zinc-950 to-zinc-700',
@@ -74,8 +61,9 @@ export default function CreateCampaignPage() {
   const [ratePer1k, setRatePer1k] = useState('10')
   const [budget, setBudget] = useState('20000')
   const [platforms, setPlatforms] = useState<Platform[]>(['tiktok'])
-  const [niches, setNiches] = useState<ContentNiche[]>(['lifestyle'])
-  const [endDate, setEndDate] = useState('')
+  const [endDate, setEndDate] = useState(() =>
+    new Date(Date.now() + 30 * 86400000).toISOString()
+  )
   const [endMode, setEndMode] = useState<'fixed' | 'until_goal'>('fixed')
   const [coverImageUrl, setCoverImageUrl] = useState('')
   const [assetPackUrl, setAssetPackUrl] = useState('')
@@ -100,10 +88,6 @@ export default function CreateCampaignPage() {
   function togglePlatform(p: Platform) {
     setPlatforms((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]))
   }
-  function toggleNiche(n: ContentNiche) {
-    setNiches((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))
-  }
-
   function updateRule(index: number, value: string) {
     setRules((prev) => prev.map((r, i) => (i === index ? value : r)))
   }
@@ -167,7 +151,11 @@ export default function CreateCampaignPage() {
     const totalBudget = Number(budget) || 0
     if (!title.trim() || !description.trim()) return 'Add a title and description.'
     if (platforms.length === 0) return 'Pick at least one platform.'
-    if (niches.length === 0) return 'Pick at least one niche.'
+    if (endMode === 'fixed') {
+      if (!endDate.trim()) return 'Pick an end date.'
+      const endMs = new Date(endDate).getTime()
+      if (!Number.isFinite(endMs)) return 'Pick a valid end date.'
+    }
     if (rules.map((r) => r.trim()).filter(Boolean).length === 0) {
       return 'Add at least one rule for creators.'
     }
@@ -208,7 +196,6 @@ export default function CreateCampaignPage() {
       campaignViews: 0,
       estimatedReach: Math.max(reach, 1),
       platforms,
-      niches,
       status,
       startDate: new Date().toISOString(),
       endDate:
@@ -262,7 +249,7 @@ export default function CreateCampaignPage() {
               <Label htmlFor="title">Campaign title</Label>
               <Input
                 id="title"
-                placeholder="e.g. Summer Drink Drop — Clipping Campaign"
+                placeholder="e.g. Bagong Latte Drop — TikTok Clipping Campaign"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -272,49 +259,70 @@ export default function CreateCampaignPage() {
               <Textarea
                 id="description"
                 rows={5}
-                placeholder="What is the campaign about?"
+                placeholder="e.g. Help us launch our new Spanish Latte! Clip brand reels or create UGC — higher views mean higher payouts."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
-              <span className="text-sm font-medium leading-none text-foreground">Campaign end</span>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="space-y-3">
+              <span className="text-sm font-medium leading-none text-foreground">Campaign duration</span>
+              <div className="flex flex-col gap-3">
                 <label
-                  htmlFor="end"
-                  onClick={() => setEndMode('fixed')}
-                  className={`flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5 ${endMode === 'until_goal' ? 'opacity-60' : ''}`}
+                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+                    endMode === 'fixed'
+                      ? 'border-blue-500 bg-blue-500/8'
+                      : 'border-border hover:border-foreground/20'
+                  }`}
                 >
-                  <span className="text-xs text-muted-foreground">End date</span>
+                  <input
+                    type="radio"
+                    name="campaign-duration"
+                    className="size-4 shrink-0 accent-blue-600"
+                    checked={endMode === 'fixed'}
+                    onChange={() => {
+                      setEndMode('fixed')
+                      setEndDate((prev) => prev || new Date(Date.now() + 30 * 86400000).toISOString())
+                    }}
+                  />
+                  <span className="text-sm font-semibold">Fixed end date</span>
+                </label>
+                <label
+                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+                    endMode === 'until_goal'
+                      ? 'border-blue-500 bg-blue-500/8'
+                      : 'border-border hover:border-foreground/20'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="campaign-duration"
+                    className="size-4 shrink-0 accent-blue-600"
+                    checked={endMode === 'until_goal'}
+                    onChange={() => setEndMode('until_goal')}
+                  />
+                  <span className="text-sm font-semibold">Until goal is reached</span>
+                </label>
+              </div>
+              {endMode === 'fixed' ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="end">End date</Label>
                   <Input
                     id="end"
                     type="date"
-                    disabled={endMode === 'until_goal'}
                     value={endDate ? endDate.slice(0, 10) : ''}
                     onChange={(e) => {
+                      const v = e.target.value
                       setEndMode('fixed')
-                      setEndDate(new Date(e.target.value).toISOString())
+                      setEndDate(v ? new Date(v).toISOString() : '')
                     }}
-                    className="relative h-11 cursor-pointer disabled:cursor-not-allowed [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                    className="relative h-11 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                   />
-                </label>
-                <Button
-                  type="button"
-                  variant={endMode === 'until_goal' ? 'default' : 'outline'}
-                  className={`h-11 shrink-0 px-4 text-sm font-semibold whitespace-normal sm:max-w-44 sm:text-balance sm:text-center ${
-                    endMode === 'until_goal'
-                      ? 'ring-2 ring-primary/35 ring-offset-2 ring-offset-background'
-                      : 'border-primary text-primary hover:bg-primary/10 hover:text-primary'
-                  }`}
-                  onClick={() => setEndMode('until_goal')}
-                >
-                  Until goal is reached
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Fixed date closes the campaign on that day, or choose until goal is reached to end when the budget
-                or reach target is exhausted.
-              </p>
+                  <p className="text-xs text-muted-foreground">
+                    Example: <span className="font-medium text-foreground">12/31/2026</span> — last day
+                    creators can submit under this campaign.
+                  </p>
+                </div>
+              ) : null}
             </div>
           </section>
 
@@ -334,8 +342,10 @@ export default function CreateCampaignPage() {
                     onChange={(e) => updateRule(index, e.target.value)}
                     placeholder={
                       index === 0
-                        ? 'e.g. Use #YourBrand and tag the official account'
-                        : `Rule ${index + 1}`
+                        ? 'e.g. Clip must be at least 15s — use #YourBrand and tag @yourbrand'
+                        : index === 1
+                          ? 'e.g. Original audio or licensed music only'
+                          : `Rule ${index + 1} (e.g. No reused or duplicate clips)`
                     }
                     className="flex-1 min-w-0"
                   />
@@ -363,7 +373,7 @@ export default function CreateCampaignPage() {
             <div>
               <h2 className="font-display text-xl font-extrabold">Campaign cover image</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Add a real image that will appear on the campaign card and campaign detail page.
+                Add a real image that will appear on the campaign card.
               </p>
             </div>
 
@@ -427,7 +437,6 @@ export default function CreateCampaignPage() {
                 <h2 className="font-display text-xl font-extrabold">Assets for creators</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Share a link to raw footage, logos, or brand kits (Google Drive, Dropbox, Notion, etc.).
-                  Creators will open this from the campaign page.
                 </p>
               </div>
             </div>
@@ -438,60 +447,35 @@ export default function CreateCampaignPage() {
                 type="url"
                 inputMode="url"
                 autoComplete="url"
-                placeholder="https://drive.google.com/..."
+                placeholder="https://drive.google.com/drive/folders/1a2b3cYourBrandKit"
                 value={assetPackUrl}
                 onChange={(e) => setAssetPackUrl(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                Optional. Use a share link with view access for clippers.
-              </p>
             </div>
           </section>
 
           <section className="rounded-3xl border border-border bg-card p-6 space-y-4">
-            <h2 className="font-display text-xl font-extrabold">Where & who</h2>
-            <div>
-              <Label>Platforms</Label>
-              <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {PLATFORMS.map((p) => (
-                  <label
-                    key={p}
-                    className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
-                      platforms.includes(p)
-                        ? 'border-blue-500 bg-blue-500/10'
-                        : 'border-border hover:border-foreground/20'
-                    }`}
-                  >
-                    <Checkbox
-                      checked={platforms.includes(p)}
-                      onCheckedChange={() => togglePlatform(p)}
-                    />
-                    <span className="text-sm font-medium">{PLATFORM_LABEL[p]}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label>Niches</Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {NICHES.map((n) => {
-                  const active = niches.includes(n)
-                  return (
-                    <button
-                      type="button"
-                      key={n}
-                      onClick={() => toggleNiche(n)}
-                      className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-all ${
-                        active
-                          ? 'bg-phc-gradient text-white border-transparent'
-                          : 'border-border text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {NICHE_LABEL[n]}
-                    </button>
-                  )
-                })}
-              </div>
+            <h2 className="font-display text-xl font-extrabold">Platforms</h2>
+            <p className="text-sm text-muted-foreground">
+              Choose where creator clips for this campaign may be posted.
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Platforms">
+              {PLATFORMS.map((p) => (
+                <label
+                  key={p}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+                    platforms.includes(p)
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-border hover:border-foreground/20'
+                  }`}
+                >
+                  <Checkbox
+                    checked={platforms.includes(p)}
+                    onCheckedChange={() => togglePlatform(p)}
+                  />
+                  <span className="text-sm font-medium">{PLATFORM_LABEL[p]}</span>
+                </label>
+              ))}
             </div>
           </section>
         </div>
@@ -507,6 +491,7 @@ export default function CreateCampaignPage() {
                   id="rate"
                   type="number"
                   min="0"
+                  placeholder="e.g. 112.50"
                   value={ratePer1k}
                   onChange={(e) => setRatePer1k(e.target.value)}
                 />
@@ -517,6 +502,7 @@ export default function CreateCampaignPage() {
                   id="budget"
                   type="number"
                   min="0"
+                  placeholder="e.g. 50000"
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
                 />
@@ -524,7 +510,7 @@ export default function CreateCampaignPage() {
             </div>
           </div>
           <div className="rounded-3xl border border-border bg-card p-6 space-y-3">
-            <h3 className="font-display text-lg font-extrabold">Campaign math</h3>
+            <h3 className="font-display text-lg font-extrabold">Campaign Breakdown</h3>
             <div className="rounded-xl bg-phc-gradient-soft p-4">
               <p className="text-xs text-muted-foreground">Estimated reach</p>
               <p className="font-display text-3xl font-extrabold text-phc-gradient">
@@ -538,7 +524,7 @@ export default function CreateCampaignPage() {
               <li className="flex justify-between">
                 <span className="text-muted-foreground">Brand rate</span>
                 <span className="font-semibold">
-                  {formatPHP(brandRate, { decimals: false })} / 1K
+                  {formatPHP(brandRate, { decimals: false })} / 1,000
                 </span>
               </li>
               <li className="flex justify-between">
@@ -585,9 +571,7 @@ export default function CreateCampaignPage() {
               Publish campaign
             </Button>
           </div>
-          <p className="px-2 text-xs text-muted-foreground">
-            Publishing opens Xendit checkout to fund this budget. If payment fails, the campaign is saved as a draft.
-          </p>
+
         </aside>
       </form>
 

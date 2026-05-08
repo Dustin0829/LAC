@@ -29,9 +29,6 @@ importers:
       '@radix-ui/react-slot':
         specifier: 1.1.1
         version: 1.1.1(@types/react@19.2.14)(react@19.2.0)
-      '@thesvg/react':
-        specifier: ^2.1.8
-        version: 2.1.8(react@19.2.0)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1013,12 +1010,6 @@ packages:
 
   '@tailwindcss/postcss@4.2.2':
     resolution: {integrity: sha512-n4goKQbW8RVXIbNKRB/45LzyUqN451deQK0nzIeauVEqjlI49slUlgKYJM2QyUzap/PcpnS7kzSUmPb1sCRvYQ==}
-
-  '@thesvg/react@2.1.8':
-    resolution: {integrity: sha512-zvDhrv2BnmXJYeXte7J+uyW/mj9zryLNzsDMTbhYjGPpUIqoIDM+5es7adfbqeFBx+IEHmG05w0g03dsORqaPQ==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      react: '>=18'
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -3238,10 +3229,6 @@ snapshots:
       '@tailwindcss/oxide': 4.2.2
       postcss: 8.5.9
       tailwindcss: 4.2.2
-
-  '@thesvg/react@2.1.8(react@19.2.0)':
-    dependencies:
-      react: 19.2.0
 
   '@types/babel__core@7.20.5':
     dependencies:

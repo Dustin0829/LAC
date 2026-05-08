@@ -36,7 +36,6 @@ import { Badge } from '@/components/ui/badge'
 import { formatPHP, formatDate, formatViews } from '@/lib/utils'
 import {
   creatorHeadlineRatePer1k,
-  NICHE_LABEL,
   PLATFORM_LABEL,
   type Platform,
 } from '@/lib/mockData'
@@ -287,27 +286,17 @@ export default function ClipperCampaignDetailPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <section className="rounded-3xl border border-border bg-card p-6 space-y-6">
           <div>
-            <h2 className="font-display text-xl font-extrabold">Platforms &amp; niches</h2>
+            <h2 className="font-display text-xl font-extrabold">Platforms</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Enabled platforms and the categories this campaign is looking for.
+              Where you can post clips for this campaign.
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Platforms</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Enabled platforms</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {campaign.platforms.map((p) => (
                 <Badge key={p} className="bg-foreground text-background">
                   {PLATFORM_LABEL[p]}
-                </Badge>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Content niches</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {campaign.niches.map((n) => (
-                <Badge key={n} variant="secondary">
-                  {NICHE_LABEL[n]}
                 </Badge>
               ))}
             </div>

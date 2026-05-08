@@ -1,16 +1,25 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, ExternalLink } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { ClipStatusBadge } from '@/components/ClipStatusBadge'
 import { PlatformIcon } from '@/components/PlatformIcon'
+import { TablePagination } from '@/components/TablePagination'
 import { Button } from '@/components/ui/button'
 import { useClipsStore } from '@/lib/stores/clipsStore'
 import { formatPHP, formatTimeAgo, formatViews } from '@/lib/utils'
+
+const INBOX_PAGE_SIZE = 10
 
 export default function BrandClipSubmissionsPage() {
   const clips = useClipsStore((s) => s.clips)
   const rows = [...clips].sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
   )
+  const [page, setPage] = useState(1)
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / INBOX_PAGE_SIZE))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const pageRows = rows.slice((safePage - 1) * INBOX_PAGE_SIZE, safePage * INBOX_PAGE_SIZE)
 
   return (
     <div className="space-y-8">
@@ -20,8 +29,7 @@ export default function BrandClipSubmissionsPage() {
           Clip <span className="text-phc-gradient">submissions</span>
         </h1>
         <p className="mt-2 text-muted-foreground">
-          All clips across your campaigns. Open the campaign to approve, reject, or see full
-          context.
+          All clips across your campaigns. Open the campaign to approve, reject, or see full context.
         </p>
       </div>
 
@@ -37,35 +45,42 @@ export default function BrandClipSubmissionsPage() {
               <tr>
                 <th className="px-5 py-3 font-medium">Creator</th>
                 <th className="px-5 py-3 font-medium hidden sm:table-cell">Campaign</th>
+                <th className="px-5 py-3 font-medium">Platform</th>
                 <th className="px-5 py-3 font-medium hidden md:table-cell">Submitted</th>
                 <th className="px-5 py-3 font-medium">Views</th>
                 <th className="px-5 py-3 font-medium hidden lg:table-cell">Earnings</th>
                 <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium text-right">Campaign</th>
+                <th className="px-5 py-3 text-right font-medium">Open</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rows.map((clip) => (
-                <tr key={clip.id} className="hover:bg-muted/30 transition-colors">
+              {pageRows.map((clip) => (
+                <tr
+                  key={clip.id}
+                  className="cursor-pointer transition-colors hover:bg-muted/30"
+                  tabIndex={0}
+                  aria-label={`Open clip by ${clip.clipperName}`}
+                  onClick={() => window.open(clip.url, '_blank', 'noopener,noreferrer')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      window.open(clip.url, '_blank', 'noopener,noreferrer')
+                    }
+                  }}
+                >
                   <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <PlatformIcon platform={clip.platform} className="h-9 w-9" />
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{clip.clipperName}</p>
-                        <a
-                          href={clip.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-                        >
-                          View clip <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{clip.clipperName}</p>
                     </div>
                   </td>
                   <td className="px-5 py-4 hidden sm:table-cell">
                     <p className="font-medium line-clamp-2">{clip.campaignTitle}</p>
                     <p className="text-xs text-muted-foreground">{clip.brandName}</p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex justify-start">
+                      <PlatformIcon platform={clip.platform} className="h-7 w-7" />
+                    </div>
                   </td>
                   <td className="px-5 py-4 hidden md:table-cell text-muted-foreground">
                     {formatTimeAgo(clip.submittedAt)}
@@ -82,6 +97,8 @@ export default function BrandClipSubmissionsPage() {
                       <Link
                         to={`/brand/campaigns/${clip.campaignId}`}
                         className="inline-flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
                       >
                         Open <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
@@ -91,6 +108,15 @@ export default function BrandClipSubmissionsPage() {
               ))}
             </tbody>
           </table>
+          {rows.length > 0 ? (
+            <TablePagination
+              className="border-border border-t bg-muted/30 px-4 py-3 md:px-5"
+              page={page}
+              pageSize={INBOX_PAGE_SIZE}
+              totalItems={rows.length}
+              onPageChange={setPage}
+            />
+          ) : null}
         </div>
       )}
     </div>

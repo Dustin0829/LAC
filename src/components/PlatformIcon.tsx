@@ -1,30 +1,29 @@
-import { Tiktok, Facebook } from '@thesvg/react'
 import { cn } from '@/lib/utils'
 import type { Platform } from '@/lib/mockData'
+
+const PLATFORM_SRC: Record<Platform, string> = {
+  tiktok: '/tiktok-mono.svg',
+  facebook: '/facebook.svg',
+}
+
+const PLATFORM_LABEL: Record<Platform, string> = {
+  tiktok: 'TikTok',
+  facebook: 'Facebook',
+}
 
 interface PlatformIconProps {
   platform: Platform
   className?: string
 }
 
-export function PlatformIcon({ platform, className = 'h-7 w-7' }: PlatformIconProps) {
-  const Icon = platform === 'tiktok' ? Tiktok : Facebook
+export function PlatformIcon({ platform, className = 'h-5 w-5' }: PlatformIconProps) {
   return (
-    <div
-      className={cn(
-        className,
-        'flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card p-1',
-        platform === 'tiktok' && 'bg-black',
-        platform === 'facebook' && 'border-transparent bg-[#1877F2]'
-      )}
-      aria-hidden
-    >
-      <Icon
-        className={cn(
-          'h-[82%] w-[82%] max-h-full max-w-full',
-          platform === 'facebook' && 'brightness-0 invert'
-        )}
-      />
-    </div>
+    <img
+      src={PLATFORM_SRC[platform]}
+      alt={PLATFORM_LABEL[platform]}
+      className={cn('shrink-0 object-contain', className)}
+      loading="lazy"
+      decoding="async"
+    />
   )
 }

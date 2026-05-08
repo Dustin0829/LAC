@@ -195,7 +195,7 @@ export default function ClipperDashboardPage() {
                   <tr key={clip.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <PlatformIcon platform={clip.platform} className="h-9 w-9" />
+                        <PlatformIcon platform={clip.platform} className="h-7 w-7" />
                         <div className="min-w-0">
                           <p className="font-medium truncate max-w-[200px]">{clip.url.split('/').pop()}</p>
                           <p className="text-xs text-muted-foreground sm:hidden">{clip.brandName}</p>
