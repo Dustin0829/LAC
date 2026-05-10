@@ -12,12 +12,9 @@ export function formatNumber(value: number): string {
   return value.toLocaleString('en-US')
 }
 
-/** Compact view counts: 12.4K, 1.2M, 24.5M. */
+/** View/reach counts with grouping separators (no K/M abbreviations). */
 export function formatViews(value: number): string {
-  if (value < 1000) return `${value}`
-  if (value < 1_000_000) return `${(value / 1000).toFixed(value < 10_000 ? 1 : 0).replace(/\.0$/, '')}K`
-  if (value < 1_000_000_000) return `${(value / 1_000_000).toFixed(value < 10_000_000 ? 1 : 0).replace(/\.0$/, '')}M`
-  return `${(value / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`
+  return formatNumber(Math.round(value))
 }
 
 /** Compute earnings: views / 1000 * ratePer1k. */

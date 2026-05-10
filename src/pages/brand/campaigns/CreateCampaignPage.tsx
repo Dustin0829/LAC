@@ -186,11 +186,10 @@ export default function CreateCampaignPage() {
       description: description.trim(),
       brandRatePer1k: brandRate,
       ratePer1k: clipperRate,
-      budget: totalBudget,
+      budget: netPool,
       platformFeePercent,
       refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
       spent: 0,
-      availableBalance: netPool,
       reservedBalance: 0,
       minimumPublishBalance: 10_000,
       campaignViews: 0,
@@ -249,7 +248,7 @@ export default function CreateCampaignPage() {
               <Label htmlFor="title">Campaign title</Label>
               <Input
                 id="title"
-                placeholder="e.g. Bagong Latte Drop — TikTok Clipping Campaign"
+                placeholder="e.g. Kitchen Glow-Up — Viral Cooking Clips Campaign"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -259,7 +258,7 @@ export default function CreateCampaignPage() {
               <Textarea
                 id="description"
                 rows={5}
-                placeholder="e.g. Help us launch our new Spanish Latte! Clip brand reels or create UGC — higher views mean higher payouts."
+                placeholder="e.g. Show how your brand fits everyday routines — authentic clips with stronger engagement earn more."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -491,7 +490,7 @@ export default function CreateCampaignPage() {
                   id="rate"
                   type="number"
                   min="0"
-                  placeholder="e.g. 112.50"
+                  placeholder="e.g. 75"
                   value={ratePer1k}
                   onChange={(e) => setRatePer1k(e.target.value)}
                 />

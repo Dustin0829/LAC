@@ -3,9 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Building2,
+  CircleDollarSign,
   Clock,
   ExternalLink,
-  Eye,
   Link2,
   Loader2,
   Megaphone,
@@ -118,7 +118,7 @@ export default function BrandCampaignDetailPage() {
   const reachProgressPct =
     reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0
   const submissions = clips.filter((c) => c.campaignId === campaignId)
-  const totalViews = submissions.reduce((s, c) => s + c.views, 0)
+  const paidOut = campaign.spent
   const weeklyPackage = mockWeeklyPayoutPackages.find((p) => p.campaignId === campaign.id)
 
   const weeklyLinesAll = weeklyPackage?.lines ?? []
@@ -165,13 +165,14 @@ export default function BrandCampaignDetailPage() {
     await new Promise((resolve) => setTimeout(resolve, 650))
     const net = Math.round(amount * (1 - platformFeePercent))
     updateCampaign(campaignId, {
-      budget: campaign.budget + amount,
-      availableBalance: remaining + net,
+      budget: campaign.budget + net,
     })
     setIsAddingFunds(false)
     setAddFundsOpen(false)
     setFundAmount('')
-    toast.success(`${formatPHP(amount, { decimals: false })} added to this campaign.`)
+    toast.success(
+      `${formatPHP(net, { decimals: false })} added to this campaign pool (${formatPHP(amount, { decimals: false })} payment after intake fee).`
+    )
   }
 
   async function confirmRefundAvailable() {
@@ -185,12 +186,10 @@ export default function BrandCampaignDetailPage() {
     }
     setIsRefunding(true)
     await new Promise((r) => setTimeout(r, 600))
-    const fee = latest.platformFeePercent ?? getPlatformFeePercent()
-    const grossReduction = Math.max(1, Math.round(net / (1 - fee)))
-    const newBudget = Math.max(0, latest.budget - grossReduction)
+    const reserved = latest.reservedBalance ?? 0
+    const newBudget = latest.spent + reserved
     updateCampaign(campaignId, {
       budget: newBudget,
-      availableBalance: 0,
     })
     setIsRefunding(false)
     setRefundOpen(false)
@@ -228,11 +227,9 @@ export default function BrandCampaignDetailPage() {
       setIsConfirmingRelease(false)
       return
     }
-    const prevAvail = getAvailableBalance(latest)
     const roundedTotal = Math.round(total)
     updateCampaign(campaignId, {
       spent: latest.spent + roundedTotal,
-      availableBalance: Math.max(0, prevAvail - roundedTotal),
     })
     setIsConfirmingRelease(false)
     setReleasePayoutsModalOpen(false)
@@ -307,8 +304,8 @@ export default function BrandCampaignDetailPage() {
       </div>
 
       {/* Campaign summary */}
-      <div className="min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
-        <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="min-w-0 rounded-2xl border border-border bg-card p-6 md:p-8">
+        <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
             <div
               className={cn(
@@ -322,14 +319,14 @@ export default function BrandCampaignDetailPage() {
             <h1 className="min-w-0 wrap-break-word font-display text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
               {campaign.title}
             </h1>
-            <p className="max-w-full min-w-0 wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-[15px]">
+            {/* <p className="max-w-full min-w-0 wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-[15px]">
               {campaign.description}
-            </p>
+            </p> */}
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 lg:pt-1">
             {campaign.status === 'draft' && (
               <Button
-                className="bg-phc-gradient font-semibold text-white shadow-sm hover:opacity-90"
+                className="bg-phc-gradient font-semibold text-white hover:opacity-90"
                 onClick={handlePublish}
               >
                 <Play className="h-4 w-4" /> Publish
@@ -352,7 +349,7 @@ export default function BrandCampaignDetailPage() {
             </Button>
             <Dialog open={addFundsOpen} onOpenChange={setAddFundsOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-phc-gradient font-semibold text-white shadow-sm hover:opacity-90">
+                <Button className="bg-phc-gradient font-semibold text-white hover:opacity-90">
                   <Plus className="h-4 w-4" /> Add funds
                 </Button>
               </DialogTrigger>
@@ -454,17 +451,25 @@ export default function BrandCampaignDetailPage() {
       </div>
 
       {/* Estimated reach */}
-      <div className="w-full rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
+      <div className="w-full rounded-2xl border border-border bg-card p-5 md:p-6">
         <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <Target className="h-3.5 w-3.5 shrink-0" /> Estimated reach progress
         </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <p className="font-display text-2xl font-extrabold tabular-nums text-foreground md:text-3xl">
-            {formatNumber(Math.round(campaign.campaignViews))}
+            {reachGoal > 0 ? `${reachProgressPct.toFixed(1)}%` : '—'}
           </p>
           <p className="text-sm font-semibold tabular-nums text-blue-600 sm:text-right">
-            {reachProgressPct.toFixed(1)}% of{' '}
-            {reachGoal > 0 ? formatNumber(reachGoal) : '—'} estimated reach
+            {reachGoal > 0 ? (
+              <>
+                {formatNumber(Math.round(campaign.campaignViews))} / {formatNumber(reachGoal)} views
+              </>
+            ) : (
+              <>
+                {formatNumber(Math.round(campaign.campaignViews))} views
+                <span className="block text-xs font-medium text-muted-foreground">No reach goal set</span>
+              </>
+            )}
           </p>
         </div>
         <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
@@ -476,7 +481,7 @@ export default function BrandCampaignDetailPage() {
       </div>
 
       <div className="min-w-0 border-b border-border" role="tablist" aria-label="Campaign sections">
-        <div className="-mx-1 flex gap-0.5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:justify-center sm:gap-1 sm:overflow-x-visible sm:px-0">
+        <div className="grid w-full grid-cols-3">
           <button
             type="button"
             role="tab"
@@ -484,16 +489,16 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'details'}
             onClick={() => setCampaignTab('details')}
             className={cn(
-              'relative flex shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
+              'relative flex min-h-14 w-full items-center justify-center gap-2 px-2 py-3.5 text-center text-xs font-semibold transition-colors sm:text-sm',
               campaignTab === 'details'
                 ? 'text-blue-600'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Shield className="h-4 w-4 shrink-0" />
-            <span>Campaign details</span>
+            <span className="leading-snug">Campaign details</span>
             {campaignTab === 'details' ? (
-              <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-blue-600 sm:left-4 sm:right-4" />
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-blue-600" />
             ) : null}
           </button>
           <button
@@ -503,16 +508,16 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'funds'}
             onClick={() => setCampaignTab('funds')}
             className={cn(
-              'relative flex shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
+              'relative flex min-h-14 w-full items-center justify-center gap-2 px-2 py-3.5 text-center text-xs font-semibold transition-colors sm:text-sm',
               campaignTab === 'funds'
                 ? 'text-blue-600'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Wallet className="h-4 w-4 shrink-0" />
-            <span>Campaign funds</span>
+            <span className="leading-snug">Campaign funds</span>
             {campaignTab === 'funds' ? (
-              <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-blue-600 sm:left-4 sm:right-4" />
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-blue-600" />
             ) : null}
           </button>
           <button
@@ -522,21 +527,21 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'clips'}
             onClick={() => setCampaignTab('clips')}
             className={cn(
-              'relative flex shrink-0 items-center justify-center gap-2 whitespace-nowrap px-3 py-3.5 text-sm font-semibold transition-colors sm:px-4',
+              'relative flex min-h-14 w-full items-center justify-center gap-2 px-2 py-3.5 text-center text-xs font-semibold transition-colors sm:text-sm',
               campaignTab === 'clips'
                 ? 'text-blue-600'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Play className="h-4 w-4 shrink-0" />
-            <span>
+            <span className="leading-snug">
               Submitted clips
-              <span className="ml-1 tabular-nums text-xs font-medium opacity-80">
+              <span className="ml-1 tabular-nums text-[11px] font-medium opacity-80 sm:text-xs">
                 ({submissions.length})
               </span>
             </span>
             {campaignTab === 'clips' ? (
-              <span className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-blue-600 sm:left-4 sm:right-4" />
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-blue-600" />
             ) : null}
           </button>
         </div>
@@ -548,7 +553,7 @@ export default function BrandCampaignDetailPage() {
           role="tabpanel"
           aria-labelledby="campaign-tab-details"
         >
-          <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
+          <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8">
             <div className="flex min-w-0 gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
                 <Megaphone className="h-5 w-5" aria-hidden />
@@ -587,7 +592,7 @@ export default function BrandCampaignDetailPage() {
                 <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-5 sm:justify-end">
                   {campaign.platforms.map((p) => (
                     <div key={p} className="flex flex-col items-center gap-1.5">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-card shadow-sm">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-card">
                         <PlatformIcon platform={p} className="h-7 w-7" />
                       </div>
                       <span className="text-[11px] font-semibold text-muted-foreground">
@@ -618,7 +623,7 @@ export default function BrandCampaignDetailPage() {
             </div>
           </section>
 
-          <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
+          <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8">
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
               <div className="flex min-w-0 gap-4">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
@@ -693,7 +698,7 @@ export default function BrandCampaignDetailPage() {
         </div>
       ) : campaignTab === 'funds' ? (
         <div className="space-y-6" role="tabpanel" aria-labelledby="campaign-tab-funds">
-          <section className="space-y-6 rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
+          <section className="space-y-6 rounded-3xl border border-border bg-card p-6 md:p-8">
             <div className="flex gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
                 <Wallet className="h-6 w-6" aria-hidden />
@@ -701,27 +706,28 @@ export default function BrandCampaignDetailPage() {
               <div className="min-w-0">
                 <h2 className="font-display text-xl font-extrabold tracking-tight md:text-2xl">Campaign funds</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Budget, balances, and your gross rate per 1K views.
+                  Total budget equals available + paid + reserved. Refunding available reduces total budget by that
+                  amount. Gross rate is what you pay per 1K views.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-border bg-card p-5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950/45 dark:text-blue-300">
                   <Wallet className="h-5 w-5" aria-hidden />
                 </div>
-                <p className="mt-4 text-xs font-medium text-muted-foreground">Total brand budget</p>
+                <p className="mt-4 text-xs font-medium text-muted-foreground">Total budget</p>
                 <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-foreground">
                   {formatPHP(campaign.budget, { decimals: false })}
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
+              <div className="rounded-2xl border border-border bg-card p-5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-300">
                   <Wallet className="h-5 w-5" aria-hidden />
                 </div>
-                <p className="mt-4 text-xs font-medium text-muted-foreground">Available balance</p>
+                <p className="mt-4 text-xs font-medium text-muted-foreground">Available</p>
                 <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-foreground">
                   {formatPHP(remaining, { decimals: false })}
                 </p>
@@ -738,7 +744,18 @@ export default function BrandCampaignDetailPage() {
                 </Button>
               </div>
 
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-2">
+              <div className="rounded-2xl border border-border bg-card p-5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-950/45 dark:text-violet-300">
+                  <CircleDollarSign className="h-5 w-5" aria-hidden />
+                </div>
+                <p className="mt-4 text-xs font-medium text-muted-foreground">Paid</p>
+                <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-foreground">
+                  {formatPHP(paidOut, { decimals: false })}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">Already released to creators</p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-card p-5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950/45 dark:text-orange-300">
                   <Clock className="h-5 w-5" aria-hidden />
                 </div>
@@ -748,26 +765,16 @@ export default function BrandCampaignDetailPage() {
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">Pending weekly payout lines</p>
               </div>
+            </div>
 
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm lg:col-span-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-950/45 dark:text-violet-300">
-                  <TrendingUp className="h-5 w-5" aria-hidden />
-                </div>
-                <p className="mt-4 text-xs font-medium text-muted-foreground">Gross rate</p>
-                <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-foreground">
-                  {formatPHP(brandHeadlineRatePer1k(campaign), { decimals: false })} / 1K views
-                </p>
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-950/45 dark:text-teal-300">
+                <TrendingUp className="h-5 w-5" aria-hidden />
               </div>
-
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:col-span-2 lg:col-span-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100 text-sky-600 dark:bg-sky-950/45 dark:text-sky-300">
-                  <Eye className="h-5 w-5" aria-hidden />
-                </div>
-                <p className="mt-4 text-xs font-medium text-muted-foreground">Verified views (submissions)</p>
-                <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-foreground">
-                  {formatViews(totalViews)}
-                </p>
-              </div>
+              <p className="mt-4 text-xs font-medium text-muted-foreground">Gross rate</p>
+              <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-foreground">
+                {formatPHP(brandHeadlineRatePer1k(campaign), { decimals: false })} / 1K views
+              </p>
             </div>
 
             <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/90 px-4 py-3 text-sm text-muted-foreground dark:border-blue-900/50 dark:bg-blue-950/30">
@@ -787,9 +794,9 @@ export default function BrandCampaignDetailPage() {
               <DialogHeader>
                 <DialogTitle>Refund available balance?</DialogTitle>
                 <DialogDescription>
-                  This returns your full net spendable balance ({formatPHP(remaining, { decimals: false })}) to your
-                  brand wallet in this demo. Reserved funds and amounts already paid out are not included. Total brand
-                  budget will be reduced by the gross portion that funded this pool (after intake fee).
+                  This returns your available balance ({formatPHP(remaining, { decimals: false })}) to your brand
+                  wallet in this demo. Paid and reserved amounts stay put. Total budget becomes paid + reserved after this
+                  refund.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2 sm:gap-0">
@@ -953,7 +960,7 @@ export default function BrandCampaignDetailPage() {
                 <p className="mt-1 text-sm text-muted-foreground">Creators will start submitting soon.</p>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+              <div className="overflow-hidden rounded-3xl border border-border bg-card">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[640px] text-sm md:text-base">
                     <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground md:text-sm">
@@ -1041,11 +1048,6 @@ export default function BrandCampaignDetailPage() {
           </section>
         </div>
       )}
-
-      <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-muted/60 px-4 py-3 text-center text-xs text-muted-foreground sm:text-sm">
-        <Lock className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-        <span>Only approved creators can view and participate in this campaign.</span>
-      </div>
 
       <Dialog
         open={releasePayoutsModalOpen}

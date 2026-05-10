@@ -28,6 +28,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -66,6 +67,7 @@ export default function ClipperCampaignDetailPage() {
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [platform, setPlatform] = useState<Platform>('tiktok')
+  const [tikTokYellowBasket, setTikTokYellowBasket] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const connectedPlatforms = platformLinks
     .filter((link) => link.status === 'connected')
@@ -121,6 +123,7 @@ export default function ClipperCampaignDetailPage() {
       clipperName: user?.name ?? 'You',
       url: url.trim(),
       platform,
+      ...(platform === 'tiktok' ? { hasTikTokYellowBasket: tikTokYellowBasket } : {}),
       views: 0,
       viewsPaidThrough: 0,
       deltaViews: 0,
@@ -133,6 +136,7 @@ export default function ClipperCampaignDetailPage() {
     setSubmitting(false)
     setOpen(false)
     setUrl('')
+    setTikTokYellowBasket(false)
     navigate('/clipper/clips')
   }
 
@@ -148,7 +152,7 @@ export default function ClipperCampaignDetailPage() {
       </div>
 
       {/* Campaign summary — mirrors brand layout; creators only see Submit */}
-      <div className="min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+      <div className="min-w-0 rounded-2xl border border-border bg-card p-6 md:p-8">
         <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
             <div
@@ -167,7 +171,7 @@ export default function ClipperCampaignDetailPage() {
               {campaign.description}
             </p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-4">
-              <div className="min-w-0 max-w-full rounded-2xl border-2 border-blue-200/90 bg-linear-to-br from-blue-50/95 to-sky-50/80 px-5 py-4 shadow-sm dark:border-blue-800/60 dark:from-blue-950/50 dark:to-sky-950/40">
+              <div className="min-w-0 max-w-full rounded-2xl border-2 border-blue-200/90 bg-linear-to-br from-blue-50/95 to-sky-50/80 px-5 py-4 dark:border-blue-800/60 dark:from-blue-950/50 dark:to-sky-950/40">
                 <p className="text-[11px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
                   Your rate
                 </p>
@@ -200,9 +204,15 @@ export default function ClipperCampaignDetailPage() {
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 lg:pt-1">
-            <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog
+              open={open}
+              onOpenChange={(next) => {
+                setOpen(next)
+                if (!next) setTikTokYellowBasket(false)
+              }}
+            >
               <DialogTrigger asChild>
-                <Button size="lg" className="bg-phc-gradient font-semibold text-white shadow-sm hover:opacity-90">
+                <Button size="lg" className="bg-phc-gradient font-semibold text-white hover:opacity-90">
                   <Send className="h-4 w-4" />
                   Submit clip
                 </Button>
@@ -224,7 +234,14 @@ export default function ClipperCampaignDetailPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Platform</Label>
-                    <Select value={platform} onValueChange={(v) => setPlatform(v as Platform)}>
+                    <Select
+                      value={platform}
+                      onValueChange={(v) => {
+                        const p = v as Platform
+                        setPlatform(p)
+                        if (p !== 'tiktok') setTikTokYellowBasket(false)
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -237,6 +254,24 @@ export default function ClipperCampaignDetailPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {platform === 'tiktok' ? (
+                    <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
+                      <Checkbox
+                        id="tiktok-yellow-basket"
+                        checked={tikTokYellowBasket}
+                        onCheckedChange={(checked) => setTikTokYellowBasket(checked === true)}
+                        className="mt-0.5"
+                      />
+                      <div className="min-w-0 space-y-1">
+                        <label
+                          htmlFor="tiktok-yellow-basket"
+                          className="cursor-pointer text-sm font-medium leading-snug text-foreground"
+                        >
+                          This content has yellow basket
+                        </label>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
                     {connectedPlatforms.includes(platform)
                       ? `${PLATFORM_LABEL[platform]} is already connected on your profile, so this submit reuses it.`
@@ -264,16 +299,25 @@ export default function ClipperCampaignDetailPage() {
       </div>
 
       {/* Estimated reach — same pattern as brand */}
-      <div className="min-w-0 w-full rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
+      <div className="min-w-0 w-full rounded-2xl border border-border bg-card p-5 md:p-6">
         <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <Target className="h-3.5 w-3.5 shrink-0" /> Estimated reach progress
         </p>
         <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <p className="min-w-0 font-display text-2xl font-extrabold tabular-nums text-foreground md:text-3xl">
-            {formatNumber(Math.round(campaign.campaignViews))}
+            {reachGoal > 0 ? `${reachProgressPct.toFixed(1)}%` : '—'}
           </p>
           <p className="min-w-0 wrap-break-word text-sm font-semibold tabular-nums text-blue-600 sm:max-w-[min(100%,24rem)] sm:text-right">
-            {reachProgressPct.toFixed(1)}% of {reachGoal > 0 ? formatNumber(reachGoal) : '—'} estimated reach
+            {reachGoal > 0 ? (
+              <>
+                {formatNumber(Math.round(campaign.campaignViews))} / {formatNumber(reachGoal)} views
+              </>
+            ) : (
+              <>
+                {formatNumber(Math.round(campaign.campaignViews))} views
+                <span className="block text-xs font-medium text-muted-foreground">No reach goal set</span>
+              </>
+            )}
           </p>
         </div>
         <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
@@ -289,7 +333,7 @@ export default function ClipperCampaignDetailPage() {
         role="region"
         aria-label="Campaign details and rules"
       >
-        <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
+        <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8">
           <div className="flex min-w-0 gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
               <Megaphone className="h-5 w-5" aria-hidden />
@@ -328,7 +372,7 @@ export default function ClipperCampaignDetailPage() {
               <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-5 sm:justify-end">
                 {campaign.platforms.map((p) => (
                   <div key={p} className="flex flex-col items-center gap-1.5">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-card shadow-sm">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-card">
                       <PlatformIcon platform={p} className="h-7 w-7" />
                     </div>
                     <span className="text-[11px] font-semibold text-muted-foreground">{PLATFORM_LABEL[p]}</span>
@@ -357,7 +401,7 @@ export default function ClipperCampaignDetailPage() {
           </div>
         </section>
 
-        <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm md:p-8">
+        <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8">
           <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
             <div className="flex min-w-0 gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">

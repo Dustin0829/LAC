@@ -185,7 +185,11 @@ export default function ClipperDashboardPage() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis dataKey="period" stroke="currentColor" className="text-xs text-muted-foreground" />
-              <YAxis stroke="currentColor" className="text-xs text-muted-foreground" />
+              <YAxis
+                stroke="currentColor"
+                className="text-xs text-muted-foreground"
+                tickFormatter={(v) => formatPHP(Number(v), { decimals: false })}
+              />
               <Tooltip
                 contentStyle={{
                   background: 'white',
@@ -304,7 +308,7 @@ export default function ClipperDashboardPage() {
               <Link
                 key={c.id}
                 to={`/clipper/campaigns/${c.id}`}
-                className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-4 transition-all hover:border-foreground/20 hover:shadow-md"
+                className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-foreground/20"
               >
                 <div
                   className={`h-14 w-14 shrink-0 rounded-xl bg-linear-to-br ${c.brandLogoColor} text-white flex items-center justify-center font-display font-extrabold text-xl`}

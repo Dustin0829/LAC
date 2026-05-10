@@ -20,8 +20,11 @@ import {
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { useClipsStore } from '@/lib/stores/clipsStore'
-import { mockBrandPerformance } from '@/lib/mockData'
-import { formatPHP, formatViews } from '@/lib/utils'
+import {
+  mockBrandPerformanceMonthly,
+  mockBrandPerformanceYearly,
+} from '@/lib/mockData'
+import { formatPHP, formatViews, formatNumber } from '@/lib/utils'
 import { StatCard } from '@/components/StatCard'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,24 +37,13 @@ import {
 import { ClipStatusBadge } from '@/components/ClipStatusBadge'
 import { PlatformIcon } from '@/components/PlatformIcon'
 
-type PerformanceRange = 'weekly' | 'monthly' | 'yearly'
+type PerformanceRange = 'monthly' | 'yearly'
 
-function sliceBrandPerformance(range: PerformanceRange) {
-  if (range === 'weekly') return mockBrandPerformance.slice(-2)
-  if (range === 'monthly') return mockBrandPerformance.slice(-4)
-  return mockBrandPerformance
-}
-
-/** Chart rows: `period` is the x-axis tick; it updates with the range slice (e.g. W3–W6 for monthly). */
 function chartRowsForRange(range: PerformanceRange) {
-  return sliceBrandPerformance(range).map((row) => ({
-    ...row,
-    period: row.week,
-  }))
+  return range === 'monthly' ? mockBrandPerformanceMonthly : mockBrandPerformanceYearly
 }
 
 const performanceRangeLabel: Record<PerformanceRange, string> = {
-  weekly: 'Weekly',
   monthly: 'Monthly',
   yearly: 'Yearly',
 }
@@ -67,7 +59,8 @@ export default function BrandDashboardPage() {
   const clips = useClipsStore((s) => s.clips)
   const active = campaigns.filter((c) => c.status === 'active')
   const totalSpent = campaigns.reduce((s, c) => s + c.spent, 0)
-  const totalReached = mockBrandPerformance[mockBrandPerformance.length - 1]?.views ?? 0
+  const totalReached =
+    mockBrandPerformanceMonthly[mockBrandPerformanceMonthly.length - 1]?.views ?? 0
   const avgCostPerView =
     totalReached > 0 ? totalSpent / totalReached : null
   const recentClips = useMemo(
@@ -86,9 +79,6 @@ export default function BrandDashboardPage() {
     <div className="min-w-0 space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
-          <p className="inline-flex items-center gap-1.5 rounded-full bg-phc-gradient-soft px-3 py-1 text-xs font-medium">
-            Brand Owner
-          </p>
           <h1 className="mt-3 font-display text-3xl md:text-4xl font-extrabold tracking-tight">
             Hey {user?.name?.split(' ')[0] || 'Brand'}, your campaigns are{' '}
             <span className="text-phc-gradient">flying.</span>
@@ -109,7 +99,7 @@ export default function BrandDashboardPage() {
           accent="violet"
         />
         <StatCard
-          label="Total Spent"
+          label="Total Paid"
           value={formatPHP(totalSpent, { decimals: false })}
           icon={Wallet}
           accent="emerald"
@@ -129,7 +119,7 @@ export default function BrandDashboardPage() {
       </div>
 
       {/* Performance chart */}
-      <div className="rounded-3xl border border-border bg-card p-6">
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-none">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="font-display text-xl font-extrabold">Campaign performance</h2>
@@ -145,7 +135,6 @@ export default function BrandDashboardPage() {
               <SelectValue placeholder="Date range" />
             </SelectTrigger>
             <SelectContent align="end">
-              <SelectItem value="weekly">Weekly</SelectItem>
               <SelectItem value="monthly">Monthly</SelectItem>
               <SelectItem value="yearly">Yearly</SelectItem>
             </SelectContent>
@@ -153,7 +142,7 @@ export default function BrandDashboardPage() {
         </div>
         <div className="h-72 w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%" key={performanceRange}>
-            <AreaChart data={performanceChartData} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
+            <AreaChart data={performanceChartData} margin={{ top: 12, right: 8, left: -10, bottom: 8 }}>
               <defs>
                 <linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.28} />
@@ -166,7 +155,11 @@ export default function BrandDashboardPage() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis dataKey="period" stroke="currentColor" className="text-xs" />
-              <YAxis stroke="currentColor" className="text-xs" />
+              <YAxis
+                stroke="currentColor"
+                className="text-xs"
+                tickFormatter={(v) => formatNumber(Number(v))}
+              />
               <Tooltip
                 contentStyle={{
                   background: 'white',

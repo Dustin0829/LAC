@@ -57,9 +57,8 @@ export default function BrandAccountPage() {
 
       <section className="rounded-3xl border border-border bg-card p-6 md:p-8">
         <div className="space-y-8">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-            <div className="flex flex-col items-center gap-3 sm:items-start">
-              <Avatar className="h-24 w-24 rounded-2xl">
+             <div className="flex flex-col">
+              <Avatar className="h-24 w-24 rounded-2xl outline-1 outline-border mb-4">
                 <AvatarImage src={profile.logoDataUrl ?? undefined} className="rounded-2xl object-cover" />
                 <AvatarFallback className="rounded-2xl bg-phc-gradient font-display text-2xl font-bold text-white">
                   {fallbackLetter}
@@ -83,7 +82,7 @@ export default function BrandAccountPage() {
                 ) : null}
               </div>
             </div>
-
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
             <div className="min-w-0 flex-1 space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="brand-name">Brand name</Label>
