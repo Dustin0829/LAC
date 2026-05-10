@@ -6,7 +6,7 @@
 
 ## Sign-in (creator)
 
-1. Creators complete [Auth & sign-in](02-auth-and-signin.md): email, verification, then choose **Creator** → we route them to **creator** home.
+1. Creators complete [Auth & sign-in](02-auth-and-signin.md): **email** (verification) or **Google**, then choose **Creator** → we route them to **creator** home.
 2. **Email** is required; **name** when we have it (e.g. from Google). We collect **payout** fields when they set up how they get paid.
 3. **TikTok/Meta OAuth** isn’t part of email sign-in. They connect in settings or the first time they submit ([Connect TikTok and Meta](#connect-tiktok-and-meta)).
 

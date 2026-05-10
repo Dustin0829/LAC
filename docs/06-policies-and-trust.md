@@ -39,7 +39,8 @@ Shared defaults for product, ops, finance.
 
 | Topic | Decision |
 |--------|-----------|
-| **Minimum fund to go active** | **PHP 10,000** **spendable** (85% net after 15% on deposits) — not gross invoice unless we document otherwise |
+| **Payout form — create campaign** | **Brand rate per 1,000 views (₱):** minimum **PHP 50**. **Total budget (₱):** minimum **PHP 10,000** — [Brand flow](04-brand-flow.md#payout-create-campaign) |
+| **Minimum fund to go active** | **PHP 10,000** **spendable** in the campaign pool (85% of what clears from deposits after the **15%** platform fee). Independent of the **Total budget** field minimum above; a brand may need to **fund or top up** until spendable hits this floor to **Publish** |
 | **Campaign balance hits zero** | **Auto-pause** — no new submissions; creators see inactive until top-up. **Included** lines still pay on **next** monthly cycle |
 | **Payout cadence** | **Monthly**. Brand **reviews and confirms** batch before send. **No** weekly package; **no** unattended sweep |
 | **View settlement** | Pay from **locked snapshot at submit**. Later growth or corrections **do not** change pay |

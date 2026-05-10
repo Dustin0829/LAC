@@ -6,7 +6,7 @@
 
 ## Sign-in (brand)
 
-1. Brands complete [Auth & sign-in](02-auth-and-signin.md): email, verification, then choose **Brand** → we route them to **brand** home.
+1. Brands complete [Auth & sign-in](02-auth-and-signin.md): **email** (verification) or **Google**, then choose **Brand** → we route them to **brand** home.
 2. **Email** is required; **name** if the provider supplies it.
 3. Brands don’t connect TikTok or Meta OAuth in MVP — in the product they **fund**, **review**, and **reject to exclude** only.
 
@@ -78,7 +78,7 @@ flowchart TD
 | **Description** | Required before **Publish** |
 | **Rules** | Required before **Publish**; **auto-check** at submit vs these rules ([Submit flow](03-creator-flow.md#the-submit-flow-detailed)) |
 | **Assets** | Required before **Publish** — files/links makers need |
-| **Funds** | **Gross** PHP per 1k + payments; **spendable** after 15% ([Revenue](01-business-model.md#where-arpify-makes-money-two-streams)). Creators see **default headline** = 80% of gross on campaign list/detail ([Copy](README.md#voice-positioning-and-naming-copywriting)); **TikTok yellow basket** rows settle at **50%** creator share of gross performance on that submission ([Creator flow](03-creator-flow.md#tiktok-yellow-basket-submit)). May fund in **Draft** |
+| **Funds** | **Gross** PHP per 1k + payments; **spendable** after 15% ([Revenue](01-business-model.md#where-arpify-makes-money-two-streams)). Creators see **default headline** = 80% of gross on campaign list/detail ([Copy](README.md#voice-positioning-and-naming-copywriting)); **TikTok yellow basket** rows settle at **50%** creator share of gross performance on that submission ([Creator flow](03-creator-flow.md#tiktok-yellow-basket-submit)). May fund in **Draft**. **Payout** step minimums: [Payout (create campaign)](#payout-create-campaign) |
 | **Links** | Optional — reference posts, product pages, tracking URLs |
 | **End / Goal** | **One** mode: run until **goal** or **spendable runs out** or brand closes. MVP default goal = spendable exhausted. Optional hard caps (views/spend) can be a later addition |
 | **Platforms** | **One or both** of Facebook and TikTok (**≥1** to publish). Submissions only from enabled platforms; creator must have a **working** OAuth for that platform ([Creator OAuth](03-creator-flow.md#connect-tiktok-and-meta)). **No** other platforms in MVP |
@@ -91,6 +91,17 @@ flowchart TD
 - After publish, edits depend on policy. **Rate locked at publish** — change rate ⇒ **new campaign**.
 
 **Not in MVP for brands:** deep ROI analytics, big org features, weekly payout review, platforms other than FB/TikTok. **Refunds** of **available**: yes ([Brand refunds](01-business-model.md#brand-refunds-available-only)).
+
+### Payout (create campaign)
+
+**Payout** section on **create / edit campaign** (the brand-facing **gross** fields):
+
+| Field | Minimum |
+|-------|---------|
+| **Brand rate per 1,000 views (₱)** | **PHP 50** |
+| **Total budget (₱)** | **PHP 10,000** |
+
+Validation should block saving or publishing below these thresholds (product rules). **Publish** also requires **spendable** pool rules in [Launch policies](06-policies-and-trust.md#launch-policies) (after the **15%** platform fee on deposits).
 
 ---
 
