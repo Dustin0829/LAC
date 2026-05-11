@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   Lock,
   Megaphone,
   Monitor,
+  Plug,
   Send,
   Shield,
   Sparkles,
@@ -17,8 +18,9 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
-import { useClipsStore } from '@/lib/stores/clipsStore'
+import { useContentStore } from '@/lib/stores/contentStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
+import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import { useAuth } from '@/lib/hooks/use-auth'
 import {
   Dialog,
@@ -39,14 +41,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { PlatformIcon } from '@/components/PlatformIcon'
-import { cn, formatPHP, formatDate, formatNumber } from '@/lib/utils'
+import { cn, formatPHP, formatDate, formatNumber, formatViews } from '@/lib/utils'
 import {
   creatorHeadlineRatePer1k,
   PLATFORM_LABEL,
   type Platform,
 } from '@/lib/mockData'
 
-function isValidClipUrl(value: string): boolean {
+function isValidContentUrl(value: string): boolean {
   try {
     const u = new URL(value)
     return (u.protocol === 'http:' || u.protocol === 'https:') && Boolean(u.hostname)
@@ -55,13 +57,42 @@ function isValidClipUrl(value: string): boolean {
   }
 }
 
-export default function ClipperCampaignDetailPage() {
+/** 50% vs 80% creator share of gross performance → multiply headline ₱/1k by 5/8 */
+const YELLOW_BASKET_RATE_FACTOR = 0.625
+
+function mockPostViewsForDemoUrl(url: string): number {
+  const lower = url.toLowerCase()
+  if (lower.includes('demo-low') || lower.includes('lowviews')) return 800
+  return 12_400
+}
+
+function effectiveCreatorRatePer1k(
+  basePer1k: number,
+  platform: Platform,
+  yellowBasket: boolean
+): number {
+  if (platform === 'tiktok' && yellowBasket) {
+    return Math.round(basePer1k * YELLOW_BASKET_RATE_FACTOR * 100) / 100
+  }
+  return basePer1k
+}
+
+type LinkValidationPhase = 'idle' | 'validating' | 'ready' | 'below_quota'
+
+type FetchedSnapshot = {
+  views: number
+  likes: number
+  comments: number
+}
+
+export default function CreatorCampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === id))
-  const addClip = useClipsStore((s) => s.addClip)
+  const addContent = useContentStore((s) => s.addContent)
   const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
   const connectPlatform = useCreatorProfileStore((s) => s.connectPlatform)
+  const payoutMethods = usePaymentMethodsStore((s) => s.methods)
   const { user } = useAuth()
 
   const [open, setOpen] = useState(false)
@@ -69,16 +100,25 @@ export default function ClipperCampaignDetailPage() {
   const [platform, setPlatform] = useState<Platform>('tiktok')
   const [tikTokYellowBasket, setTikTokYellowBasket] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [linkPhase, setLinkPhase] = useState<LinkValidationPhase>('idle')
+  const [snapshot, setSnapshot] = useState<FetchedSnapshot | null>(null)
   const connectedPlatforms = platformLinks
     .filter((link) => link.status === 'connected')
     .map((link) => link.platform)
+  const hasPayoutMethod = payoutMethods.length > 0
+  const platformConnected = connectedPlatforms.includes(platform)
+
+  useEffect(() => {
+    if (!campaign) return
+    setPlatform((p) => (campaign.platforms.includes(p) ? p : campaign.platforms[0] ?? 'tiktok'))
+  }, [campaign])
 
   if (!campaign) {
     return (
       <div className="py-20 text-center">
         <p className="font-display text-lg font-bold">Campaign not found</p>
         <Button asChild variant="outline" className="mt-4">
-          <Link to="/clipper/campaigns">Back to campaigns</Link>
+          <Link to="/creator/campaigns">Back to campaigns</Link>
         </Button>
       </div>
     )
@@ -97,54 +137,102 @@ export default function ClipperCampaignDetailPage() {
   } as const
   const statusUi = statusVisual[campaign.status]
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!url.trim() || !campaign) return
-    if (!isValidClipUrl(url.trim())) {
-      toast.error('Paste a full clip link starting with https:// (e.g. TikTok or Facebook).')
+  function resetSubmitModal() {
+    setUrl('')
+    setTikTokYellowBasket(false)
+    setLinkPhase('idle')
+    setSnapshot(null)
+    setSubmitting(false)
+  }
+
+  function handleConnectOnly() {
+    connectPlatform(platform)
+    toast.success(`${PLATFORM_LABEL[platform]} connected`, {
+      description: 'Paste your content link below, then validate before submitting.',
+    })
+  }
+
+  async function handleValidateLink() {
+    if (!campaign || !hasPayoutMethod || !platformConnected) return
+    const trimmed = url.trim()
+    if (!isValidContentUrl(trimmed)) {
+      toast.error('Paste a full content link starting with https:// (e.g. TikTok or Facebook).')
       return
     }
     if (!campaign.platforms.includes(platform)) {
-      toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} clips.`)
+      toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
       return
     }
-    if (!connectedPlatforms.includes(platform)) {
-      connectPlatform(platform)
-      toast.success(`${PLATFORM_LABEL[platform]} connected for future submissions.`)
+    setLinkPhase('validating')
+    await new Promise((r) => setTimeout(r, 550))
+    const views = mockPostViewsForDemoUrl(trimmed)
+    const likes = Math.max(0, Math.round(views * 0.032))
+    const comments = Math.max(0, Math.round(views * 0.0012))
+    setSnapshot({ views, likes, comments })
+    if (views <= 1_000) {
+      setLinkPhase('below_quota')
+      toast.error('This post is below the 1,000 views minimum for this campaign.')
+    } else {
+      setLinkPhase('ready')
+      toast.success('Link looks good — review the snapshot, then submit.')
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!url.trim() || !campaign) return
+    if (!hasPayoutMethod) {
+      toast.error('Add a payout method in Account before submitting.')
+      return
+    }
+    if (!platformConnected) {
+      toast.error(`Connect ${PLATFORM_LABEL[platform]} first.`)
+      return
+    }
+    if (linkPhase !== 'ready' || !snapshot || snapshot.views <= 1_000) {
+      toast.error('Validate the link and confirm it meets the 1k views minimum.')
+      return
+    }
+    if (!isValidContentUrl(url.trim())) {
+      toast.error('Paste a full content link starting with https:// (e.g. TikTok or Facebook).')
+      return
+    }
+    if (!campaign.platforms.includes(platform)) {
+      toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
+      return
+    }
+    const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, tikTokYellowBasket)
+    const earnings = Math.round((snapshot.views / 1_000) * rate * 100) / 100
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 600))
-    addClip({
-      id: `clip-${Date.now()}`,
+    await new Promise((r) => setTimeout(r, 500))
+    addContent({
+      id: `content-${Date.now()}`,
       campaignId: campaign.id,
       campaignTitle: campaign.title,
       brandName: campaign.brandName,
-      clipperId: 'me',
-      clipperName: user?.name ?? 'You',
+      creatorId: 'me',
+      creatorName: user?.name ?? 'You',
       url: url.trim(),
       platform,
       ...(platform === 'tiktok' ? { hasTikTokYellowBasket: tikTokYellowBasket } : {}),
-      views: 0,
-      viewsPaidThrough: 0,
-      deltaViews: 0,
-      earnings: 0,
+      views: snapshot.views,
+      earnings,
       status: 'pending',
       submittedAt: new Date().toISOString(),
       thumbnailColor: campaign.coverColor,
     })
-    toast.success('Clip submitted! Brand review comes first, then verified views can accrue.')
+    toast.success('Content submitted! Stats are locked at this snapshot; brand review comes next.')
     setSubmitting(false)
     setOpen(false)
-    setUrl('')
-    setTikTokYellowBasket(false)
-    navigate('/clipper/clips')
+    resetSubmitModal()
+    navigate('/creator/content')
   }
 
   return (
     <div className="min-w-0 max-w-full space-y-8 rounded-2xl bg-muted/35 px-4 py-6 sm:px-5 sm:py-8 md:-mx-2 md:px-6">
       <div>
         <Link
-          to="/clipper/campaigns"
+          to="/creator/campaigns"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> All campaigns
@@ -208,38 +296,43 @@ export default function ClipperCampaignDetailPage() {
               open={open}
               onOpenChange={(next) => {
                 setOpen(next)
-                if (!next) setTikTokYellowBasket(false)
+                if (!next) resetSubmitModal()
               }}
             >
               <DialogTrigger asChild>
                 <Button size="lg" className="bg-phc-gradient font-semibold text-white hover:opacity-90">
                   <Send className="h-4 w-4" />
-                  Submit clip
+                  Submit content
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Submit a clip</DialogTitle>
+                  <DialogTitle>Submit content</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="clip-url">Clip URL</Label>
-                    <Input
-                      id="clip-url"
-                      placeholder="https://www.tiktok.com/@you/video/..."
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      autoFocus
-                    />
-                  </div>
+                  {!hasPayoutMethod ? (
+                    <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-50">
+                      <p className="font-medium">Payout method required</p>
+                      <p className="mt-1 text-xs leading-relaxed opacity-90">
+                        Add a default payout route before you can submit content.
+                      </p>
+                      <Button asChild variant="outline" size="sm" className="mt-3">
+                        <Link to="/creator/account">Go to account</Link>
+                      </Button>
+                    </div>
+                  ) : null}
+
                   <div className="space-y-1.5">
                     <Label>Platform</Label>
                     <Select
                       value={platform}
+                      disabled={!hasPayoutMethod}
                       onValueChange={(v) => {
                         const p = v as Platform
                         setPlatform(p)
                         if (p !== 'tiktok') setTikTokYellowBasket(false)
+                        setLinkPhase('idle')
+                        setSnapshot(null)
                       }}
                     >
                       <SelectTrigger>
@@ -253,42 +346,168 @@ export default function ClipperCampaignDetailPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      TikTok and Facebook each need their own link to your account — connect the one
+                      you are submitting for.
+                    </p>
                   </div>
-                  {platform === 'tiktok' ? (
-                    <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
-                      <Checkbox
-                        id="tiktok-yellow-basket"
-                        checked={tikTokYellowBasket}
-                        onCheckedChange={(checked) => setTikTokYellowBasket(checked === true)}
-                        className="mt-0.5"
-                      />
-                      <div className="min-w-0 space-y-1">
-                        <label
-                          htmlFor="tiktok-yellow-basket"
-                          className="cursor-pointer text-sm font-medium leading-snug text-foreground"
-                        >
-                          This content has yellow basket
-                        </label>
+
+                  {!hasPayoutMethod ? null : !platformConnected ? (
+                    <div className="space-y-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
+                      <p className="text-sm text-foreground">
+                        Connect <strong>{PLATFORM_LABEL[platform]}</strong> (OAuth) before you paste a
+                        content link. This is separate from submitting.
+                      </p>
+                      <Button
+                        type="button"
+                        className="w-full bg-phc-gradient text-white hover:opacity-90"
+                        onClick={handleConnectOnly}
+                      >
+                        <Plug className="h-4 w-4" />
+                        Connect {PLATFORM_LABEL[platform]}
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="content-url">Content URL</Label>
+                        <Input
+                          id="content-url"
+                          placeholder="https://www.tiktok.com/@you/video/..."
+                          value={url}
+                          autoFocus
+                          onChange={(e) => {
+                            setUrl(e.target.value)
+                            setLinkPhase('idle')
+                            setSnapshot(null)
+                          }}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Demo: include <code className="rounded bg-muted px-1">demo-low</code> in the URL
+                          to simulate below 1k views.
+                        </p>
                       </div>
+                      {platform === 'tiktok' ? (
+                        <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
+                          <Checkbox
+                            id="tiktok-yellow-basket"
+                            checked={tikTokYellowBasket}
+                            onCheckedChange={(checked) => {
+                              setTikTokYellowBasket(checked === true)
+                              setLinkPhase('idle')
+                              setSnapshot(null)
+                            }}
+                            className="mt-0.5"
+                          />
+                          <div className="min-w-0 space-y-1">
+                            <label
+                              htmlFor="tiktok-yellow-basket"
+                              className="cursor-pointer text-sm font-medium leading-snug text-foreground"
+                            >
+                              This content has yellow basket
+                            </label>
+                          </div>
+                        </div>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full"
+                        disabled={linkPhase === 'validating' || !url.trim()}
+                        onClick={() => void handleValidateLink()}
+                      >
+                        {linkPhase === 'validating' ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Checking link…
+                          </>
+                        ) : (
+                          'Validate link'
+                        )}
+                      </Button>
+                    </>
+                  )}
+
+                  {linkPhase === 'below_quota' && snapshot ? (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+                      {formatViews(snapshot.views)} views — needs more than 1,000 to submit for this
+                      campaign.
+                    </p>
+                  ) : null}
+
+                  {linkPhase === 'ready' && snapshot ? (
+                    <div className="space-y-3 rounded-xl border border-border bg-card p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Locked snapshot preview
+                      </p>
+                      <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                        <div>
+                          <p className="font-display font-extrabold tabular-nums">
+                            {formatViews(snapshot.views)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Views</p>
+                        </div>
+                        <div>
+                          <p className="font-display font-extrabold tabular-nums">
+                            {formatNumber(snapshot.likes)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Likes</p>
+                        </div>
+                        <div>
+                          <p className="font-display font-extrabold tabular-nums">
+                            {formatNumber(snapshot.comments)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Comments</p>
+                        </div>
+                      </div>
+                      <p className="text-center text-sm font-semibold text-foreground">
+                        Est. payout at submit:{' '}
+                        <span className="text-phc-gradient tabular-nums">
+                          {formatPHP(
+                            Math.round((snapshot.views / 1_000) * effectiveCreatorRatePer1k(creatorRatePer1k, platform, tikTokYellowBasket) * 100) / 100,
+                            { decimals: false }
+                          )}
+                        </span>
+                      </p>
+                      {platform === 'tiktok' && tikTokYellowBasket ? (
+                        <p className="text-center text-[11px] text-muted-foreground">
+                          Yellow basket split (50/50 on performance) applied to this estimate.
+                        </p>
+                      ) : null}
+                      <p className="text-center text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                        Rules check passed (demo)
+                      </p>
                     </div>
                   ) : null}
-                  <div className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
-                    {connectedPlatforms.includes(platform)
-                      ? `${PLATFORM_LABEL[platform]} is already connected on your profile, so this submit reuses it.`
-                      : `Demo will connect ${PLATFORM_LABEL[platform]} once, save it on your profile, and reuse it next time.`}{' '}
-                    Brand review happens before verified views accrue.
-                  </div>
+
+                  {linkPhase === 'ready' ? (
+                    <div className="rounded-xl border border-violet-200/80 bg-violet-50/90 px-3 py-3 text-xs leading-relaxed text-violet-950 dark:border-violet-900/40 dark:bg-violet-950/35 dark:text-violet-100">
+                      <p className="font-semibold">Content retention</p>
+                      <p className="mt-1 opacity-95">
+                        Your stats lock in when you submit. Keep this post public until the later of
+                        campaign end or one full month after submission. Deleting or hiding it early
+                        can mean forfeiting earnings for this content.
+                      </p>
+                    </div>
+                  ) : null}
+
                   <Button
                     type="submit"
                     className="w-full bg-phc-gradient text-white hover:opacity-90"
-                    disabled={submitting}
+                    disabled={
+                      submitting ||
+                      !hasPayoutMethod ||
+                      !platformConnected ||
+                      linkPhase !== 'ready'
+                    }
                   >
                     {submitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : connectedPlatforms.includes(platform) ? (
-                      'Submit clip'
                     ) : (
-                      `Connect ${PLATFORM_LABEL[platform]} & submit`
+                      <>
+                        <Send className="h-4 w-4" />
+                        Submit &amp; lock snapshot
+                      </>
                     )}
                   </Button>
                 </form>
@@ -341,7 +560,7 @@ export default function ClipperCampaignDetailPage() {
             <div className="min-w-0">
               <h2 className="font-display text-xl font-extrabold tracking-tight">Campaign details</h2>
               <p className="mt-1 wrap-break-word text-sm leading-relaxed text-muted-foreground">
-                Where you can post clips for this campaign.
+                Where you can post content for this campaign.
               </p>
             </div>
           </div>
@@ -391,7 +610,7 @@ export default function ClipperCampaignDetailPage() {
                 The more engaging your content, the higher your payout.
               </p>
               <p className="mt-0.5 wrap-break-word text-sm leading-snug text-violet-800/90 dark:text-violet-200/90">
-                Focus on creativity, authenticity, and high-quality clips.
+                Focus on creativity, authenticity, and high-quality content.
               </p>
             </div>
             <TrendingUp
@@ -477,7 +696,7 @@ export default function ClipperCampaignDetailPage() {
                 rel="noreferrer"
                 className="mt-3 flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border bg-muted/30 px-4 py-3 transition-colors hover:bg-muted"
               >
-                <span className="min-w-0 wrap-break-word font-medium">Sample reference clip</span>
+                <span className="min-w-0 wrap-break-word font-medium">Sample reference content</span>
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
             ) : null}

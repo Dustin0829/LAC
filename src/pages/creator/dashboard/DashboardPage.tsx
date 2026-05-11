@@ -18,12 +18,12 @@ import {
   CartesianGrid,
 } from 'recharts'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { useClipsStore } from '@/lib/stores/clipsStore'
+import { useContentStore } from '@/lib/stores/contentStore'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { creatorHeadlineRatePer1k, mockEarningsTrend } from '@/lib/mockData'
 import { formatPHP, formatViews } from '@/lib/utils'
 import { StatCard } from '@/components/StatCard'
-import { ClipStatusBadge } from '@/components/ClipStatusBadge'
+import { ContentStatusBadge } from '@/components/ContentStatusBadge'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { Button } from '@/components/ui/button'
 import {
@@ -62,13 +62,13 @@ const earningsRangeLabel: Record<PerformanceRange, string> = {
   yearly: 'Yearly',
 }
 
-export default function ClipperDashboardPage() {
+export default function CreatorDashboardPage() {
   const { user } = useAuth()
   const firstName = user?.name?.split(' ')[0] || 'there'
-  const allClips = useClipsStore((s) => s.clips)
-  const clips = useMemo(
-    () => allClips.filter((clip) => clip.clipperId === 'me'),
-    [allClips]
+  const allContent = useContentStore((s) => s.contents)
+  const contents = useMemo(
+    () => allContent.filter((content) => content.creatorId === 'me'),
+    [allContent]
   )
   const campaigns = useCampaignsStore((s) => s.campaigns)
   const [earningsRange, setEarningsRange] = useState<PerformanceRange>('monthly')
@@ -80,23 +80,23 @@ export default function ClipperDashboardPage() {
   )
   const rangeEarningsTotal = earningsChartData.reduce((s, row) => s + row.earnings, 0)
 
-  const totalEarnings = clips.reduce((sum, c) => sum + c.earnings, 0)
-  const totalViews = clips.reduce((sum, c) => sum + c.views, 0)
-  const activeClipsCount = clips.filter((c) => c.status !== 'rejected').length
+  const totalEarnings = contents.reduce((sum, c) => sum + c.earnings, 0)
+  const totalViews = contents.reduce((sum, c) => sum + c.views, 0)
+  const activeContentCount = contents.filter((c) => c.status !== 'rejected').length
   const recent = useMemo(
     () =>
-      [...clips]
+      [...contents]
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
         .slice(0, 5),
-    [clips]
+    [contents]
   )
   const featured = campaigns.filter((c) => c.status === 'active').slice(0, 3)
 
-  function openAttention(clip: (typeof clips)[number]) {
-    const body = [clip.rejectionReason, clip.trustFlag].filter(Boolean).join('\n\n')
+  function openAttention(content: (typeof contents)[number]) {
+    const body = [content.rejectionReason, content.trustFlag].filter(Boolean).join('\n\n')
     if (!body.trim()) return
     const title =
-      clip.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
+      content.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
     setAttention({ title, body })
   }
 
@@ -110,7 +110,7 @@ export default function ClipperDashboardPage() {
             Creator
           </p>
           <h1 className="mt-3 font-display text-3xl md:text-4xl font-extrabold tracking-tight">
-            {clips.length === 0 ? (
+            {contents.length === 0 ? (
               <>
                 Welcome, <span className="text-phc-gradient">{firstName}</span>!
               </>
@@ -123,10 +123,10 @@ export default function ClipperDashboardPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
-            <Link to="/clipper/clips">My clips</Link>
+            <Link to="/creator/content">My content</Link>
           </Button>
           <Button asChild className="bg-phc-gradient text-white hover:opacity-90">
-            <Link to="/clipper/campaigns">Browse campaigns</Link>
+            <Link to="/creator/campaigns">Browse campaigns</Link>
           </Button>
         </div>
       </div>
@@ -140,7 +140,7 @@ export default function ClipperDashboardPage() {
           accent="violet"
         />
         <StatCard label="Total views" value={formatViews(totalViews)} icon={Eye} accent="pink" />
-        <StatCard label="Active clips" value={activeClipsCount} icon={Scissors} accent="orange" />
+        <StatCard label="Active content" value={activeContentCount} icon={Scissors} accent="orange" />
       </div>
 
       {/* Earnings chart */}
@@ -178,7 +178,7 @@ export default function ClipperDashboardPage() {
           <ResponsiveContainer width="100%" height="100%" key={earningsRange}>
             <AreaChart data={earningsChartData} margin={{ top: 5, right: 8, left: -10, bottom: 0 }}>
               <defs>
-                <linearGradient id="clipperEarningsFill" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="creatorEarningsFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.32} />
                   <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
                 </linearGradient>
@@ -203,28 +203,28 @@ export default function ClipperDashboardPage() {
                 dataKey="earnings"
                 stroke="#3B82F6"
                 strokeWidth={3}
-                fill="url(#clipperEarningsFill)"
+                fill="url(#creatorEarningsFill)"
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Recent clips */}
+      {/* Recent content */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-xl font-extrabold">Recent clips</h2>
-          <Link to="/clipper/clips" className="text-sm font-semibold text-phc-gradient">
+          <h2 className="font-display text-xl font-extrabold">Recent content</h2>
+          <Link to="/creator/content" className="text-sm font-semibold text-phc-gradient">
             View all <ArrowUpRight className="inline h-3.5 w-3.5" />
           </Link>
         </div>
         {recent.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
             <Scissors className="mx-auto h-10 w-10 text-muted-foreground" />
-            <p className="mt-3 font-medium">No clips yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">Browse campaigns and submit your first clip.</p>
+            <p className="mt-3 font-medium">No content yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">Browse campaigns and submit your first content.</p>
             <Button asChild className="mt-4 bg-phc-gradient text-white">
-              <Link to="/clipper/campaigns">Browse campaigns</Link>
+              <Link to="/creator/campaigns">Browse campaigns</Link>
             </Button>
           </div>
         ) : (
@@ -235,46 +235,46 @@ export default function ClipperDashboardPage() {
                   <th className="px-5 py-3 font-medium">Campaign</th>
                   <th className="px-5 py-3 font-medium">Platform</th>
                   <th className="px-5 py-3 font-medium">Views</th>
-                  <th className="px-5 py-3 font-medium">Earnings</th>
+                  <th className="px-5 py-3 font-medium">Earned</th>
                   <th className="px-5 py-3 font-medium">Status</th>
                   <th className="px-5 py-3 w-24 text-center font-medium">Warning</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {recent.map((clip) => {
-                  const hasAttention = Boolean(clip.trustFlag || clip.rejectionReason)
+                {recent.map((content) => {
+                  const hasAttention = Boolean(content.trustFlag || content.rejectionReason)
                   return (
-                    <tr key={clip.id} className="transition-colors hover:bg-muted/30">
+                    <tr key={content.id} className="transition-colors hover:bg-muted/30">
                       <td className="max-w-0 px-5 py-4">
                         <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          {clip.brandName}
+                          {content.brandName}
                         </p>
-                        <p className="truncate font-medium text-foreground" title={clip.campaignTitle}>
-                          {clip.campaignTitle}
+                        <p className="truncate font-medium text-foreground" title={content.campaignTitle}>
+                          {content.campaignTitle}
                         </p>
                       </td>
                       <td className="px-5 py-4 align-middle">
                         <div className="flex justify-start">
-                          <PlatformIcon platform={clip.platform} className="h-7 w-7" />
+                          <PlatformIcon platform={content.platform} className="h-7 w-7" />
                         </div>
                       </td>
                       <td className="px-5 py-4 font-display font-bold tabular-nums">
-                        {formatViews(clip.views)}
+                        {formatViews(content.views)}
                       </td>
                       <td className="px-5 py-4 font-display font-bold text-phc-gradient tabular-nums">
-                        {formatPHP(clip.earnings, { decimals: false })}
+                        {formatPHP(content.earnings, { decimals: false })}
                       </td>
                       <td className="px-5 py-4">
-                        <ClipStatusBadge status={clip.status} />
+                        <ContentStatusBadge status={content.status} />
                       </td>
                       <td className="px-5 py-4 text-center">
                         {hasAttention ? (
                           <button
                             type="button"
-                            onClick={() => openAttention(clip)}
+                            onClick={() => openAttention(content)}
                             className="inline-flex rounded-full p-1 text-amber-600 transition-colors hover:bg-amber-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             aria-label={
-                              clip.status === 'rejected'
+                              content.status === 'rejected'
                                 ? 'View rejection reason'
                                 : 'View attention note'
                             }
@@ -299,7 +299,7 @@ export default function ClipperDashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-xl font-extrabold">Hot campaigns</h2>
-            <Link to="/clipper/campaigns" className="text-sm font-semibold text-phc-gradient">
+            <Link to="/creator/campaigns" className="text-sm font-semibold text-phc-gradient">
               See all <ArrowUpRight className="inline h-3.5 w-3.5" />
             </Link>
           </div>
@@ -307,7 +307,7 @@ export default function ClipperDashboardPage() {
             {featured.map((c) => (
               <Link
                 key={c.id}
-                to={`/clipper/campaigns/${c.id}`}
+                to={`/creator/campaigns/${c.id}`}
                 className="group flex items-start gap-4 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-foreground/20"
               >
                 <div

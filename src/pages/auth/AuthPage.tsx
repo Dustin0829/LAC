@@ -37,8 +37,8 @@ export default function AuthPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
 
   function afterAuth() {
-    if (role === 'clipper' || role === 'brand') {
-      navigate(role === 'brand' ? '/brand/dashboard' : '/clipper/dashboard', { replace: true })
+    if (role === 'creator' || role === 'brand') {
+      navigate(role === 'brand' ? '/brand/dashboard' : '/creator/dashboard', { replace: true })
     } else {
       navigate('/onboarding/role', { replace: true })
     }

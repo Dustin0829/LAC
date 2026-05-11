@@ -28,7 +28,7 @@ import { paymentLogoSrc } from '@/lib/constants/paymentLogos'
 import {
   PLATFORM_LABEL,
   DEFAULT_REFUNDABLE_PERCENT,
-  getClipperRatePer1k,
+  getCreatorRatePer1k,
   getPlatformFeePercent,
   type Platform,
 } from '@/lib/mockData'
@@ -51,6 +51,9 @@ const DEFAULT_CAMPAIGN_RULES = [
   'Original edits only',
 ]
 
+const MIN_BRAND_RATE_PER_1K = 50
+const MIN_GROSS_BUDGET = 10_000
+
 export default function CreateCampaignPage() {
   const navigate = useNavigate()
   const addCampaign = useCampaignsStore((s) => s.addCampaign)
@@ -58,15 +61,14 @@ export default function CreateCampaignPage() {
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [ratePer1k, setRatePer1k] = useState('10')
+  const [ratePer1k, setRatePer1k] = useState(String(MIN_BRAND_RATE_PER_1K))
   const [budget, setBudget] = useState('20000')
   const [platforms, setPlatforms] = useState<Platform[]>(['tiktok'])
-  const [endDate, setEndDate] = useState(() =>
-    new Date(Date.now() + 30 * 86400000).toISOString()
-  )
+  const [endDate, setEndDate] = useState(() => new Date(Date.now() + 30 * 86400000).toISOString())
   const [endMode, setEndMode] = useState<'fixed' | 'until_goal'>('fixed')
   const [coverImageUrl, setCoverImageUrl] = useState('')
   const [assetPackUrl, setAssetPackUrl] = useState('')
+  const [referenceLinksRaw, setReferenceLinksRaw] = useState('')
   const [rules, setRules] = useState<string[]>(() => [...DEFAULT_CAMPAIGN_RULES])
   const [submitting, setSubmitting] = useState(false)
   const [publishPayOpen, setPublishPayOpen] = useState(false)
@@ -143,12 +145,22 @@ export default function CreateCampaignPage() {
     if (paid) {
       toast.success('Payment confirmed via Xendit. Your campaign is live for creators!')
     } else {
-      toast.error('Payment failed. Your campaign was saved as a draft — try publishing again after funding.')
+      toast.error(
+        'Payment failed. Your campaign was saved as a draft — try publishing again after funding.'
+      )
     }
+  }
+
+  function parseReferenceLinks(): string[] {
+    return referenceLinksRaw
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
   }
 
   function validateCampaignForm(opts: { requirePublishFunding: boolean }): string | null {
     const totalBudget = Number(budget) || 0
+    const brandRate = Number(ratePer1k) || 0
     if (!title.trim() || !description.trim()) return 'Add a title and description.'
     if (platforms.length === 0) return 'Pick at least one platform.'
     if (endMode === 'fixed') {
@@ -162,15 +174,31 @@ export default function CreateCampaignPage() {
     if (!isValidHttpsUrl(assetPackUrl)) {
       return 'Add a valid link for assets (https:// or http://, e.g. Google Drive or Dropbox), or leave it blank.'
     }
-    if (opts.requirePublishFunding && totalBudget * (1 - getPlatformFeePercent()) < 10_000) {
-      return 'Fund at least ₱10,000 net spendable before publishing.'
+    for (const link of parseReferenceLinks()) {
+      if (!isValidHttpsUrl(link)) {
+        return 'Each optional reference link must be a valid http(s) URL (one per line).'
+      }
+    }
+    if (opts.requirePublishFunding) {
+      if (brandRate < MIN_BRAND_RATE_PER_1K) {
+        return `Brand rate must be at least ₱${MIN_BRAND_RATE_PER_1K} per 1,000 views (MVP rule).`
+      }
+      if (totalBudget < MIN_GROSS_BUDGET) {
+        return `Total budget must be at least ₱${MIN_GROSS_BUDGET.toLocaleString('en-PH')} (MVP rule).`
+      }
+      if (!assetPackUrl.trim()) {
+        return 'Add an asset link creators need (Drive, Dropbox, etc.) before publishing.'
+      }
+      if (totalBudget * (1 - getPlatformFeePercent()) < 10_000) {
+        return 'After the 15% platform fee, spendable must be at least ₱10,000 to publish (raise gross budget).'
+      }
     }
     return null
   }
 
   function persistCampaign(status: 'draft' | 'active', totalBudget: number, brandRate: number) {
     const id = `cmp-${Date.now()}`
-    const clipperRate = getClipperRatePer1k(brandRate)
+    const creatorRate = getCreatorRatePer1k(brandRate)
     const platformFeePercent = getPlatformFeePercent()
     const netPool = Math.max(0, Math.round(totalBudget * (1 - platformFeePercent)))
     const platformFee = totalBudget * platformFeePercent
@@ -185,7 +213,7 @@ export default function CreateCampaignPage() {
       title: title.trim(),
       description: description.trim(),
       brandRatePer1k: brandRate,
-      ratePer1k: clipperRate,
+      ratePer1k: creatorRate,
       budget: netPool,
       platformFeePercent,
       refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
@@ -204,6 +232,7 @@ export default function CreateCampaignPage() {
       runsUntilGoal: endMode === 'until_goal',
       rules: rules.map((r) => r.trim()).filter(Boolean),
       assetUrl: assetPackUrl.trim() || undefined,
+      referenceLinks: parseReferenceLinks().length > 0 ? parseReferenceLinks() : undefined,
       coverColor: COVER_COLORS[Math.floor(Math.random() * COVER_COLORS.length)],
       coverImageUrl,
     })
@@ -227,11 +256,13 @@ export default function CreateCampaignPage() {
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
-          <h1 className="mt-3 font-display text-3xl md:text-4xl font-extrabold">
+        <h1 className="mt-3 font-display text-3xl md:text-4xl font-extrabold">
           Create a <span className="text-phc-gradient">campaign</span>
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Save drafts anytime, fund the campaign, then publish once required fields and the ₱10,000 net floor are ready.
+          Save drafts anytime (optional fields can stay empty until you publish). Publishing
+          requires assets, ₱50+/1K rate, ₱10,000+ gross budget, and enough spendable after the 15%
+          platform fee to meet the publish floor.
         </p>
       </div>
 
@@ -248,7 +279,7 @@ export default function CreateCampaignPage() {
               <Label htmlFor="title">Campaign title</Label>
               <Input
                 id="title"
-                placeholder="e.g. Kitchen Glow-Up — Viral Cooking Clips Campaign"
+                placeholder="e.g. Kitchen Glow-Up — Viral Cooking Content Campaign"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -258,13 +289,15 @@ export default function CreateCampaignPage() {
               <Textarea
                 id="description"
                 rows={5}
-                placeholder="e.g. Show how your brand fits everyday routines — authentic clips with stronger engagement earn more."
+                placeholder="e.g. Show how your brand fits everyday routines — authentic content with stronger engagement earn more."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <div className="space-y-3">
-              <span className="text-sm font-medium leading-none text-foreground">Campaign duration</span>
+              <span className="text-sm font-medium leading-none text-foreground">
+                Campaign duration
+              </span>
               <div className="flex flex-col gap-3">
                 <label
                   className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
@@ -280,7 +313,9 @@ export default function CreateCampaignPage() {
                     checked={endMode === 'fixed'}
                     onChange={() => {
                       setEndMode('fixed')
-                      setEndDate((prev) => prev || new Date(Date.now() + 30 * 86400000).toISOString())
+                      setEndDate(
+                        (prev) => prev || new Date(Date.now() + 30 * 86400000).toISOString()
+                      )
                     }}
                   />
                   <span className="text-sm font-semibold">Fixed end date</span>
@@ -317,8 +352,8 @@ export default function CreateCampaignPage() {
                     className="relative h-11 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Example: <span className="font-medium text-foreground">12/31/2026</span> — last day
-                    creators can submit under this campaign.
+                    Example: <span className="font-medium text-foreground">12/31/2026</span> — last
+                    day creators can submit under this campaign.
                   </p>
                 </div>
               ) : null}
@@ -329,8 +364,8 @@ export default function CreateCampaignPage() {
             <div>
               <h2 className="font-display text-xl font-extrabold">Rules for creators</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                These appear on the campaign detail page. Be specific about hashtags, length, tone, and what
-                isn&apos;t allowed.
+                These appear on the campaign detail page. Be specific about hashtags, length, tone,
+                and what isn&apos;t allowed.
               </p>
             </div>
             <div className="space-y-2">
@@ -341,10 +376,10 @@ export default function CreateCampaignPage() {
                     onChange={(e) => updateRule(index, e.target.value)}
                     placeholder={
                       index === 0
-                        ? 'e.g. Clip must be at least 15s — use #YourBrand and tag @yourbrand'
+                        ? 'e.g. Content must be at least 15s — use #YourBrand and tag @yourbrand'
                         : index === 1
                           ? 'e.g. Original audio or licensed music only'
-                          : `Rule ${index + 1} (e.g. No reused or duplicate clips)`
+                          : `Rule ${index + 1} (e.g. No reused or duplicate content)`
                     }
                     className="flex-1 min-w-0"
                   />
@@ -435,7 +470,8 @@ export default function CreateCampaignPage() {
               <div>
                 <h2 className="font-display text-xl font-extrabold">Assets for creators</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Share a link to raw footage, logos, or brand kits (Google Drive, Dropbox, Notion, etc.).
+                  Required before publish — link to raw footage, logos, or brand kits (Google Drive,
+                  Dropbox, Notion, etc.). Drafts can save without this until you publish.
                 </p>
               </div>
             </div>
@@ -454,11 +490,43 @@ export default function CreateCampaignPage() {
           </section>
 
           <section className="rounded-3xl border border-border bg-card p-6 space-y-4">
+            <div className="flex gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-muted text-foreground">
+                <Link2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="font-display text-xl font-extrabold">Optional reference links</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Reference posts, product pages, or tracking URLs. One https URL per line — shown
+                  on the campaign when set.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reference-links">URLs</Label>
+              <Textarea
+                id="reference-links"
+                rows={4}
+                placeholder={
+                  'https://yourbrand.com/product\nhttps://www.tiktok.com/@yourbrand/video/...'
+                }
+                value={referenceLinksRaw}
+                onChange={(e) => setReferenceLinksRaw(e.target.value)}
+                className="resize-y min-h-[100px]"
+              />
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-border bg-card p-6 space-y-4">
             <h2 className="font-display text-xl font-extrabold">Platforms</h2>
             <p className="text-sm text-muted-foreground">
-              Choose where creator clips for this campaign may be posted.
+              Choose where creator content for this campaign may be posted.
             </p>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Platforms">
+            <div
+              className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"
+              role="group"
+              aria-label="Platforms"
+            >
               {PLATFORMS.map((p) => (
                 <label
                   key={p}
@@ -489,22 +557,29 @@ export default function CreateCampaignPage() {
                 <Input
                   id="rate"
                   type="number"
-                  min="0"
-                  placeholder="e.g. 75"
+                  min={MIN_BRAND_RATE_PER_1K}
+                  placeholder={`e.g. ${MIN_BRAND_RATE_PER_1K}`}
                   value={ratePer1k}
                   onChange={(e) => setRatePer1k(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Minimum ₱{MIN_BRAND_RATE_PER_1K} per 1K views to publish (MVP).
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="budget">Total budget (₱)</Label>
                 <Input
                   id="budget"
                   type="number"
-                  min="0"
-                  placeholder="e.g. 50000"
+                  min={MIN_GROSS_BUDGET}
+                  placeholder={`e.g. ${MIN_GROSS_BUDGET.toLocaleString('en-PH')}`}
                   value={budget}
                   onChange={(e) => setBudget(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Minimum gross ₱{MIN_GROSS_BUDGET.toLocaleString('en-PH')} to publish; after the
+                  fee, spendable must meet the ₱10,000 floor.
+                </p>
               </div>
             </div>
           </div>
@@ -528,21 +603,18 @@ export default function CreateCampaignPage() {
               </li>
               <li className="flex justify-between">
                 <span className="text-muted-foreground">Total budget</span>
-                <span className="font-semibold">
-                  {formatPHP(totalBudget, { decimals: false })}
-                </span>
+                <span className="font-semibold">{formatPHP(totalBudget, { decimals: false })}</span>
               </li>
               <li className="flex justify-between">
-                <span className="text-muted-foreground">Intake fee</span>
+                <span className="text-muted-foreground">Platform fee</span>
                 <span className="font-semibold">
-                  {formatPHP(platformFee, { decimals: false })} ({Math.round(platformFeePercent * 100)}%)
+                  {formatPHP(platformFee, { decimals: false })} (
+                  {Math.round(platformFeePercent * 100)}%)
                 </span>
               </li>
               <li className="flex justify-between">
                 <span className="text-muted-foreground">Net spendable pool</span>
-                <span className="font-semibold">
-                  {formatPHP(payoutPool, { decimals: false })}
-                </span>
+                <span className="font-semibold">{formatPHP(payoutPool, { decimals: false })}</span>
               </li>
               <li className="flex justify-between">
                 <span className="text-muted-foreground">Cost / view</span>
@@ -570,7 +642,6 @@ export default function CreateCampaignPage() {
               Publish campaign
             </Button>
           </div>
-
         </aside>
       </form>
 
@@ -579,8 +650,8 @@ export default function CreateCampaignPage() {
           <DialogHeader>
             <DialogTitle>Pay with Xendit to publish</DialogTitle>
             <DialogDescription>
-              Choose how you want to fund this campaign. After a successful payment, the campaign goes live for
-              creators. If payment fails, it is saved as a draft instead.
+              Choose how you want to fund this campaign. After a successful payment, the campaign
+              goes live for creators. If payment fails, it is saved as a draft instead.
             </DialogDescription>
           </DialogHeader>
 
@@ -591,13 +662,17 @@ export default function CreateCampaignPage() {
                 {formatPHP(totalBudget, { decimals: false })}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Net spendable after intake: {formatPHP(payoutPool, { decimals: false })}
+                Net spendable after platform fee: {formatPHP(payoutPool, { decimals: false })}
               </p>
             </div>
 
             <div className="space-y-1.5">
               <Label>Payment method</Label>
-              <Select value={publishPaymentMethod} onValueChange={setPublishPaymentMethod} disabled={publishPayFunding}>
+              <Select
+                value={publishPaymentMethod}
+                onValueChange={setPublishPaymentMethod}
+                disabled={publishPayFunding}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

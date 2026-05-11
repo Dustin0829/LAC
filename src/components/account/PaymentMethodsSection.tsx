@@ -31,7 +31,7 @@ function maskAccount(value: string, kind: PaymentMethod['type'], bankName?: stri
 }
 
 interface PaymentMethodsSectionProps {
-  mode: 'clipper' | 'brand'
+  mode: 'creator' | 'brand'
 }
 
 export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
@@ -49,7 +49,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
   const [accountNumber, setAccountNumber] = useState('')
   const [showAll, setShowAll] = useState(false)
 
-  const clipper = mode === 'clipper'
+  const creator = mode === 'creator'
 
   function resetModal() {
     setStep('choose')
@@ -85,14 +85,14 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
       bank: resolvedType === 'bank' ? bank : undefined,
       isDefault: methods.length === 0,
     })
-    toast.success(clipper ? 'Payout method added.' : 'Funding source added.')
+    toast.success(creator ? 'Payout method added.' : 'Funding source added.')
     closeModal()
   }
 
   function handleSetDefault(id: string) {
     setDefault(id)
     toast.success(
-      clipper
+      creator
         ? 'Default payout method updated. Payouts route here on the weekly schedule (mock).'
         : 'Default funding source updated.'
     )
@@ -101,7 +101,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
   function handleRemove(id: string, e: React.MouseEvent) {
     e.stopPropagation()
     removeMethod(id)
-    toast.success(clipper ? 'Payout method removed.' : 'Funding source removed.')
+    toast.success(creator ? 'Payout method removed.' : 'Funding source removed.')
   }
 
   const overflowing = methods.length > VISIBLE_BEFORE_OVERFLOW && !showAll
@@ -112,10 +112,10 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
       <div className="lg:col-span-1">
         <h2 className="mb-2 font-display text-xl font-extrabold sm:text-2xl">
-          {clipper ? 'Payout methods' : 'Funding sources'}
+          {creator ? 'Payout methods' : 'Funding sources'}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {clipper ? (
+          {creator ? (
             <>
               Weekly payouts are processed every Thursday (mock). Add a verified GCash, Maya, or
               bank account. Select a default so mock disbursements know where to route funds.
@@ -132,10 +132,10 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
       <div className="space-y-4 lg:col-span-2">
         <div className="space-y-4">
           <h3 className="text-base font-semibold text-foreground">
-            {clipper ? 'Your payout methods' : 'Your funding sources'}
+            {creator ? 'Your payout methods' : 'Your funding sources'}
           </h3>
           <p className="-mt-2 text-sm text-muted-foreground">
-            {clipper
+            {creator
               ? 'Tap a method to make it default. Remove with the trash icon.'
               : 'Tap a source to make it default for mock adds. Remove with the trash icon.'}
           </p>
@@ -207,7 +207,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
                 onClick={() => setAddOpen(true)}
               >
                 <Plus className="h-4 w-4" />
-                {clipper ? 'Add another payout method' : 'Add another funding source'}
+                {creator ? 'Add another payout method' : 'Add another funding source'}
               </Button>
             </>
           ) : (
@@ -218,10 +218,10 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
                 className="mt-1 w-full cursor-pointer rounded-2xl border-2 border-dashed border-border bg-muted/30 p-8 text-center transition-colors hover:border-blue-500/40 hover:bg-muted/50"
               >
                 <p className="text-sm font-semibold text-foreground">
-                  {clipper ? 'No payout methods yet' : 'No funding sources yet'}
+                  {creator ? 'No payout methods yet' : 'No funding sources yet'}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {clipper
+                  {creator
                     ? 'Add GCash, Maya, or a bank account to receive payouts (mock).'
                     : 'Add GCash, Maya, or a bank to fund campaigns (mock).'}
                 </p>
@@ -231,7 +231,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
                 className="w-full bg-phc-gradient text-white"
                 onClick={() => setAddOpen(true)}
               >
-                {clipper ? 'Choose payout method' : 'Choose funding source'}
+                {creator ? 'Choose payout method' : 'Choose funding source'}
               </Button>
             </div>
           )}
@@ -248,7 +248,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
             {step === 'choose' ? (
               <>
                 <DialogHeader>
-                  <DialogTitle>{clipper ? 'Add payout method' : 'Add funding source'}</DialogTitle>
+                  <DialogTitle>{creator ? 'Add payout method' : 'Add funding source'}</DialogTitle>
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <button
@@ -378,7 +378,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
                     <Label htmlFor="pm-account-name">Account name</Label>
                     <Input
                       id="pm-account-name"
-                      placeholder={clipper ? 'Juan Dela Cruz' : 'Brand Inc.'}
+                      placeholder={creator ? 'Juan Dela Cruz' : 'Brand Inc.'}
                       value={accountName}
                       onChange={(e) => setAccountName(e.target.value)}
                     />

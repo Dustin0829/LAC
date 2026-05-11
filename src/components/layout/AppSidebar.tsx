@@ -32,18 +32,18 @@ interface NavItem {
   icon: LucideIcon
 }
 
-const CLIPPER_NAV: NavItem[] = [
-  { label: 'Dashboard', to: '/clipper/dashboard', icon: LayoutDashboard },
-  { label: 'Discover', to: '/clipper/campaigns', icon: Compass },
-  { label: 'My Clips', to: '/clipper/clips', icon: Scissors },
-  { label: 'Earnings', to: '/clipper/earnings', icon: Wallet },
-  { label: 'Account', to: '/clipper/account', icon: User },
+const CREATOR_NAV: NavItem[] = [
+  { label: 'Dashboard', to: '/creator/dashboard', icon: LayoutDashboard },
+  { label: 'Discover', to: '/creator/campaigns', icon: Compass },
+  { label: 'My Content', to: '/creator/content', icon: Scissors },
+  { label: 'Earnings', to: '/creator/earnings', icon: Wallet },
+  { label: 'Account', to: '/creator/account', icon: User },
 ]
 
 const BRAND_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/brand/dashboard', icon: LayoutDashboard },
   { label: 'Campaigns', to: '/brand/campaigns', icon: Video },
-  { label: 'Clip submissions', to: '/brand/submissions', icon: ClipboardList },
+  { label: 'Content submissions', to: '/brand/submissions', icon: ClipboardList },
   { label: 'Account', to: '/brand/account', icon: User },
 ]
 
@@ -64,7 +64,7 @@ function getInitials(name?: string, email?: string): string {
 }
 
 export function AppSidebar({ role }: AppSidebarProps) {
-  const navigation = role === 'brand' ? BRAND_NAV : CLIPPER_NAV
+  const navigation = role === 'brand' ? BRAND_NAV : CREATOR_NAV
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -78,9 +78,9 @@ export function AppSidebar({ role }: AppSidebarProps) {
   }
 
   function handleSwitchRole() {
-    const next: UserRole = role === 'brand' ? 'clipper' : 'brand'
+    const next: UserRole = role === 'brand' ? 'creator' : 'brand'
     setRole(next)
-    navigate(next === 'brand' ? '/brand/dashboard' : '/clipper/dashboard', { replace: true })
+    navigate(next === 'brand' ? '/brand/dashboard' : '/creator/dashboard', { replace: true })
     toast.success(`Switched to ${next === 'brand' ? 'Brand' : 'Creator'}`)
   }
 

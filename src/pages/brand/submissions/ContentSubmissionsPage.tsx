@@ -1,18 +1,18 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
-import { ClipStatusBadge } from '@/components/ClipStatusBadge'
+import { ContentStatusBadge } from '@/components/ContentStatusBadge'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { TablePagination } from '@/components/TablePagination'
 import { Button } from '@/components/ui/button'
-import { useClipsStore } from '@/lib/stores/clipsStore'
+import { useContentStore } from '@/lib/stores/contentStore'
 import { formatPHP, formatTimeAgo, formatViews } from '@/lib/utils'
 
 const INBOX_PAGE_SIZE = 10
 
-export default function BrandClipSubmissionsPage() {
-  const clips = useClipsStore((s) => s.clips)
-  const rows = [...clips].sort(
+export default function BrandContentSubmissionsPage() {
+  const contents = useContentStore((s) => s.contents)
+  const rows = [...contents].sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
   )
   const [page, setPage] = useState(1)
@@ -26,17 +26,20 @@ export default function BrandClipSubmissionsPage() {
       <div>
         <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Inbox</p>
         <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold">
-          Clip <span className="text-phc-gradient">submissions</span>
+          Content <span className="text-phc-gradient">submissions</span>
         </h1>
         <p className="mt-2 text-muted-foreground">
-          All clips across your campaigns. Open the campaign to approve, reject, or see full context.
+          All content across your campaigns. Submissions count by default — open a campaign to
+          reject and exclude from pay or review the monthly payout breakdown.
         </p>
       </div>
 
       {rows.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
           <p className="font-medium">No submissions yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Creators will appear here once they post.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Creators will appear here once they post.
+          </p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-border bg-card">
@@ -54,48 +57,48 @@ export default function BrandClipSubmissionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {pageRows.map((clip) => (
+              {pageRows.map((content) => (
                 <tr
-                  key={clip.id}
+                  key={content.id}
                   className="cursor-pointer transition-colors hover:bg-muted/30"
                   tabIndex={0}
-                  aria-label={`Open clip by ${clip.clipperName}`}
-                  onClick={() => window.open(clip.url, '_blank', 'noopener,noreferrer')}
+                  aria-label={`Open content by ${content.creatorName}`}
+                  onClick={() => window.open(content.url, '_blank', 'noopener,noreferrer')}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
-                      window.open(clip.url, '_blank', 'noopener,noreferrer')
+                      window.open(content.url, '_blank', 'noopener,noreferrer')
                     }
                   }}
                 >
                   <td className="px-5 py-4">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{clip.clipperName}</p>
+                      <p className="font-medium truncate">{content.creatorName}</p>
                     </div>
                   </td>
                   <td className="px-5 py-4 hidden sm:table-cell">
-                    <p className="font-medium line-clamp-2">{clip.campaignTitle}</p>
-                    <p className="text-xs text-muted-foreground">{clip.brandName}</p>
+                    <p className="font-medium line-clamp-2">{content.campaignTitle}</p>
+                    <p className="text-xs text-muted-foreground">{content.brandName}</p>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex justify-start">
-                      <PlatformIcon platform={clip.platform} className="h-7 w-7" />
+                      <PlatformIcon platform={content.platform} className="h-7 w-7" />
                     </div>
                   </td>
                   <td className="px-5 py-4 hidden md:table-cell text-muted-foreground">
-                    {formatTimeAgo(clip.submittedAt)}
+                    {formatTimeAgo(content.submittedAt)}
                   </td>
-                  <td className="px-5 py-4 font-display font-bold">{formatViews(clip.views)}</td>
+                  <td className="px-5 py-4 font-display font-bold">{formatViews(content.views)}</td>
                   <td className="px-5 py-4 hidden lg:table-cell font-display font-bold text-phc-gradient">
-                    {formatPHP(clip.earnings, { decimals: false })}
+                    {formatPHP(content.earnings, { decimals: false })}
                   </td>
                   <td className="px-5 py-4">
-                    <ClipStatusBadge status={clip.status} />
+                    <ContentStatusBadge status={content.status} />
                   </td>
                   <td className="px-5 py-4 text-right">
                     <Button variant="outline" size="sm" asChild>
                       <Link
-                        to={`/brand/campaigns/${clip.campaignId}`}
+                        to={`/brand/campaigns/${content.campaignId}`}
                         className="inline-flex items-center gap-1"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}

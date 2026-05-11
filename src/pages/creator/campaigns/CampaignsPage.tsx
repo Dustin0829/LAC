@@ -18,7 +18,7 @@ const SORTS = [
 
 type SortId = (typeof SORTS)[number]['id']
 
-export default function ClipperCampaignsPage() {
+export default function CreatorCampaignsPage() {
   const campaigns = useCampaignsStore((s) => s.campaigns)
   const [query, setQuery] = useState('')
   const [platform, setPlatform] = useState<Platform | 'all'>('all')
@@ -117,7 +117,7 @@ export default function ClipperCampaignsPage() {
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => (
-            <CampaignCard key={c.id} campaign={c} to={`/clipper/campaigns/${c.id}`} />
+            <CampaignCard key={c.id} campaign={c} to={`/creator/campaigns/${c.id}`} />
           ))}
         </div>
       )}

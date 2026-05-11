@@ -11,8 +11,8 @@ import {
   CircleDollarSign,
   XCircle,
 } from 'lucide-react'
-import { useClipsStore } from '@/lib/stores/clipsStore'
-import { ClipStatusBadge } from '@/components/ClipStatusBadge'
+import { useContentStore } from '@/lib/stores/contentStore'
+import { ContentStatusBadge } from '@/components/ContentStatusBadge'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { cn, formatPHP, formatViews, formatTimeAgo } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -23,48 +23,48 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { ClipStatus } from '@/lib/mockData'
+import type { ContentStatus } from '@/lib/mockData'
 
 type AttentionDialog = {
   title: string
   body: string
 }
 
-const TABS: { id: 'all' | ClipStatus; label: string; icon: LucideIcon }[] = [
+const TABS: { id: 'all' | ContentStatus; label: string; icon: LucideIcon }[] = [
   { id: 'all', label: 'All', icon: LayoutGrid },
   { id: 'pending', label: 'Pending', icon: Clock },
   { id: 'paid', label: 'Paid', icon: CircleDollarSign },
   { id: 'rejected', label: 'Rejected', icon: XCircle },
 ]
 
-export default function MyClipsPage() {
-  const allClips = useClipsStore((s) => s.clips)
-  const clips = useMemo(
-    () => allClips.filter((clip) => clip.clipperId === 'me'),
-    [allClips]
+export default function MyContentPage() {
+  const allContent = useContentStore((s) => s.contents)
+  const contents = useMemo(
+    () => allContent.filter((content) => content.creatorId === 'me'),
+    [allContent]
   )
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('all')
   const [attention, setAttention] = useState<AttentionDialog | null>(null)
 
   const filtered = useMemo(() => {
-    if (tab === 'all') return clips
-    return clips.filter((c) => c.status === tab)
-  }, [clips, tab])
+    if (tab === 'all') return contents
+    return contents.filter((c) => c.status === tab)
+  }, [contents, tab])
 
   const counts = useMemo(() => {
     return {
-      all: clips.length,
-      pending: clips.filter((c) => c.status === 'pending').length,
-      paid: clips.filter((c) => c.status === 'paid').length,
-      rejected: clips.filter((c) => c.status === 'rejected').length,
+      all: contents.length,
+      pending: contents.filter((c) => c.status === 'pending').length,
+      paid: contents.filter((c) => c.status === 'paid').length,
+      rejected: contents.filter((c) => c.status === 'rejected').length,
     }
-  }, [clips])
+  }, [contents])
 
-  function openAttention(clip: (typeof clips)[number]) {
-    const body = [clip.rejectionReason, clip.trustFlag].filter(Boolean).join('\n\n')
+  function openAttention(content: (typeof contents)[number]) {
+    const body = [content.rejectionReason, content.trustFlag].filter(Boolean).join('\n\n')
     if (!body.trim()) return
     const title =
-      clip.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
+      content.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
     setAttention({ title, body })
   }
 
@@ -72,18 +72,18 @@ export default function MyClipsPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">My Clips</p>
+          <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">My Content</p>
           <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold">
             Track every <span className="text-phc-gradient">view</span>
           </h1>
         </div>
         <Button asChild className="bg-phc-gradient text-white">
-          <Link to="/clipper/campaigns">Submit a new clip</Link>
+          <Link to="/creator/campaigns">Submit new content</Link>
         </Button>
       </div>
 
       {/* Tabs — scroll on narrow viewports so labels stay full (no ellipsis) */}
-      <div className="min-w-0 border-b border-border" role="tablist" aria-label="Filter clips by status">
+      <div className="min-w-0 border-b border-border" role="tablist" aria-label="Filter content by status">
         <div className="-mx-1 flex gap-0.5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:justify-center sm:gap-1 sm:overflow-x-visible sm:px-0">
           {TABS.map((t) => {
             const isActive = tab === t.id
@@ -94,9 +94,9 @@ export default function MyClipsPage() {
                 key={t.id}
                 type="button"
                 role="tab"
-                id={`clip-tab-${t.id}`}
+                id={`content-tab-${t.id}`}
                 aria-selected={isActive}
-                aria-controls="clip-tabpanel"
+                aria-controls="content-tabpanel"
                 onClick={() => setTab(t.id)}
                 className={cn(
                   'relative flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-3.5 text-xs font-semibold transition-colors sm:gap-2 sm:px-4 sm:text-sm',
@@ -117,18 +117,18 @@ export default function MyClipsPage() {
         </div>
       </div>
 
-      <div id="clip-tabpanel" role="tabpanel" aria-labelledby={`clip-tab-${tab}`}>
+      <div id="content-tabpanel" role="tabpanel" aria-labelledby={`content-tab-${tab}`}>
         {filtered.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border bg-card p-16 text-center">
             <Scissors className="mx-auto h-10 w-10 text-muted-foreground" />
-            <p className="mt-3 font-display text-lg font-bold">No clips here</p>
+            <p className="mt-3 font-display text-lg font-bold">No content here</p>
             <p className="mt-1 text-sm text-muted-foreground">
               {tab === 'all'
-                ? 'Submit your first clip from any active campaign.'
-                : `You don't have any ${tab} clips.`}
+                ? 'Submit your first content from any active campaign.'
+                : `You don't have any ${tab} content.`}
             </p>
             <Button asChild className="mt-4 bg-phc-gradient text-white">
-              <Link to="/clipper/campaigns">Browse campaigns</Link>
+              <Link to="/creator/campaigns">Browse campaigns</Link>
             </Button>
           </div>
         ) : (
@@ -169,68 +169,68 @@ export default function MyClipsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((clip) => {
-                  const hasAttention = Boolean(clip.trustFlag || clip.rejectionReason)
+                {filtered.map((content) => {
+                  const hasAttention = Boolean(content.trustFlag || content.rejectionReason)
                   return (
                     <tr
-                      key={clip.id}
+                      key={content.id}
                       className="border-b border-border last:border-b-0 transition-colors hover:bg-muted/40"
                     >
                       <td className="max-w-0 align-middle px-3 py-4 md:px-4">
                         <div className="min-w-0">
                           <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                            {clip.brandName}
+                            {content.brandName}
                           </p>
-                          <p className="truncate font-medium leading-snug" title={clip.campaignTitle}>
-                            {clip.campaignTitle}
+                          <p className="truncate font-medium leading-snug" title={content.campaignTitle}>
+                            {content.campaignTitle}
                           </p>
                           <a
-                            href={clip.url}
+                            href={content.url}
                             target="_blank"
                             rel="noreferrer"
-                            title={clip.url}
+                            title={content.url}
                             className="mt-0.5 flex min-w-0 items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground"
                           >
-                            <span className="truncate">{clip.url}</span>
+                            <span className="truncate">{content.url}</span>
                             <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
                           </a>
                         </div>
                       </td>
                       <td className="align-middle px-2 py-4">
                         <div className="flex justify-start sm:justify-center">
-                          <PlatformIcon platform={clip.platform} className="h-7 w-7" />
+                          <PlatformIcon platform={content.platform} className="h-7 w-7" />
                         </div>
                       </td>
                       <td className="align-middle px-2 py-4">
                         <p className="flex items-center gap-0.5 font-display text-sm font-bold tabular-nums leading-none">
                           <Eye className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
-                          {formatViews(clip.deltaViews ?? clip.views)}
+                          {formatViews(content.views)}
                         </p>
-                        <p className="mt-0.5 text-[10px] leading-none text-muted-foreground tabular-nums">
-                          Total {formatViews(clip.views)}
+                        <p className="mt-0.5 text-[10px] leading-none text-muted-foreground">
+                          Locked at submit
                         </p>
                       </td>
                       <td className="align-middle px-2 py-4">
                         <span className="font-display text-sm font-bold tabular-nums text-phc-gradient">
-                          {formatPHP(clip.earnings, { decimals: false })}
+                          {formatPHP(content.earnings, { decimals: false })}
                         </span>
                       </td>
                       <td className="align-middle px-2 py-4">
                         <div className="origin-left scale-[0.92]">
-                          <ClipStatusBadge status={clip.status} />
+                          <ContentStatusBadge status={content.status} />
                         </div>
                       </td>
                       <td className="align-middle px-2 py-4 text-xs tabular-nums text-muted-foreground">
-                        {formatTimeAgo(clip.submittedAt)}
+                        {formatTimeAgo(content.submittedAt)}
                       </td>
                       <td className="align-middle py-4 pl-1 pr-3 text-center">
                         {hasAttention ? (
                           <button
                             type="button"
-                            onClick={() => openAttention(clip)}
+                            onClick={() => openAttention(content)}
                             className="inline-flex rounded-full p-1 text-amber-600 transition-colors hover:bg-amber-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             aria-label={
-                              clip.status === 'rejected'
+                              content.status === 'rejected'
                                 ? 'View rejection reason'
                                 : 'View attention note'
                             }

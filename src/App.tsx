@@ -1,24 +1,24 @@
 import { Routes, Route } from 'react-router-dom'
 import { ProtectedRoute } from './components/guards/ProtectedRoute'
 import RootLayout from './layouts/RootLayout'
-import ClipperLayout from './layouts/ClipperLayout'
+import CreatorLayout from './layouts/CreatorLayout'
 import BrandLayout from './layouts/BrandLayout'
 
 import AuthPage from './pages/auth/AuthPage'
 import RoleSelectionPage from './pages/onboarding/RoleSelectionPage'
 
-import ClipperDashboardPage from './pages/clipper/dashboard/DashboardPage'
-import ClipperCampaignsPage from './pages/clipper/campaigns/CampaignsPage'
-import ClipperCampaignDetailPage from './pages/clipper/campaigns/CampaignDetailPage'
-import MyClipsPage from './pages/clipper/clips/MyClipsPage'
-import ClipperEarningsPage from './pages/clipper/earnings/EarningsPage'
-import ClipperAccountPage from './pages/clipper/account/AccountPage'
+import CreatorDashboardPage from './pages/creator/dashboard/DashboardPage'
+import CreatorCampaignsPage from './pages/creator/campaigns/CampaignsPage'
+import CreatorCampaignDetailPage from './pages/creator/campaigns/CampaignDetailPage'
+import MyContentPage from './pages/creator/content/MyContentPage'
+import CreatorEarningsPage from './pages/creator/earnings/EarningsPage'
+import CreatorAccountPage from './pages/creator/account/AccountPage'
 
 import BrandDashboardPage from './pages/brand/dashboard/DashboardPage'
 import BrandCampaignsPage from './pages/brand/campaigns/CampaignsPage'
 import CreateCampaignPage from './pages/brand/campaigns/CreateCampaignPage'
 import BrandCampaignDetailPage from './pages/brand/campaigns/CampaignDetailPage'
-import BrandClipSubmissionsPage from './pages/brand/submissions/ClipSubmissionsPage'
+import BrandContentSubmissionsPage from './pages/brand/submissions/ContentSubmissionsPage'
 import BrandAccountPage from './pages/brand/account/AccountPage'
 
 function App() {
@@ -47,19 +47,19 @@ function App() {
 
         {/* Creator area */}
         <Route
-          path="clipper"
+          path="creator"
           element={
-            <ProtectedRoute requiredRole="clipper">
-              <ClipperLayout />
+            <ProtectedRoute requiredRole="creator">
+              <CreatorLayout />
             </ProtectedRoute>
           }
         >
-          <Route path="dashboard" element={<ClipperDashboardPage />} />
-          <Route path="campaigns" element={<ClipperCampaignsPage />} />
-          <Route path="campaigns/:id" element={<ClipperCampaignDetailPage />} />
-          <Route path="clips" element={<MyClipsPage />} />
-          <Route path="earnings" element={<ClipperEarningsPage />} />
-          <Route path="account" element={<ClipperAccountPage />} />
+          <Route path="dashboard" element={<CreatorDashboardPage />} />
+          <Route path="campaigns" element={<CreatorCampaignsPage />} />
+          <Route path="campaigns/:id" element={<CreatorCampaignDetailPage />} />
+          <Route path="content" element={<MyContentPage />} />
+          <Route path="earnings" element={<CreatorEarningsPage />} />
+          <Route path="account" element={<CreatorAccountPage />} />
         </Route>
 
         {/* Brand area */}
@@ -72,7 +72,7 @@ function App() {
           }
         >
           <Route path="dashboard" element={<BrandDashboardPage />} />
-          <Route path="submissions" element={<BrandClipSubmissionsPage />} />
+          <Route path="submissions" element={<BrandContentSubmissionsPage />} />
           <Route path="campaigns" element={<BrandCampaignsPage />} />
           <Route path="campaigns/new" element={<CreateCampaignPage />} />
           <Route path="campaigns/:id" element={<BrandCampaignDetailPage />} />

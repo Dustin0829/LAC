@@ -15,7 +15,7 @@ function AuthLoading() {
 
 function landingForRole(role: UserRole | null) {
   if (role === 'brand') return '/brand/dashboard'
-  if (role === 'clipper') return '/clipper/dashboard'
+  if (role === 'creator') return '/creator/dashboard'
   return '/onboarding/role'
 }
 

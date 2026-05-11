@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ClipStatusBadge } from '@/components/ClipStatusBadge'
+import { ContentStatusBadge } from '@/components/ContentStatusBadge'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { StatCard } from '@/components/StatCard'
 import {
@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { mockEarningsTrend, PLATFORM_LABEL } from '@/lib/mockData'
-import { useClipsStore } from '@/lib/stores/clipsStore'
+import { useContentStore } from '@/lib/stores/contentStore'
 import { formatDate, formatPHP, formatViews } from '@/lib/utils'
 import { Clock, Scissors, Wallet } from 'lucide-react'
 import {
@@ -44,25 +44,25 @@ const chartRangeLabel: Record<ChartRange, string> = {
   yearly: 'Yearly',
 }
 
-export default function ClipperEarningsPage() {
-  const allClips = useClipsStore((s) => s.clips)
-  const clips = useMemo(
-    () => allClips.filter((clip) => clip.clipperId === 'me'),
-    [allClips]
+export default function CreatorEarningsPage() {
+  const allContent = useContentStore((s) => s.contents)
+  const contents = useMemo(
+    () => allContent.filter((content) => content.creatorId === 'me'),
+    [allContent]
   )
   const [chartRange, setChartRange] = useState<ChartRange>('monthly')
 
   const barChartData = useMemo(() => barChartRowsForRange(chartRange), [chartRange])
   const rangeBarTotal = barChartData.reduce((s, row) => s + row.earnings, 0)
 
-  const totalEarned = clips.reduce((s, c) => s + c.earnings, 0)
-  const paidTotal = clips
+  const totalEarned = contents.reduce((s, c) => s + c.earnings, 0)
+  const paidTotal = contents
     .filter((c) => c.status === 'paid')
     .reduce((s, c) => s + c.earnings, 0)
   const unpaidTotal = Math.max(0, totalEarned - paidTotal)
-  const ongoingSubmissionCount = clips.filter((c) => c.status === 'pending').length
+  const ongoingSubmissionCount = contents.filter((c) => c.status === 'pending').length
 
-  const recentTransactions = [...clips]
+  const recentTransactions = [...contents]
     .filter((c) => c.status === 'paid' || (c.status === 'pending' && c.reviewedAt))
     .sort(
       (a, b) =>
@@ -84,7 +84,7 @@ export default function ClipperEarningsPage() {
         <StatCard
           label="Ongoing Submission"
           value={ongoingSubmissionCount}
-          hint="Clips in review or accruing"
+          hint="Content in review or accruing"
           icon={Scissors}
           accent="violet"
         />
@@ -106,9 +106,9 @@ export default function ClipperEarningsPage() {
       <div className="rounded-3xl border border-border bg-card p-6">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="font-display text-xl font-extrabold">Weekly earnings</h2>
+            <h2 className="font-display text-xl font-extrabold">Earnings trend</h2>
             <p className="text-sm text-muted-foreground">
-              Mock payout windows · {chartRangeLabel[chartRange]}
+              Mock accrual windows · {chartRangeLabel[chartRange]}
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -168,8 +168,8 @@ export default function ClipperEarningsPage() {
               <tr>
                 <th className="px-6 py-3 font-medium">Campaign</th>
                 <th className="px-6 py-3 font-medium">Platform</th>
-                <th className="px-6 py-3 font-medium hidden sm:table-cell">Delta views</th>
-                <th className="px-6 py-3 font-medium">Amount</th>
+                <th className="px-6 py-3 font-medium hidden sm:table-cell">Views</th>
+                <th className="px-6 py-3 font-medium">Earned</th>
                 <th className="px-6 py-3 font-medium">Status</th>
                 <th className="px-6 py-3 font-medium hidden md:table-cell">Date</th>
               </tr>
@@ -189,17 +189,14 @@ export default function ClipperEarningsPage() {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 hidden sm:table-cell">
-                    {formatViews(c.deltaViews ?? c.views)}
-                    <p className="text-[11px] text-muted-foreground">
-                      paid through {formatViews(c.viewsPaidThrough ?? 0)}
-                    </p>
+                  <td className="px-6 py-4 hidden sm:table-cell tabular-nums">
+                    {formatViews(c.views)}
                   </td>
                   <td className="px-6 py-4 font-display font-bold tabular-nums text-phc-gradient">
                     {formatPHP(c.earnings, { decimals: false })}
                   </td>
                   <td className="px-6 py-4">
-                    <ClipStatusBadge status={c.status} />
+                    <ContentStatusBadge status={c.status} />
                   </td>
                   <td className="px-6 py-4 hidden md:table-cell tabular-nums text-muted-foreground">
                     {formatDate(c.paidAt ?? c.reviewedAt ?? c.submittedAt)}

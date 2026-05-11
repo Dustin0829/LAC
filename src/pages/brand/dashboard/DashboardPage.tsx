@@ -19,7 +19,7 @@ import {
 } from 'recharts'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
-import { useClipsStore } from '@/lib/stores/clipsStore'
+import { useContentStore } from '@/lib/stores/contentStore'
 import {
   mockBrandPerformanceMonthly,
   mockBrandPerformanceYearly,
@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ClipStatusBadge } from '@/components/ClipStatusBadge'
+import { ContentStatusBadge } from '@/components/ContentStatusBadge'
 import { PlatformIcon } from '@/components/PlatformIcon'
 
 type PerformanceRange = 'monthly' | 'yearly'
@@ -56,23 +56,21 @@ export default function BrandDashboardPage() {
     [performanceRange]
   )
   const campaigns = useCampaignsStore((s) => s.campaigns)
-  const clips = useClipsStore((s) => s.clips)
-  const active = campaigns.filter((c) => c.status === 'active')
+  const contents = useContentStore((s) => s.contents)
   const totalSpent = campaigns.reduce((s, c) => s + c.spent, 0)
-  const totalReached =
-    mockBrandPerformanceMonthly[mockBrandPerformanceMonthly.length - 1]?.views ?? 0
+  const totalReached = mockBrandPerformanceMonthly.reduce((sum, row) => sum + row.views, 0)
   const avgCostPerView =
     totalReached > 0 ? totalSpent / totalReached : null
-  const recentClips = useMemo(
+  const recentContent = useMemo(
     () =>
-      [...clips]
+      [...contents]
         .filter((c) => c.status === 'pending' || c.status === 'rejected')
         .sort(
           (a, b) =>
             new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
         )
         .slice(0, 5),
-    [clips]
+    [contents]
   )
 
   return (
@@ -93,13 +91,13 @@ export default function BrandDashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Active Campaigns"
-          value={active.length}
+          label="Total Campaigns"
+          value={campaigns.length}
           icon={Video}
           accent="violet"
         />
         <StatCard
-          label="Total Paid"
+          label="Total Spent"
           value={formatPHP(totalSpent, { decimals: false })}
           icon={Wallet}
           accent="emerald"
@@ -124,7 +122,8 @@ export default function BrandDashboardPage() {
           <div>
             <h2 className="font-display text-xl font-extrabold">Campaign performance</h2>
             <p className="text-sm text-muted-foreground">
-              Views & payout · {performanceRangeLabel[performanceRange]}
+              High-level views and payout accrual (MVP — not deep ROI analytics).{' '}
+              {performanceRangeLabel[performanceRange]}
             </p>
           </div>
           <Select
@@ -212,38 +211,38 @@ export default function BrandDashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {recentClips.map((clip) => (
+              {recentContent.map((content) => (
                 <tr
-                  key={clip.id}
+                  key={content.id}
                   className="cursor-pointer transition-colors hover:bg-muted/30"
                   tabIndex={0}
-                  aria-label={`Open clip by ${clip.clipperName}`}
-                  onClick={() => window.open(clip.url, '_blank', 'noopener,noreferrer')}
+                  aria-label={`Open content by ${content.creatorName}`}
+                  onClick={() => window.open(content.url, '_blank', 'noopener,noreferrer')}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
-                      window.open(clip.url, '_blank', 'noopener,noreferrer')
+                      window.open(content.url, '_blank', 'noopener,noreferrer')
                     }
                   }}
                 >
                   <td className="px-5 py-4">
-                    <p className="font-medium">{clip.clipperName}</p>
+                    <p className="font-medium">{content.creatorName}</p>
                   </td>
                   <td className="px-5 py-4 align-middle">
                     <div className="flex min-h-14 items-center gap-3">
-                      <PlatformIcon platform={clip.platform} className="h-7 w-7" />
+                      <PlatformIcon platform={content.platform} className="h-7 w-7" />
                       <span className="font-medium">
-                        {clip.platform === 'tiktok' ? 'TikTok' : 'Facebook'}
+                        {content.platform === 'tiktok' ? 'TikTok' : 'Facebook'}
                       </span>
                     </div>
                   </td>
-                  <td className="px-5 py-4 hidden md:table-cell">{clip.campaignTitle}</td>
-                  <td className="px-5 py-4 font-display font-bold">{formatViews(clip.views)}</td>
+                  <td className="px-5 py-4 hidden md:table-cell">{content.campaignTitle}</td>
+                  <td className="px-5 py-4 font-display font-bold">{formatViews(content.views)}</td>
                   <td className="px-5 py-4 font-display font-bold text-phc-gradient">
-                    {formatPHP(clip.earnings, { decimals: false })}
+                    {formatPHP(content.earnings, { decimals: false })}
                   </td>
                   <td className="px-5 py-4">
-                    <ClipStatusBadge status={clip.status} />
+                    <ContentStatusBadge status={content.status} />
                   </td>
                 </tr>
               ))}

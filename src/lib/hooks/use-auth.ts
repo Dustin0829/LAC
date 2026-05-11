@@ -6,7 +6,7 @@ export function useAuth() {
   const loading = useAuthStore((s) => s.loading)
 
   const isAuthenticated = Boolean(user)
-  const hasRole = role === 'clipper' || role === 'brand'
+  const hasRole = role === 'creator' || role === 'brand'
 
   return {
     user,
@@ -14,7 +14,7 @@ export function useAuth() {
     loading,
     isAuthenticated,
     hasRole,
-    isClipper: role === 'clipper',
+    isCreator: role === 'creator',
     isBrand: role === 'brand',
   }
 }

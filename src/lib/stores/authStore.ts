@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type UserRole = 'clipper' | 'brand'
+export type UserRole = 'creator' | 'brand'
 
 export type AuthUser = {
   id: string
@@ -56,7 +56,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = userRaw ? (JSON.parse(userRaw) as AuthUser) : null
       set({
         user,
-        role: role === 'clipper' || role === 'brand' ? role : null,
+        role: role === 'creator' || role === 'brand' ? role : null,
         loading: false,
       })
     } catch {

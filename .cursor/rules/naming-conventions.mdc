@@ -1,5 +1,5 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Naming Conventions
@@ -22,11 +22,11 @@ Follow these conventions for all new and renamed files and constants.
 
 ### API query hooks (`src/api/queries/`)
 
-| Scope | Folder | File name | Exported hook (examples) |
-| --- | --- | --- | --- |
-| **Shared** (auth, utilities) | `queries/` root | `use-<feature>.ts` | `useAuthSync`, `useAuthMe` |
-| **Clipper** | `queries/clipper/` | `use-<feature>.ts` | `useClipperDashboard` (from `use-dashboard.ts`) |
-| **Brand** | `queries/brand/` | `use-<feature>.ts` | `useBrandDashboard` (from `use-dashboard.ts`) |
+| Scope                        | Folder             | File name          | Exported hook (examples)                        |
+| ---------------------------- | ------------------ | ------------------ | ----------------------------------------------- |
+| **Shared** (auth, utilities) | `queries/` root    | `use-<feature>.ts` | `useAuthSync`, `useAuthMe`                      |
+| **Clipper**                  | `queries/clipper/` | `use-<feature>.ts` | `useClipperDashboard` (from `use-dashboard.ts`) |
+| **Brand**                    | `queries/brand/`   | `use-<feature>.ts` | `useBrandDashboard` (from `use-dashboard.ts`)   |
 
 Rules:
 
@@ -36,22 +36,22 @@ Rules:
 
 ## API services (`src/api/services/`)
 
-| Scope | Example path | File name |
-| --- | --- | --- |
-| Shared | `services/auth.ts`, `services/campaigns.ts` | `<domain>.ts` or existing name |
-| Clipper | `services/clipper/dashboard.ts` | kebab-case or short domain: `dashboard.ts`, `submissions.ts` |
-| Brand | `services/brand/dashboard.ts` | same as clipper |
+| Scope   | Example path                                | File name                                                    |
+| ------- | ------------------------------------------- | ------------------------------------------------------------ |
+| Shared  | `services/auth.ts`, `services/campaigns.ts` | `<domain>.ts` or existing name                               |
+| Clipper | `services/clipper/dashboard.ts`             | kebab-case or short domain: `dashboard.ts`, `submissions.ts` |
+| Brand   | `services/brand/dashboard.ts`               | same as clipper                                              |
 
 - **Functions:** `camelCase` — `getClipperDashboard`, `postAuthSync`.
 - Do **not** prefix the filename with `clipper-` or `brand-` when it already sits under `clipper/` or `brand/`.
 
 ## API types (`src/api/types/`)
 
-| Scope | Example path |
-| --- | --- |
-| Shared | `types/global.types.ts`, `types/auth.types.ts`, `types/campaign.types.ts` |
-| Clipper | `types/clipper/dashboard.types.ts` |
-| Brand | `types/brand/profile.types.ts` |
+| Scope   | Example path                                                              |
+| ------- | ------------------------------------------------------------------------- |
+| Shared  | `types/global.types.ts`, `types/auth.types.ts`, `types/campaign.types.ts` |
+| Clipper | `types/clipper/dashboard.types.ts`                                        |
+| Brand   | `types/brand/profile.types.ts`                                            |
 
 - **File name:** `<feature>.types.ts` (kebab-case or camelCase **feature** segment; be consistent with existing files in the same folder).
 - **Type names:** PascalCase — `ClipperDashboardData`, `AuthMeData`.
@@ -103,17 +103,17 @@ Rules:
 
 ## Quick Reference
 
-| Type | Convention | Example |
-| --- | --- | --- |
-| Page / layout / component (`.tsx`, except `components/ui`) | PascalCase | `CampaignsPage.tsx` |
-| API query file (shared) | `use-<kebab>.ts` at `api/queries/` | `use-auth.ts` |
-| API query file (clipper/brand) | `use-<kebab>.ts` under `api/queries/clipper/` or `brand/` | `clipper/use-dashboard.ts` |
-| API service (clipper/brand) | `<domain>.ts` under `api/services/clipper/` | `clipper/dashboard.ts` |
-| API types (clipper/brand) | `<feature>.types.ts` under `api/types/clipper/` | `clipper/dashboard.types.ts` |
-| Hook files (app, `lib/hooks`) | `use-<kebab>.ts` | `use-auth.ts` |
-| Type modules | `<name>.types.ts` | `auth.types.ts` |
-| Utility / logic (`.ts`) | camelCase | `mockData.ts` |
-| Domain helpers (`lib/campaigns/`, etc.) | camelCase | `createCampaignPayload.ts` |
-| Constants | UPPER_SNAKE_CASE | `MAX_RETRIES` |
-| Folders | lowercase / kebab-case | `brand`, `clipper` |
-| Assets (images, icons) | kebab-case | `security-bank.svg` |
+| Type                                                       | Convention                                                | Example                      |
+| ---------------------------------------------------------- | --------------------------------------------------------- | ---------------------------- |
+| Page / layout / component (`.tsx`, except `components/ui`) | PascalCase                                                | `CampaignsPage.tsx`          |
+| API query file (shared)                                    | `use-<kebab>.ts` at `api/queries/`                        | `use-auth.ts`                |
+| API query file (clipper/brand)                             | `use-<kebab>.ts` under `api/queries/clipper/` or `brand/` | `clipper/use-dashboard.ts`   |
+| API service (clipper/brand)                                | `<domain>.ts` under `api/services/clipper/`               | `clipper/dashboard.ts`       |
+| API types (clipper/brand)                                  | `<feature>.types.ts` under `api/types/clipper/`           | `clipper/dashboard.types.ts` |
+| Hook files (app, `lib/hooks`)                              | `use-<kebab>.ts`                                          | `use-auth.ts`                |
+| Type modules                                               | `<name>.types.ts`                                         | `auth.types.ts`              |
+| Utility / logic (`.ts`)                                    | camelCase                                                 | `mockData.ts`                |
+| Domain helpers (`lib/campaigns/`, etc.)                    | camelCase                                                 | `createCampaignPayload.ts`   |
+| Constants                                                  | UPPER_SNAKE_CASE                                          | `MAX_RETRIES`                |
+| Folders                                                    | lowercase / kebab-case                                    | `brand`, `clipper`           |
+| Assets (images, icons)                                     | kebab-case                                                | `security-bank.svg`          |

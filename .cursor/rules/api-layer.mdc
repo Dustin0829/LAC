@@ -1,6 +1,5 @@
 ---
-description: How to integrate backend HTTP APIs — services, types, TanStack Query hooks, and UI usage.
-alwaysApply: true
+alwaysApply: false
 ---
 
 # API layer & backend integration
@@ -11,16 +10,16 @@ Use this flow whenever you add or change REST endpoints consumed by the web app.
 
 Split **by audience** so routes for the same role stay together. **Shared** = used by more than one role or auth/infrastructure.
 
-| Location                    | Purpose                                                                                                                                                                                                                                                                      |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/api/client.ts`         | Shared Axios instance (base URL, JSON, auth header, error unwrap). **Do not** add per-request `Authorization` — the client reads the JWT from the auth store.                                                                                                                |
-| `src/api/config.ts`         | Env-based URLs (`getAPIBaseURL`, Solana RPC, etc.).                                                                                                                                                                                                                          |
-| `src/api/supabaseClient.ts` | Supabase browser client **only** for auth/session — not for general CRUD over app tables.                                                                                                                                                                                    |
-| **`src/api/types/`**        | See [Types](#types-srcapitypes) below — `global.types.ts`, `auth.types.ts` at the **root** of `types/` = shared; role subfolders for clipper/brand-only DTOs.                                                                                                                |
-| **`src/api/schema/`**       | Shared **Zod** schemas for request bodies and wizard forms (e.g. `campaigns.schema.ts`). Keep validators next to related types under `types/` conceptually, but colocate Zod in **`schema/`** so pages import `@/api/schema/...` instead of defining schemas under `pages/`. |
-| **`src/api/services/`**     | HTTP service functions (no React). **Root files** (`auth.ts`, `campaigns.ts`, …) = shared; **`services/clipper/`**, **`services/brand/`** = role-specific modules (e.g. `clipper/dashboard.ts`).                                                                              |
-| **`src/api/queries/`**      | TanStack Query hooks (queries **and** mutations). **`use-auth.ts`**, **`use-authenticated-query.ts`** at the **root** = shared; **`queries/clipper/`**, **`queries/brand/`** = role-specific hooks.                                                                          |
-| **`src/lib/campaigns/`**    | Campaign-specific **pure** helpers (wizard **payload** → API body, **draft** localStorage parse/merge, **share** meta, payout/download-link helpers, mock/UI mappers from API payloads). Import types/schemas from `@/api/...`; do not put Zod definitions here. When adding helpers, **extend an existing file** in this folder when it fits (same domain: payload, form helpers, tiers, etc.) before creating a new module.                                                               |
+| Location                    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/api/client.ts`         | Shared Axios instance (base URL, JSON, auth header, error unwrap). **Do not** add per-request `Authorization` — the client reads the JWT from the auth store.                                                                                                                                                                                                                                                                 |
+| `src/api/config.ts`         | Env-based URLs (`getAPIBaseURL`, Solana RPC, etc.).                                                                                                                                                                                                                                                                                                                                                                           |
+| `src/api/supabaseClient.ts` | Supabase browser client **only** for auth/session — not for general CRUD over app tables.                                                                                                                                                                                                                                                                                                                                     |
+| **`src/api/types/`**        | See [Types](#types-srcapitypes) below — `global.types.ts`, `auth.types.ts` at the **root** of `types/` = shared; role subfolders for clipper/brand-only DTOs.                                                                                                                                                                                                                                                                 |
+| **`src/api/schema/`**       | Shared **Zod** schemas for request bodies and wizard forms (e.g. `campaigns.schema.ts`). Keep validators next to related types under `types/` conceptually, but colocate Zod in **`schema/`** so pages import `@/api/schema/...` instead of defining schemas under `pages/`.                                                                                                                                                  |
+| **`src/api/services/`**     | HTTP service functions (no React). **Root files** (`auth.ts`, `campaigns.ts`, …) = shared; **`services/clipper/`**, **`services/brand/`** = role-specific modules (e.g. `clipper/dashboard.ts`).                                                                                                                                                                                                                              |
+| **`src/api/queries/`**      | TanStack Query hooks (queries **and** mutations). **`use-auth.ts`**, **`use-authenticated-query.ts`** at the **root** = shared; **`queries/clipper/`**, **`queries/brand/`** = role-specific hooks.                                                                                                                                                                                                                           |
+| **`src/lib/campaigns/`**    | Campaign-specific **pure** helpers (wizard **payload** → API body, **draft** localStorage parse/merge, **share** meta, payout/download-link helpers, mock/UI mappers from API payloads). Import types/schemas from `@/api/...`; do not put Zod definitions here. When adding helpers, **extend an existing file** in this folder when it fits (same domain: payload, form helpers, tiers, etc.) before creating a new module. |
 
 General UI, stores, and guards stay under `src/lib/`, `src/providers/`, `src/components/` — see `naming-conventions.mdc`.
 
@@ -44,7 +43,7 @@ General UI, stores, and guards stay under `src/lib/`, `src/providers/`, `src/com
 | Backend route scope                                  | Service path example                                        |
 | ---------------------------------------------------- | ----------------------------------------------------------- |
 | Shared (e.g. `/auth/sync`, public `/campaigns` list) | `src/api/services/auth.ts`, `src/api/services/campaigns.ts` |
-| Clipper-only (e.g. `GET /clipper/dashboard`)          | `src/api/services/clipper/dashboard.ts`                     |
+| Clipper-only (e.g. `GET /clipper/dashboard`)         | `src/api/services/clipper/dashboard.ts`                     |
 | Brand-only (e.g. `GET /brand/dashboard`)             | `src/api/services/brand/dashboard.ts`                       |
 
 ## Schemas (`src/api/schema/`)
@@ -88,6 +87,6 @@ General UI, stores, and guards stay under `src/lib/`, `src/providers/`, `src/com
 - [ ] New endpoints have types under `src/api/types/` (correct **shared** root vs **`clipper/`** / **`brand/`** subfolder); shared Zod schemas live under **`src/api/schema/`** when the UI or services need validation beyond TypeScript; campaign wizard mappers and share meta live under **`src/lib/{feature}/`**.
 - [ ] Service functions live under `src/api/services/` (shared root or **`clipper/`** / **`brand/`**) and use `api` from `client.ts`.
 - [ ] TanStack Query hooks live under `src/api/queries/` (shared root or **`clipper/`** / **`brand/`**) and are what pages/components import.
-- [ ] Pages and **`src/components/`** do not use **`useQueryClient`**; mutations that touch the cache are defined in **`src/api/queries/**`**.
+- [ ] Pages and **`src/components/`** do not use **`useQueryClient`**; mutations that touch the cache are defined in **`src/api/queries/**`\*\*.
 - [ ] Query keys are exported and reusable for invalidation.
 - [ ] No secrets in the frontend; only `VITE_*` env vars as documented in `.env.example`.

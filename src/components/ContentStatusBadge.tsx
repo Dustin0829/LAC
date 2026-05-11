@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge'
 import { Clock, XCircle, BadgeCheck } from 'lucide-react'
-import type { ClipStatus } from '@/lib/mockData'
+import type { ContentStatus } from '@/lib/mockData'
 
-const STYLES: Record<ClipStatus, { className: string; label: string; Icon: typeof Clock }> = {
+const STYLES: Record<ContentStatus, { className: string; label: string; Icon: typeof Clock }> = {
   pending: {
     className: 'bg-amber-50 text-amber-700 border-amber-200',
     label: 'Pending',
@@ -15,12 +15,12 @@ const STYLES: Record<ClipStatus, { className: string; label: string; Icon: typeo
   },
   paid: {
     className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    label: 'Paid out',
+    label: 'Paid',
     Icon: BadgeCheck,
   },
 }
 
-export function ClipStatusBadge({ status }: { status: ClipStatus }) {
+export function ContentStatusBadge({ status }: { status: ContentStatus }) {
   const cfg = STYLES[status]
   const Icon = cfg.Icon
   return (

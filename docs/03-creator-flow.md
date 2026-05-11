@@ -14,6 +14,8 @@
 
 ## End-to-end (overview)
 
+OAuth is **per platform**: submitting **TikTok** content requires a **linked TikTok** account; submitting **Facebook / Meta** content requires a **linked Meta** account. Those are **separate** OAuth grants — connecting one does not cover the other. In the product, **connect the relevant account first** (dedicated connect step or Account settings), **then** paste the clip link and continue — not a single combined “connect and submit” control.
+
 ```mermaid
 flowchart TD
   A[Browse active campaigns] --> B[Read brief and assets]
@@ -21,11 +23,11 @@ flowchart TD
   C --> pay{Payment method set up?}
   pay -->|No| setup[Add or complete payout method]
   setup --> pay
-  pay -->|Yes| M[Modal opens platform plus link input]
-  M --> need{Platform already linked on profile?}
-  need -->|No first time| Z[One time OAuth for that platform]
+  pay -->|Yes| M[Modal: choose platform allowed by campaign]
+  M --> need{TikTok or Meta already linked for this platform?}
+  need -->|No| Z[Distinct OAuth / connect step for that platform only]
   Z --> M
-  need -->|Yes reuse| paste[Paste link optional TikTok yellow basket checkbox]
+  need -->|Yes| paste[Paste link optional TikTok yellow basket checkbox]
   paste --> fetch[Backend fetches stats and rule check]
   fetch --> views{"More than 1000 views?"}
   views -->|No| below[Submit disabled below quota]
@@ -44,7 +46,7 @@ flowchart TD
 
 ## Creator access recap
 
-**Routes** (see [who can see what](02-auth-and-signin.md#who-can-see-what)): signed-in **creators** only see creator UI. **OAuth** is stored **per creator**; the first time they submit **content** on a platform may open **Connect**; **later** submits on that platform **skip** OAuth if the link still works ([Connect TikTok and Meta](#connect-tiktok-and-meta)). Campaign **[Platforms](04-brand-flow.md#campaign-fields)** set which channel each submission may use.
+**Routes** (see [who can see what](02-auth-and-signin.md#who-can-see-what)): signed-in **creators** only see creator UI. **OAuth** is stored **per creator**, **per platform** (TikTok vs Meta): linking TikTok does not satisfy Facebook submissions and vice versa. The first time they submit on a given platform they complete **that platform’s** connect step (or they connect early in Account); **later** submits on the same platform **skip** OAuth if the link still works ([Connect TikTok and Meta](#connect-tiktok-and-meta)). Campaign **[Platforms](04-brand-flow.md#campaign-fields)** set which channel each submission may use.
 
 ---
 
@@ -60,10 +62,10 @@ flowchart TD
 
 | Step | Behavior |
 |------|----------|
-| **Optional early** | In settings, connect TikTok and/or Meta before submitting |
-| **First submit on a platform** | If not linked → **one** OAuth in the modal, then continue |
-| **Later submits** | If linked and token OK → modal goes straight to **paste link** |
-| **Reconnect** | After failure / revoke / disconnect → next submit shows **Connect** again |
+| **Optional early** | In settings, connect TikTok and/or Meta **separately** before submitting |
+| **First submit on a platform** | If that platform is not linked → **OAuth / connect for that platform only** as a **clear, separate step** (not bundled with final submit), **then** paste link and validate |
+| **Later submits** | If linked and token OK → modal skips connect and goes to **paste link** for that platform |
+| **Reconnect** | After failure / revoke / disconnect → next submit shows **Connect** again for that platform |
 
 **Ownership at submit:** Paste link → API resolves **author** → must match saved **`platform_user_id`**. Else: block with a clear error (e.g. *This post is not from the connected account*).
 
@@ -90,41 +92,42 @@ Pay is fixed from the **moment of submit** — not from later growth.
 | # | Step |
 |---|------|
 | 1 | **Submit** from campaign card or detail — **blocked** until a **payout method** is on file (add in settings or in-flow when they first try) |
-| 2 | Modal: **platform** (only options allowed by campaign) + **content link**. Submit disabled until link validates and checks pass |
-| 3 | **TikTok only** (same modal, before confirm): optional **This content has yellow basket** (hidden on Meta). Optional — **not** required to submit — but when checked it **locks the 50/50 vs 80/20** creator/platform split on **gross** for this row at confirm (see [TikTok yellow basket](#tiktok-yellow-basket-submit)) |
-| 4 | **After the link validates:** backend **ownership** (author = connected account); **fetch** views, likes, comments; **reject if views ≤ 1,000** (campaign **1k views** quota); **rule check** vs campaign rules (AI or simpler rules) |
-| 5 | Modal shows: **stats**; **estimated payout if not rejected** (default **headline** rate × locked snapshot — **or** the **yellow-basket net** when that box is checked on TikTok); **rule result**: pass / soft-flag / **hard-block** (hard-block keeps Submit off, with reason) |
-| 6 | Creator clicks **Submit** → **snapshot locked** (stats plus **TikTok yellow basket** flag when applicable); later view changes **do not** change this payout |
-| 7 | Short in-product note (one-time per creator or always brief): *Your stats are locked in. Keep this content live until the campaign ends or for at least one month after submission, whichever is later. If you delete or hide it before then, you forfeit this submission’s earnings.* |
+| 2 | Modal: **platform** (only options allowed by campaign). **If that platform is not linked:** show a **dedicated connect / OAuth** action for **TikTok or Meta** as appropriate — complete it before link entry |
+| 3 | **Paste content link**. **TikTok only:** optional **This content has yellow basket** (hidden on Meta). Submit disabled until link validates and checks pass |
+| 4 | **Yellow basket** (TikTok): optional — **not** required to submit — but when checked it **locks the 50/50 vs 80/20** creator/platform split on **gross** for this row at confirm (see [TikTok yellow basket](#tiktok-yellow-basket-submit)) |
+| 5 | **After the link validates:** backend **ownership** (author = connected account); **fetch** views, likes, comments; **reject if views ≤ 1,000** (campaign **1k views** quota); **rule check** vs campaign rules (AI or simpler rules) |
+| 6 | Modal shows: **stats**; **estimated payout if not rejected** (default **headline** rate × locked snapshot — **or** the **yellow-basket net** when that box is checked on TikTok); **rule result**: pass / soft-flag / **hard-block** (hard-block keeps Submit off, with reason) |
+| 7 | Creator clicks **Submit** → **snapshot locked** (stats plus **TikTok yellow basket** flag when applicable); later view changes **do not** change this payout |
+| 8 | Short in-product note (one-time per creator or always brief): *Your stats are locked in. Keep this content live until the campaign ends or for at least one month after submission, whichever is later. If you delete or hide it before then, you forfeit this submission’s earnings.* |
 
-**Gates (all must pass):** **Payout method** on file; platform enabled for campaign; platform linked (or OAuth in flow); author matches; **views > 1,000** (from fetch — sub-threshold links cannot submit); rules allow submit (no hard-block). **Yellow basket** is **not** a gate — optional; it only sets which **creator/platform split** is locked for that TikTok row.
+**Gates (all must pass):** **Payout method** on file; platform enabled for campaign; **the correct platform** (TikTok vs Meta) **linked** via its own connect/OAuth step before link validation; author matches; **views > 1,000** (from fetch — sub-threshold links cannot submit); rules allow submit (no hard-block). **Yellow basket** is **not** a gate — optional; it only sets which **creator/platform split** is locked for that TikTok row.
 
 ---
 
-## One submission's possible states
+## Submission status (creator UI — MVP)
+
+Creators see a simple lifecycle on each submission:
+
+- **`pending`** — Submitted; stats locked from the creator’s perspective; still in review / accrual / monthly batch until **paid** or **rejected**.
+- **`rejected`** — Excluded from pay; creator sees reason where applicable.
+- **`paid`** — Paid out in a processed batch.
+
+Backend or policy may still model voids, retries, or pay failures; **creator-facing** copy and labels use this three-state model.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> SnapshotLocked
-  SnapshotLocked --> PendingBrandReview
-  PendingBrandReview --> Rejected
-  PendingBrandReview --> Included
-  Included --> AccruingForMonth
-  AccruingForMonth --> InMonthlyPayout
-  InMonthlyPayout --> Paid
-  InMonthlyPayout --> PayFailed
-  PayFailed --> InMonthlyPayout: "After fix or retry"
-  Included --> Voided: "Content deleted or hidden during retention"
-  Rejected --> [*]
-  Voided --> [*]
-  Paid --> [*]
+  [*] --> pending
+  pending --> rejected
+  pending --> paid
+  rejected --> [*]
+  paid --> [*]
 ```
 
 ---
 
 ## Earnings mental model
 
-Each **included** (not rejected) submission accrues from its **locked snapshot** using the campaign’s **gross** performance math. **Campaign** surfaces show the **default** headline (80% of brand gross per 1k); **each row’s** creator **net** uses the split **locked at submit** — **80/20** on gross performance by default, or **50/50** for TikTok with **yellow basket** checked ([TikTok yellow basket](#tiktok-yellow-basket-submit)). Lines add up through the month; one **monthly** batch; brand **reviews the breakdown and confirms** before pay ([Monthly payout](01-business-model.md#4-monthly-payout)).
+Each submission that is **`pending` or `paid`** (and not **`rejected`**) accrues from its **locked snapshot** using the campaign’s **gross** performance math. **Campaign** surfaces show the **default** headline (80% of brand gross per 1k); **each row’s** creator **net** uses the split **locked at submit** — **80/20** on gross performance by default, or **50/50** for TikTok with **yellow basket** checked ([TikTok yellow basket](#tiktok-yellow-basket-submit)). Lines add up through the month; one **monthly** batch; brand **reviews the breakdown and confirms** before pay ([Monthly payout](01-business-model.md#4-monthly-payout)).
 
 ```mermaid
 flowchart LR
@@ -137,7 +140,7 @@ flowchart LR
   month --> paidOut[Paid after brand confirms monthly batch]
 ```
 
-**Per submission row:** status (included / rejected / voided); **locked snapshot**; estimated or confirmed earnings (headline / creator net according to default or yellow-basket split); **TikTok yellow basket** flag when applicable; **retention** end date.
+**Per submission row:** status (**pending** / **rejected** / **paid**); **locked snapshot**; estimated or confirmed earnings (headline / creator net according to default or yellow-basket split); **TikTok yellow basket** flag when applicable; **retention** end date (surfaced in copy even while status is **pending**).
 
 **Earnings page:** we show this month’s **accrued** total; **paid** history; **next payout** date/status and whether the brand has **confirmed** the batch.
 
@@ -145,7 +148,7 @@ flowchart LR
 
 ## Content retention
 
-**Included** submission (not rejected by brand): content must stay **public** until:
+A **non-rejected** submission (creator-facing **`pending`** or **`paid`**, not **`rejected`**): content must stay **public** until:
 
 > **The later of (a) campaign end, or (b) one full month after submit.**
 
@@ -157,7 +160,7 @@ Delete, private, or takedown **before** that ⇒ **void**; earnings **forfeit**;
 
 1. **Browse** — OAuth optional; after first connect, settings show **Connected**; later submits skip connect unless reconnect needed.
 2. **Payout method** — Required before submit (settings or first-time flow when they try to submit).
-3. **Submit** — Modal → channel + link → **if TikTok, optional yellow basket** → fetch, ownership, **1k+ views**, rules → estimate → confirm → lock snapshot (stats + declarations).
-4. **Track** — Status, snapshot, payout estimate/confirm, retention date.
+3. **Submit** — Modal → **connect OAuth for the chosen platform if needed** → channel + link → **if TikTok, optional yellow basket** → fetch, ownership, **1k+ views**, rules → estimate → confirm → lock snapshot (stats + declarations).
+4. **Track** — **Pending** / **rejected** / **paid**; snapshot; payout estimate/confirm; retention date.
 5. **Get paid** — Accrues monthly; batch runs; **brand confirms** → payout (no per-submit instant pay).
 6. **Keep post live** through retention window.

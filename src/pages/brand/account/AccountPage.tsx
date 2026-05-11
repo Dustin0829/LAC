@@ -57,31 +57,44 @@ export default function BrandAccountPage() {
 
       <section className="rounded-3xl border border-border bg-card p-6 md:p-8">
         <div className="space-y-8">
-             <div className="flex flex-col">
-              <Avatar className="h-24 w-24 rounded-2xl outline-1 outline-border mb-4">
-                <AvatarImage src={profile.logoDataUrl ?? undefined} className="rounded-2xl object-cover" />
-                <AvatarFallback className="rounded-2xl bg-phc-gradient font-display text-2xl font-bold text-white">
-                  {fallbackLetter}
-                </AvatarFallback>
-              </Avatar>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => onLogoFile(e.target.files)}
+          <div className="flex flex-col">
+            <Avatar className="h-24 w-24 rounded-2xl outline-1 outline-border mb-4">
+              <AvatarImage
+                src={profile.logoDataUrl ?? undefined}
+                className="rounded-2xl object-cover"
               />
-              <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-                  Upload logo
+              <AvatarFallback className="rounded-2xl bg-phc-gradient font-display text-2xl font-bold text-white">
+                {fallbackLetter}
+              </AvatarFallback>
+            </Avatar>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => onLogoFile(e.target.files)}
+            />
+            <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileRef.current?.click()}
+              >
+                Upload logo
+              </Button>
+              {profile.logoDataUrl ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setProfile({ logoDataUrl: null })}
+                >
+                  Remove
                 </Button>
-                {profile.logoDataUrl ? (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setProfile({ logoDataUrl: null })}>
-                    Remove
-                  </Button>
-                ) : null}
-              </div>
+              ) : null}
             </div>
+          </div>
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
             <div className="min-w-0 flex-1 space-y-6">
               <div className="space-y-2">
@@ -97,7 +110,6 @@ export default function BrandAccountPage() {
 
               <div className="space-y-3">
                 <p className="text-sm font-semibold text-foreground">Links</p>
-                <p className="text-sm text-muted-foreground">Add any channels you use (all optional).</p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="link-website" className="inline-flex items-center gap-2">
@@ -163,7 +175,12 @@ export default function BrandAccountPage() {
       </section>
 
       <div className="flex justify-end">
-        <Button type="button" size="lg" className="w-full bg-blue-600 font-semibold text-white sm:w-auto min-w-[140px]" onClick={onSave}>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full bg-blue-600 font-semibold text-white sm:w-auto min-w-[140px]"
+          onClick={onSave}
+        >
           Save
         </Button>
       </div>

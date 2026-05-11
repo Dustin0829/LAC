@@ -5,7 +5,7 @@ import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSectio
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
 import { PlatformIcon } from '@/components/PlatformIcon'
 
-export default function ClipperAccountPage() {
+export default function CreatorAccountPage() {
   const { user } = useAuth()
   const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
   const reconnectPlatform = useCreatorProfileStore((s) => s.reconnectPlatform)
@@ -34,7 +34,7 @@ export default function ClipperAccountPage() {
         <div className="mb-5">
           <h2 className="font-display text-xl font-extrabold">Connected platforms</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            TikTok and Meta/Facebook are connected once and reused for future clip submissions.
+            TikTok and Meta/Facebook are connected once and reused for future content submissions.
           </p>
         </div>
         <div className="grid min-w-0 gap-3 md:grid-cols-2">
@@ -69,7 +69,7 @@ export default function ClipperAccountPage() {
       </section>
 
       <section className="rounded-3xl border border-border bg-card p-6 md:p-8">
-        <PaymentMethodsSection mode="clipper" />
+        <PaymentMethodsSection mode="creator" />
       </section>
     </div>
   )

@@ -17,13 +17,13 @@ interface RoleOption {
 
 const ROLES: RoleOption[] = [
   {
-    role: 'clipper',
+    role: 'creator',
     title: 'Creator',
-    subtitle: 'I join campaigns, post clips, and earn.',
+    subtitle: 'I join campaigns, post content, and earn.',
     description: 'Browse active brand campaigns, connect TikTok or Facebook once, submit owned links, and track verified view earnings.',
     bullets: [
       'Browse campaigns before linking socials',
-      'Submit owned TikTok or Facebook clips',
+      'Submit owned TikTok or Facebook content',
       'Get paid after weekly brand release',
     ],
     Icon: Sparkles,
@@ -36,7 +36,7 @@ const ROLES: RoleOption[] = [
     description: 'Draft campaigns, fund a spendable pool, review submissions, and release weekly payouts after checking the summary.',
     bullets: [
       'Create, save, fund, and publish campaigns',
-      'Review clips before they accrue',
+      'Review content before they accrue',
       'Release weekly payouts manually',
     ],
     Icon: Building2,
@@ -61,7 +61,7 @@ export default function RoleSelectionPage() {
     await new Promise((r) => setTimeout(r, 400))
     setRole(selected)
     toast.success(selected === 'brand' ? 'Welcome, Brand!' : 'Welcome, Creator!')
-    navigate(selected === 'brand' ? '/brand/dashboard' : '/clipper/dashboard', { replace: true })
+    navigate(selected === 'brand' ? '/brand/dashboard' : '/creator/dashboard', { replace: true })
   }
 
   return (
