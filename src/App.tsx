@@ -18,7 +18,6 @@ import BrandDashboardPage from './pages/brand/dashboard/DashboardPage'
 import BrandCampaignsPage from './pages/brand/campaigns/CampaignsPage'
 import CreateCampaignPage from './pages/brand/campaigns/CreateCampaignPage'
 import BrandCampaignDetailPage from './pages/brand/campaigns/CampaignDetailPage'
-import BrandContentSubmissionsPage from './pages/brand/submissions/ContentSubmissionsPage'
 import BrandAccountPage from './pages/brand/account/AccountPage'
 
 function App() {
@@ -72,7 +71,6 @@ function App() {
           }
         >
           <Route path="dashboard" element={<BrandDashboardPage />} />
-          <Route path="submissions" element={<BrandContentSubmissionsPage />} />
           <Route path="campaigns" element={<BrandCampaignsPage />} />
           <Route path="campaigns/new" element={<CreateCampaignPage />} />
           <Route path="campaigns/:id" element={<BrandCampaignDetailPage />} />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -13,7 +13,18 @@ import {
 } from 'lucide-react'
 import { useContentStore } from '@/lib/stores/contentStore'
 import { ContentStatusBadge } from '@/components/ContentStatusBadge'
-import { PlatformIcon } from '@/components/PlatformIcon'
+import { PersonAvatar } from '@/components/PersonAvatar'
+import { PlatformCell } from '@/components/PlatformIcon'
+import { TablePagination } from '@/components/TablePagination'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { cn, formatPHP, formatViews, formatTimeAgo } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,6 +48,8 @@ const TABS: { id: 'all' | ContentStatus; label: string; icon: LucideIcon }[] = [
   { id: 'rejected', label: 'Rejected', icon: XCircle },
 ]
 
+const PAGE_SIZE = 10
+
 export default function MyContentPage() {
   const allContent = useContentStore((s) => s.contents)
   const contents = useMemo(
@@ -44,7 +57,12 @@ export default function MyContentPage() {
     [allContent]
   )
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('all')
+  const [page, setPage] = useState(1)
   const [attention, setAttention] = useState<AttentionDialog | null>(null)
+
+  useEffect(() => {
+    setPage(1)
+  }, [tab])
 
   const filtered = useMemo(() => {
     if (tab === 'all') return contents
@@ -60,11 +78,22 @@ export default function MyContentPage() {
     }
   }, [contents])
 
+  const sortedFiltered = useMemo(
+    () =>
+      [...filtered].sort(
+        (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      ),
+    [filtered]
+  )
+
+  const totalPages = Math.max(1, Math.ceil(sortedFiltered.length / PAGE_SIZE))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const pageRows = sortedFiltered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
   function openAttention(content: (typeof contents)[number]) {
     const body = [content.rejectionReason, content.trustFlag].filter(Boolean).join('\n\n')
     if (!body.trim()) return
-    const title =
-      content.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
+    const title = content.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
     setAttention({ title, body })
   }
 
@@ -72,7 +101,9 @@ export default function MyContentPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">My Content</p>
+          <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            My Content
+          </p>
           <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold">
             Track every <span className="text-phc-gradient">view</span>
           </h1>
@@ -83,7 +114,11 @@ export default function MyContentPage() {
       </div>
 
       {/* Tabs — scroll on narrow viewports so labels stay full (no ellipsis) */}
-      <div className="min-w-0 border-b border-border" role="tablist" aria-label="Filter content by status">
+      <div
+        className="min-w-0 border-b border-border"
+        role="tablist"
+        aria-label="Filter content by status"
+      >
         <div className="-mx-1 flex gap-0.5 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:justify-center sm:gap-1 sm:overflow-x-visible sm:px-0">
           {TABS.map((t) => {
             const isActive = tab === t.id
@@ -100,16 +135,18 @@ export default function MyContentPage() {
                 onClick={() => setTab(t.id)}
                 className={cn(
                   'relative flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap px-3 py-3.5 text-xs font-semibold transition-colors sm:gap-2 sm:px-4 sm:text-sm',
-                  isActive ? 'text-blue-600' : 'text-muted-foreground hover:text-foreground'
+                  isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
                 <span>
                   {t.label}
-                  <span className="ml-1 tabular-nums text-xs font-medium opacity-80">({count})</span>
+                  <span className="ml-1 tabular-nums text-xs font-medium opacity-80">
+                    ({count})
+                  </span>
                 </span>
                 {isActive ? (
-                  <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-blue-600 sm:left-4 sm:right-4" />
+                  <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary sm:left-4 sm:right-4" />
                 ) : null}
               </button>
             )
@@ -132,98 +169,82 @@ export default function MyContentPage() {
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-            <table className="w-full min-w-[56rem] table-fixed border-collapse text-left text-sm">
-              <colgroup>
-                <col />
-                <col className="w-[4.5rem] sm:w-24" />
-                <col className="w-28" />
-                <col className="w-24" />
-                <col className="w-[7.5rem] sm:w-32" />
-                <col className="w-28" />
-                <col className="w-14 sm:w-16" />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="px-3 py-3.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:px-4">
-                    Campaign
-                  </th>
-                  <th className="px-2 py-3.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Platform
-                  </th>
-                  <th className="px-2 py-3.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Views
-                  </th>
-                  <th className="px-2 py-3.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Earned
-                  </th>
-                  <th className="px-2 py-3.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="px-2 py-3.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Submitted
-                  </th>
-                  <th className="w-14 py-3.5 pl-1 pr-3 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:w-16">
-                    Warning
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((content) => {
+          <TableContainer>
+            <Table className="min-w-208">
+              <TableHeader>
+                <TableRow className="cursor-default hover:bg-transparent">
+                  <TableHead>Campaign</TableHead>
+                  <TableHead>Platform</TableHead>
+                  <TableHead>Views</TableHead>
+                  <TableHead>Earned</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Submitted</TableHead>
+                  <TableHead className="w-14 text-center">Alert</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pageRows.map((content) => {
                   const hasAttention = Boolean(content.trustFlag || content.rejectionReason)
                   return (
-                    <tr
-                      key={content.id}
-                      className="border-b border-border last:border-b-0 transition-colors hover:bg-muted/40"
-                    >
-                      <td className="max-w-0 align-middle px-3 py-4 md:px-4">
-                        <div className="min-w-0">
-                          <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                            {content.brandName}
-                          </p>
-                          <p className="truncate font-medium leading-snug" title={content.campaignTitle}>
-                            {content.campaignTitle}
-                          </p>
-                          <a
-                            href={content.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={content.url}
-                            className="mt-0.5 flex min-w-0 items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-                          >
-                            <span className="truncate">{content.url}</span>
-                            <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
-                          </a>
+                    <TableRow key={content.id}>
+                      <TableCell className="max-w-md">
+                        <div className="flex min-w-0 items-start gap-2">
+                          <PersonAvatar
+                            name={content.brandName}
+                            size="xs"
+                            className="mt-0.5 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              {content.brandName}
+                            </p>
+                            <p
+                              className="truncate font-medium leading-snug"
+                              title={content.campaignTitle}
+                            >
+                              {content.campaignTitle}
+                            </p>
+                            <a
+                              href={content.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={content.url}
+                              className="mt-0.5 flex min-w-0 items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              <span className="truncate">{content.url}</span>
+                              <ExternalLink className="h-3 w-3 shrink-0 opacity-70" />
+                            </a>
+                          </div>
                         </div>
-                      </td>
-                      <td className="align-middle px-2 py-4">
-                        <div className="flex justify-start sm:justify-center">
-                          <PlatformIcon platform={content.platform} className="h-7 w-7" />
-                        </div>
-                      </td>
-                      <td className="align-middle px-2 py-4">
+                      </TableCell>
+                      <TableCell>
+                        <PlatformCell
+                          platform={content.platform}
+                          iconClassName="h-5 w-5"
+                          hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
+                        />
+                      </TableCell>
+                      <TableCell>
                         <p className="flex items-center gap-0.5 font-display text-sm font-bold tabular-nums leading-none">
                           <Eye className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
                           {formatViews(content.views)}
                         </p>
-                        <p className="mt-0.5 text-[10px] leading-none text-muted-foreground">
+                        <p className="mt-0.5 text-xs leading-none text-muted-foreground">
                           Locked at submit
                         </p>
-                      </td>
-                      <td className="align-middle px-2 py-4">
+                      </TableCell>
+                      <TableCell>
                         <span className="font-display text-sm font-bold tabular-nums text-phc-gradient">
                           {formatPHP(content.earnings, { decimals: false })}
                         </span>
-                      </td>
-                      <td className="align-middle px-2 py-4">
-                        <div className="origin-left scale-[0.92]">
-                          <ContentStatusBadge status={content.status} />
-                        </div>
-                      </td>
-                      <td className="align-middle px-2 py-4 text-xs tabular-nums text-muted-foreground">
+                      </TableCell>
+                      <TableCell>
+                        <ContentStatusBadge status={content.status} />
+                      </TableCell>
+                      <TableCell className="text-xs tabular-nums text-muted-foreground">
                         {formatTimeAgo(content.submittedAt)}
-                      </td>
-                      <td className="align-middle py-4 pl-1 pr-3 text-center">
+                      </TableCell>
+                      <TableCell className="text-center">
                         {hasAttention ? (
                           <button
                             type="button"
@@ -240,13 +261,20 @@ export default function MyContentPage() {
                         ) : (
                           <span className="inline-block w-6" aria-hidden />
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+            <TablePagination
+              page={safePage}
+              pageSize={PAGE_SIZE}
+              totalItems={sortedFiltered.length}
+              onPageChange={setPage}
+              itemLabel="items"
+            />
+          </TableContainer>
         )}
       </div>
 
@@ -258,9 +286,7 @@ export default function MyContentPage() {
       >
         <DialogContent className="rounded-3xl border-border sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">
-              {attention?.title ?? ''}
-            </DialogTitle>
+            <DialogTitle className="font-display text-xl">{attention?.title ?? ''}</DialogTitle>
             <DialogDescription className="whitespace-pre-wrap text-left text-base text-foreground">
               {attention?.body ?? ''}
             </DialogDescription>

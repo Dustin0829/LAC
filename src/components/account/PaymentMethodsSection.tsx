@@ -93,7 +93,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
     setDefault(id)
     toast.success(
       creator
-        ? 'Default payout method updated. Payouts route here on the weekly schedule (mock).'
+        ? 'Default payout method updated. Payouts route here on the weekly schedule.'
         : 'Default funding source updated.'
     )
   }
@@ -117,13 +117,12 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
         <p className="text-sm text-muted-foreground">
           {creator ? (
             <>
-              Weekly payouts are processed every Thursday (mock). Add a verified GCash, Maya, or
-              bank account. Select a default so mock disbursements know where to route funds.
+              Weekly payouts are processed every Thursday. Add a verified GCash, Maya, or bank
+              account and select a default so payouts route to the right place.
             </>
           ) : (
             <>
-              Link GCash, Maya, or a bank account for mock campaign top-ups. Pick a default source
-              for the demo checkout flow.
+              Link GCash, Maya, or a bank account for campaign top-ups. Pick a default for checkout.
             </>
           )}
         </p>
@@ -137,7 +136,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
           <p className="-mt-2 text-sm text-muted-foreground">
             {creator
               ? 'Tap a method to make it default. Remove with the trash icon.'
-              : 'Tap a source to make it default for mock adds. Remove with the trash icon.'}
+              : 'Tap a source to make it default for new top-ups. Remove with the trash icon.'}
           </p>
 
           {methods.length > 0 ? (
@@ -215,15 +214,15 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
-                className="mt-1 w-full cursor-pointer rounded-2xl border-2 border-dashed border-border bg-muted/30 p-8 text-center transition-colors hover:border-blue-500/40 hover:bg-muted/50"
+                className="mt-1 w-full cursor-pointer rounded-2xl border border-dashed border-border bg-muted/30 p-8 text-center transition-colors hover:border-blue-500/40 hover:bg-muted/50"
               >
                 <p className="text-sm font-semibold text-foreground">
                   {creator ? 'No payout methods yet' : 'No funding sources yet'}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {creator
-                    ? 'Add GCash, Maya, or a bank account to receive payouts (mock).'
-                    : 'Add GCash, Maya, or a bank to fund campaigns (mock).'}
+                    ? 'Add GCash, Maya, or a bank account to receive payouts.'
+                    : 'Add GCash, Maya, or a bank to fund campaigns.'}
                 </p>
               </button>
               <Button
@@ -303,9 +302,7 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
             ) : (
               <>
                 <DialogHeader>
-                  <DialogTitle>
-                    {category === 'bank' ? 'Local bank' : 'E-wallet'}
-                  </DialogTitle>
+                  <DialogTitle>{category === 'bank' ? 'Local bank' : 'E-wallet'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleAdd} className="space-y-4 pt-2">
                   {category === 'ewallet' && (

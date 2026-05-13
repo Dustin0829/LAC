@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { IntegerInput } from '@/components/ui/integer-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -30,6 +31,7 @@ import {
   DEFAULT_REFUNDABLE_PERCENT,
   getCreatorRatePer1k,
   getPlatformFeePercent,
+  MIN_GROSS_CAMPAIGN_BUDGET,
   type Platform,
 } from '@/lib/mockData'
 import { formatPHP } from '@/lib/utils'
@@ -51,8 +53,7 @@ const DEFAULT_CAMPAIGN_RULES = [
   'Original edits only',
 ]
 
-const MIN_BRAND_RATE_PER_1K = 50
-const MIN_GROSS_BUDGET = 10_000
+const MIN_BRAND_RATE_PER_1K = 35
 
 export default function CreateCampaignPage() {
   const navigate = useNavigate()
@@ -181,10 +182,10 @@ export default function CreateCampaignPage() {
     }
     if (opts.requirePublishFunding) {
       if (brandRate < MIN_BRAND_RATE_PER_1K) {
-        return `Brand rate must be at least ₱${MIN_BRAND_RATE_PER_1K} per 1,000 views (MVP rule).`
+        return `Brand rate must be at least ₱${MIN_BRAND_RATE_PER_1K} per 1,000 views.`
       }
-      if (totalBudget < MIN_GROSS_BUDGET) {
-        return `Total budget must be at least ₱${MIN_GROSS_BUDGET.toLocaleString('en-PH')} (MVP rule).`
+      if (totalBudget < MIN_GROSS_CAMPAIGN_BUDGET) {
+        return `Total budget must be at least ₱${MIN_GROSS_CAMPAIGN_BUDGET.toLocaleString('en-PH')}.`
       }
       if (!assetPackUrl.trim()) {
         return 'Add an asset link creators need (Drive, Dropbox, etc.) before publishing.'
@@ -214,6 +215,7 @@ export default function CreateCampaignPage() {
       description: description.trim(),
       brandRatePer1k: brandRate,
       ratePer1k: creatorRate,
+      plannedGrossBudget: totalBudget,
       budget: netPool,
       platformFeePercent,
       refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
@@ -261,7 +263,7 @@ export default function CreateCampaignPage() {
         </h1>
         <p className="mt-2 text-muted-foreground">
           Save drafts anytime (optional fields can stay empty until you publish). Publishing
-          requires assets, ₱50+/1K rate, ₱10,000+ gross budget, and enough spendable after the 15%
+          requires assets, ₱35+/1K rate, ₱10,000+ gross budget, and enough spendable after the 15%
           platform fee to meet the publish floor.
         </p>
       </div>
@@ -439,7 +441,7 @@ export default function CreateCampaignPage() {
             ) : (
               <label
                 htmlFor="campaign-cover"
-                className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/30 px-6 py-10 text-center transition-colors hover:border-blue-500 hover:bg-blue-500/5"
+                className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-10 text-center transition-colors hover:border-blue-500 hover:bg-blue-500/5"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-phc-gradient text-white">
                   <ImageIcon className="h-5 w-5" />
@@ -512,7 +514,7 @@ export default function CreateCampaignPage() {
                 }
                 value={referenceLinksRaw}
                 onChange={(e) => setReferenceLinksRaw(e.target.value)}
-                className="resize-y min-h-[100px]"
+                className="resize-y min-h-28"
               />
             </div>
           </section>
@@ -553,31 +555,31 @@ export default function CreateCampaignPage() {
             <h3 className="font-display text-lg font-extrabold">Payout</h3>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label htmlFor="rate">Brand rate per 1,000 views (₱)</Label>
-                <Input
+                <Label htmlFor="rate">Brand rate per 1,000 views</Label>
+                <IntegerInput
                   id="rate"
-                  type="number"
+                  pesoPrefix
                   min={MIN_BRAND_RATE_PER_1K}
                   placeholder={`e.g. ${MIN_BRAND_RATE_PER_1K}`}
                   value={ratePer1k}
-                  onChange={(e) => setRatePer1k(e.target.value)}
+                  onValueChange={setRatePer1k}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Minimum ₱{MIN_BRAND_RATE_PER_1K} per 1K views to publish (MVP).
+                  Minimum ₱{MIN_BRAND_RATE_PER_1K} per 1K views to publish.
                 </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="budget">Total budget (₱)</Label>
-                <Input
+                <Label htmlFor="budget">Total budget</Label>
+                <IntegerInput
                   id="budget"
-                  type="number"
-                  min={MIN_GROSS_BUDGET}
-                  placeholder={`e.g. ${MIN_GROSS_BUDGET.toLocaleString('en-PH')}`}
+                  pesoPrefix
+                  min={MIN_GROSS_CAMPAIGN_BUDGET}
+                  placeholder={`e.g. ${MIN_GROSS_CAMPAIGN_BUDGET.toLocaleString('en-PH')}`}
                   value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
+                  onValueChange={setBudget}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Minimum gross ₱{MIN_GROSS_BUDGET.toLocaleString('en-PH')} to publish; after the
+                  Minimum gross ₱{MIN_GROSS_CAMPAIGN_BUDGET.toLocaleString('en-PH')} to publish; after the
                   fee, spendable must meet the ₱10,000 floor.
                 </p>
               </div>
@@ -613,7 +615,7 @@ export default function CreateCampaignPage() {
                 </span>
               </li>
               <li className="flex justify-between">
-                <span className="text-muted-foreground">Net spendable pool</span>
+                <span className="text-muted-foreground">Payout pool</span>
                 <span className="font-semibold">{formatPHP(payoutPool, { decimals: false })}</span>
               </li>
               <li className="flex justify-between">
@@ -662,7 +664,7 @@ export default function CreateCampaignPage() {
                 {formatPHP(totalBudget, { decimals: false })}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Net spendable after platform fee: {formatPHP(payoutPool, { decimals: false })}
+                Payout pool after platform fee: {formatPHP(payoutPool, { decimals: false })}
               </p>
             </div>
 
@@ -715,7 +717,7 @@ export default function CreateCampaignPage() {
                 className="mt-0.5"
               />
               <span>
-                <span className="font-medium">Demo: simulate payment failure</span>
+                <span className="font-medium">Simulate payment failure</span>
                 <span className="mt-0.5 block text-xs text-muted-foreground">
                   Turn on to save as draft after checkout instead of publishing.
                 </span>

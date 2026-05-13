@@ -20,7 +20,8 @@ const ROLES: RoleOption[] = [
     role: 'creator',
     title: 'Creator',
     subtitle: 'I join campaigns, post content, and earn.',
-    description: 'Browse active brand campaigns, connect TikTok or Facebook once, submit owned links, and track verified view earnings.',
+    description:
+      'Browse active brand campaigns, connect TikTok or Facebook once, submit owned links, and track verified view earnings.',
     bullets: [
       'Browse campaigns before linking socials',
       'Submit owned TikTok or Facebook content',
@@ -33,7 +34,8 @@ const ROLES: RoleOption[] = [
     role: 'brand',
     title: 'Brand',
     subtitle: 'I create campaigns and pay for views.',
-    description: 'Draft campaigns, fund a spendable pool, review submissions, and release weekly payouts after checking the summary.',
+    description:
+      'Draft campaigns, add funds, review submissions, and release weekly payouts after checking the summary.',
     bullets: [
       'Create, save, fund, and publish campaigns',
       'Review content before they accrue',
@@ -77,7 +79,7 @@ export default function RoleSelectionPage() {
               <div className="font-display text-2xl font-extrabold leading-none tracking-tight md:text-3xl lg:text-4xl">
                 Arpify
               </div>
-              <div className="mt-1.5 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground md:text-sm md:tracking-[0.22em]">
+              <div className="mt-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground md:text-sm md:tracking-widest">
                 Verified views marketplace
               </div>
             </div>
@@ -106,7 +108,7 @@ export default function RoleSelectionPage() {
                 How will you use <span className="text-phc-gradient">Arpify</span>?
               </h1>
               <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-                Pick one for the MVP prototype. Support can change it later.
+                Choose brand or creator to get started. Support can update your role if needed.
               </p>
             </div>
 
@@ -117,7 +119,7 @@ export default function RoleSelectionPage() {
                   <button
                     key={role}
                     onClick={() => setSelected(role)}
-                    className={`group text-left rounded-3xl border-2 p-6 transition-all bg-card ${
+                    className={`group text-left rounded-3xl border p-6 transition-all bg-card ${
                       isSelected
                         ? 'border-blue-500 shadow-xl shadow-blue-500/20 ring-2 ring-blue-500/20 ring-offset-2 ring-offset-background'
                         : 'border-border hover:border-foreground/20'
@@ -135,7 +137,7 @@ export default function RoleSelectionPage() {
                         <Icon className="h-7 w-7" />
                       </div>
                       <div
-                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border transition-colors ${
                           isSelected ? 'border-transparent bg-phc-gradient' : 'border-border'
                         }`}
                       >

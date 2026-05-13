@@ -1,14 +1,13 @@
 import { Outlet } from 'react-router-dom'
-import { AppSidebar } from '@/components/layout/AppSidebar'
+import { AppSidebarDesktop, AppSidebarMobile } from '@/components/layout/AppSidebar'
 
 export default function BrandLayout() {
   return (
-    <div className="min-h-dvh w-full max-w-[100%] overflow-x-hidden bg-background">
-      <AppSidebar role="brand" />
-      <main className="min-w-0 pb-20 md:pb-0 md:pl-64">
-        <div className="mx-auto max-w-[1200px] min-w-0 px-4 md:px-10 py-8 md:py-16">
-          <Outlet />
-        </div>
+    <div className="flex h-dvh max-h-dvh w-full max-w-full flex-col overflow-hidden bg-background md:flex-row">
+      <AppSidebarDesktop role="brand" />
+      <main className="flex-1 min-h-0 min-w-0 overflow-y-auto px-3 pt-4 pb-16 xl:px-24 md:pt-12 md:pb-0">
+        <AppSidebarMobile role="brand" />
+        <Outlet />
       </main>
     </div>
   )

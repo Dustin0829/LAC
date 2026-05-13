@@ -19,6 +19,31 @@ export function getPlatformFeePercent(): number {
   return INTAKE_FEE_PERCENT
 }
 
+/** Minimum gross funding (₱) for checkout — matches create-campaign / publish validation. */
+export const MIN_GROSS_CAMPAIGN_BUDGET = 10_000
+
+/**
+ * Gross budget to pre-fill Fund & Publish (create page “Total budget”).
+ * Uses `plannedGrossBudget` when set; otherwise infers from net `budget` and intake fee.
+ */
+export function getPlannedGrossBudgetForFunding(campaign: Pick<
+  Campaign,
+  'plannedGrossBudget' | 'budget' | 'platformFeePercent'
+>): number {
+  if (
+    typeof campaign.plannedGrossBudget === 'number' &&
+    Number.isFinite(campaign.plannedGrossBudget) &&
+    campaign.plannedGrossBudget > 0
+  ) {
+    return Math.round(campaign.plannedGrossBudget)
+  }
+  const fee = campaign.platformFeePercent ?? getPlatformFeePercent()
+  const net = Math.max(0, campaign.budget)
+  if (fee >= 1) return MIN_GROSS_CAMPAIGN_BUDGET
+  const inferred = Math.round(net / (1 - fee))
+  return Math.max(MIN_GROSS_CAMPAIGN_BUDGET, inferred || MIN_GROSS_CAMPAIGN_BUDGET)
+}
+
 export function getCreatorRatePer1k(brandRatePer1k: number): number {
   return Math.round(brandRatePer1k * CREATOR_PAYOUT_PERCENT * 100) / 100
 }
@@ -88,6 +113,8 @@ export interface Campaign {
   spent: number
   reservedBalance?: number
   minimumPublishBalance?: number
+  /** Brand’s intended gross funding (₱) from create / fund dialog — pre-fills checkout. */
+  plannedGrossBudget?: number
   /** Cumulative views across all content on this campaign (mock aggregate). */
   campaignViews: number
   /** Target view volume the campaign is aiming for (goal bar). */
@@ -126,6 +153,8 @@ export interface Content {
   brandName: string
   creatorId: string
   creatorName: string
+  /** Optional avatar URL for tables (initials fallback via PersonAvatar). */
+  creatorAvatarUrl?: string
   /** Submitted content URL (TikTok/Facebook only in MVP) */
   url: string
   platform: Platform
@@ -527,7 +556,19 @@ export const mockCampaigns: Campaign[] = [
   },
 ]
 
-export const mockContent: Content[] = [
+/** Deterministic demo avatars for tables (skipped when `creatorAvatarUrl` is set explicitly). */
+function defaultCreatorDemoAvatarUrl(creatorName: string): string {
+  return `https://api.dicebear.com/7.x/notionists/png?seed=${encodeURIComponent(creatorName)}&size=128`
+}
+
+function withCreatorDemoAvatars(items: Content[]): Content[] {
+  return items.map((c) => ({
+    ...c,
+    creatorAvatarUrl: c.creatorAvatarUrl ?? defaultCreatorDemoAvatarUrl(c.creatorName),
+  }))
+}
+
+const rawMockContent: Content[] = [
   {
     id: 'content-001',
     campaignId: 'cmp-001',
@@ -626,15 +667,17 @@ export const mockContent: Content[] = [
   },
 ]
 
+export const mockContent: Content[] = withCreatorDemoAvatars(rawMockContent)
+
 /** Brand POV: simulated creator submissions on this brand’s campaigns. */
-export const mockBrandContent: Content[] = [
+const rawMockBrandContent: Content[] = [
   {
     id: 'bcontent-001',
     campaignId: 'cmp-001',
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-1',
-    creatorName: 'Mika R.',
+    creatorName: 'Mika Reyes',
     url: 'https://www.tiktok.com/@mika/video/01',
     platform: 'tiktok',
     views: 234_000,
@@ -654,7 +697,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-2',
-    creatorName: 'Diego C.',
+    creatorName: 'Diego Cruz',
     url: 'https://www.tiktok.com/@diego/video/01',
     platform: 'tiktok',
     hasTikTokYellowBasket: true,
@@ -675,7 +718,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-3',
-    creatorName: 'Anna L.',
+    creatorName: 'Anna Lim',
     url: 'https://www.facebook.com/reel/xyz',
     platform: 'facebook',
     views: 6_400,
@@ -693,7 +736,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-4',
-    creatorName: 'Rico P.',
+    creatorName: 'Rico Perez',
     url: 'https://www.tiktok.com/@rico/video/01',
     platform: 'tiktok',
     views: 1_100,
@@ -713,7 +756,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-5',
-    creatorName: 'Sofia T.',
+    creatorName: 'Sofia Torres',
     url: 'https://www.tiktok.com/@sofia/video/kape-01',
     platform: 'tiktok',
     views: 45_000,
@@ -732,7 +775,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-6',
-    creatorName: 'Jay M.',
+    creatorName: 'Jay Mendoza',
     url: 'https://www.facebook.com/reel/jay-kape-latte',
     platform: 'facebook',
     views: 24_200,
@@ -751,7 +794,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-7',
-    creatorName: 'Lena K.',
+    creatorName: 'Lena Kim',
     url: 'https://www.tiktok.com/@lena/video/latte-ugc',
     platform: 'tiktok',
     views: 118_000,
@@ -770,7 +813,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-8',
-    creatorName: 'Marco D.',
+    creatorName: 'Marco Diaz',
     url: 'https://www.facebook.com/reel/marco-kape',
     platform: 'facebook',
     views: 11_500,
@@ -790,7 +833,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-9',
-    creatorName: 'Nina S.',
+    creatorName: 'Nina Santos',
     url: 'https://www.tiktok.com/@nina/video/kape-reel',
     platform: 'tiktok',
     views: 88_000,
@@ -809,11 +852,13 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-10',
-    creatorName: 'Paolo V.',
+    creatorName: 'Paolo Villanueva',
     url: 'https://www.tiktok.com/@paolo/video/latte-hops',
     platform: 'tiktok',
+    hasTikTokYellowBasket: true,
     views: 41_000,
-    earnings: mockContentEarnings(41_000, DEMO_CMP001_CREATOR),
+    trustFlag: 'TikTok yellow basket — 50/50 split locked at submit.',
+    earnings: Math.round((41_000 / 1000) * DEMO_CMP001_BRAND * 0.5 * 100) / 100,
     status: 'pending',
     submittedAt: daysAgo(2),
     reviewedAt: daysAgo(1),
@@ -828,7 +873,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-11',
-    creatorName: 'Carla B.',
+    creatorName: 'Carla Bautista',
     url: 'https://www.facebook.com/reel/carla-spanish-latte',
     platform: 'facebook',
     views: 17_800,
@@ -848,7 +893,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-12',
-    creatorName: 'Erin G.',
+    creatorName: 'Erin Garcia',
     url: 'https://www.tiktok.com/@erin/video/kape-manila',
     platform: 'tiktok',
     views: 76_000,
@@ -867,11 +912,13 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-13',
-    creatorName: 'Tom R.',
+    creatorName: 'Tom Ramos',
     url: 'https://www.tiktok.com/@tom/video/latte-challenge',
     platform: 'tiktok',
+    hasTikTokYellowBasket: true,
     views: 52_400,
-    earnings: mockContentEarnings(52_400, DEMO_CMP001_CREATOR),
+    trustFlag: 'TikTok yellow basket — 50/50 split locked at submit.',
+    earnings: Math.round((52_400 / 1000) * DEMO_CMP001_BRAND * 0.5 * 100) / 100,
     status: 'pending',
     submittedAt: daysAgo(3),
     reviewedAt: daysAgo(2),
@@ -886,7 +933,7 @@ export const mockBrandContent: Content[] = [
     campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
     brandName: 'Wok Bang',
     creatorId: 'creator-14',
-    creatorName: 'Ivy W.',
+    creatorName: 'Ivy Wong',
     url: 'https://www.facebook.com/reel/ivy-kape-drop',
     platform: 'facebook',
     views: 9_600,
@@ -900,6 +947,8 @@ export const mockBrandContent: Content[] = [
     thumbnailColor: COVER_COLORS[5],
   },
 ]
+
+export const mockBrandContent = withCreatorDemoAvatars(rawMockBrandContent)
 
 export const mockPaymentMethods: PaymentMethod[] = [
   {
@@ -933,8 +982,14 @@ export const mockEarningsTrend = [
   { week: 'Week 6', earnings: Math.round((6210 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF) },
 ]
 
-/** Brand dashboard chart — views & creator payout per calendar month (recent six months). */
+/** Brand dashboard chart — views & creator payout per calendar month (full year). */
 export const mockBrandPerformanceMonthly = [
+  { period: 'January', views: 22_000, payout: mockContentEarnings(22_000, DEMO_CMP001_CREATOR) },
+  { period: 'February', views: 28_000, payout: mockContentEarnings(28_000, DEMO_CMP001_CREATOR) },
+  { period: 'March', views: 35_000, payout: mockContentEarnings(35_000, DEMO_CMP001_CREATOR) },
+  { period: 'April', views: 42_000, payout: mockContentEarnings(42_000, DEMO_CMP001_CREATOR) },
+  { period: 'May', views: 50_000, payout: mockContentEarnings(50_000, DEMO_CMP001_CREATOR) },
+  { period: 'June', views: 54_000, payout: mockContentEarnings(54_000, DEMO_CMP001_CREATOR) },
   { period: 'July', views: 58_000, payout: mockContentEarnings(58_000, DEMO_CMP001_CREATOR) },
   { period: 'August', views: 67_000, payout: mockContentEarnings(67_000, DEMO_CMP001_CREATOR) },
   { period: 'September', views: 82_000, payout: mockContentEarnings(82_000, DEMO_CMP001_CREATOR) },
@@ -956,14 +1011,14 @@ export const mockCreatorPlatformLinks: CreatorPlatformLink[] = [
   {
     platform: 'tiktok',
     label: 'TikTok',
-    handle: '@demo_creator',
+    handle: '@mika.creates',
     status: 'connected',
     connectedAt: daysAgo(18),
   },
   {
     platform: 'facebook',
     label: 'Facebook',
-    handle: 'facebook.com/demo.creator',
+    handle: 'facebook.com/mika.creates',
     status: 'reconnect',
     connectedAt: daysAgo(41),
   },
@@ -973,7 +1028,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
   {
     id: 'pkg-001',
     campaignId: 'cmp-001',
-    periodLabel: 'May 1 – June 1',
+    periodLabel: 'May 1 – June 1, 2026',
     periodStart: '2026-05-01',
     periodEnd: '2026-06-01',
     status: 'ready',
@@ -981,7 +1036,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-001',
         contentId: 'bcontent-002',
-        creatorName: 'Diego C.',
+        creatorName: 'Diego Cruz',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -993,7 +1048,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-002',
         contentId: 'bcontent-003',
-        creatorName: 'Anna L.',
+        creatorName: 'Anna Lim',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'facebook',
@@ -1003,7 +1058,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-003',
         contentId: 'bcontent-005',
-        creatorName: 'Sofia T.',
+        creatorName: 'Sofia Torres',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -1013,7 +1068,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-004',
         contentId: 'bcontent-006',
-        creatorName: 'Jay M.',
+        creatorName: 'Jay Mendoza',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'facebook',
@@ -1023,7 +1078,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-005',
         contentId: 'bcontent-007',
-        creatorName: 'Lena K.',
+        creatorName: 'Lena Kim',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -1033,7 +1088,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-006',
         contentId: 'bcontent-008',
-        creatorName: 'Marco D.',
+        creatorName: 'Marco Diaz',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'facebook',
@@ -1043,7 +1098,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-007',
         contentId: 'bcontent-009',
-        creatorName: 'Nina S.',
+        creatorName: 'Nina Santos',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -1053,17 +1108,19 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-008',
         contentId: 'bcontent-010',
-        creatorName: 'Paolo V.',
+        creatorName: 'Paolo Villanueva',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
-        ...demoPayoutSlice(41_000, DEMO_CMP001_BRAND),
+        isYellowBasket: true,
+        flag: 'TikTok yellow basket — 50/50 split locked at submit.',
+        ...demoPayoutSlice(41_000, DEMO_CMP001_BRAND, { isYellowBasket: true }),
         status: 'ready',
       },
       {
         id: 'line-009',
         contentId: 'bcontent-011',
-        creatorName: 'Carla B.',
+        creatorName: 'Carla Bautista',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'facebook',
@@ -1073,7 +1130,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-010',
         contentId: 'bcontent-012',
-        creatorName: 'Erin G.',
+        creatorName: 'Erin Garcia',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -1083,17 +1140,19 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-011',
         contentId: 'bcontent-013',
-        creatorName: 'Tom R.',
+        creatorName: 'Tom Ramos',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
-        ...demoPayoutSlice(52_400, DEMO_CMP001_BRAND),
+        isYellowBasket: true,
+        flag: 'TikTok yellow basket — 50/50 split locked at submit.',
+        ...demoPayoutSlice(52_400, DEMO_CMP001_BRAND, { isYellowBasket: true }),
         status: 'ready',
       },
       {
         id: 'line-012',
         contentId: 'bcontent-014',
-        creatorName: 'Ivy W.',
+        creatorName: 'Ivy Wong',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'facebook',
@@ -1105,7 +1164,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
   {
     id: 'pkg-002',
     campaignId: 'cmp-001',
-    periodLabel: 'April 1 – May 1',
+    periodLabel: 'April 1 – May 1, 2026',
     periodStart: '2026-04-01',
     periodEnd: '2026-05-01',
     status: 'released',
@@ -1113,7 +1172,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-201',
         contentId: 'bcontent-001',
-        creatorName: 'Mika R.',
+        creatorName: 'Mika Reyes',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -1123,7 +1182,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-202',
         contentId: 'bcontent-002',
-        creatorName: 'Diego C.',
+        creatorName: 'Diego Cruz',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -1133,7 +1192,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-203',
         contentId: 'bcontent-005',
-        creatorName: 'Sofia T.',
+        creatorName: 'Sofia Torres',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -1143,7 +1202,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-204',
         contentId: 'bcontent-007',
-        creatorName: 'Lena K.',
+        creatorName: 'Lena Kim',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',
@@ -1153,7 +1212,7 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
       {
         id: 'line-205',
         contentId: 'bcontent-009',
-        creatorName: 'Nina S.',
+        creatorName: 'Nina Santos',
         campaignId: 'cmp-001',
         campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
         platform: 'tiktok',

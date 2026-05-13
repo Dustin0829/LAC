@@ -178,7 +178,7 @@ export default function BrandAccountPage() {
         <Button
           type="button"
           size="lg"
-          className="w-full bg-blue-600 font-semibold text-white sm:w-auto min-w-[140px]"
+          className="w-full bg-phc-gradient font-semibold text-white hover:opacity-90 sm:w-auto min-w-36"
           onClick={onSave}
         >
           Save

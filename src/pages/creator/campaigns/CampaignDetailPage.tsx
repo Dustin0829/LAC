@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  BadgeCheck,
   Calendar,
   ExternalLink,
   Link2,
@@ -29,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -42,11 +44,7 @@ import {
 } from '@/components/ui/select'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { cn, formatPHP, formatDate, formatNumber, formatViews } from '@/lib/utils'
-import {
-  creatorHeadlineRatePer1k,
-  PLATFORM_LABEL,
-  type Platform,
-} from '@/lib/mockData'
+import { creatorHeadlineRatePer1k, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
 
 function isValidContentUrl(value: string): boolean {
   try {
@@ -65,6 +63,9 @@ function mockPostViewsForDemoUrl(url: string): number {
   if (lower.includes('demo-low') || lower.includes('lowviews')) return 800
   return 12_400
 }
+
+/** Placeholder preview still (replace with thumbnail from oEmbed/API). */
+const STATS_PREVIEW_IMAGE_SRC = '/sear-preview.jpg'
 
 function effectiveCreatorRatePer1k(
   basePer1k: number,
@@ -88,7 +89,10 @@ type FetchedSnapshot = {
 export default function CreatorCampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const campaign = useCampaignsStore((s) => s.campaigns.find((c) => c.id === id))
+  const campaignId = id ?? ''
+  const campaign = useCampaignsStore((s) =>
+    campaignId ? s.campaigns.find((c) => c.id === campaignId) : undefined
+  )
   const addContent = useContentStore((s) => s.addContent)
   const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
   const connectPlatform = useCreatorProfileStore((s) => s.connectPlatform)
@@ -102,16 +106,21 @@ export default function CreatorCampaignDetailPage() {
   const [submitting, setSubmitting] = useState(false)
   const [linkPhase, setLinkPhase] = useState<LinkValidationPhase>('idle')
   const [snapshot, setSnapshot] = useState<FetchedSnapshot | null>(null)
+  const validationGenRef = useRef(0)
   const connectedPlatforms = platformLinks
     .filter((link) => link.status === 'connected')
     .map((link) => link.platform)
   const hasPayoutMethod = payoutMethods.length > 0
   const platformConnected = connectedPlatforms.includes(platform)
 
+  const campaignPlatformsKey = campaign?.platforms.slice().sort().join('|') ?? ''
+
   useEffect(() => {
-    if (!campaign) return
-    setPlatform((p) => (campaign.platforms.includes(p) ? p : campaign.platforms[0] ?? 'tiktok'))
-  }, [campaign])
+    if (!campaignId) return
+    const c = useCampaignsStore.getState().campaigns.find((x) => x.id === campaignId)
+    if (!c) return
+    setPlatform((p) => (c.platforms.includes(p) ? p : (c.platforms[0] ?? 'tiktok')))
+  }, [campaignId, campaignPlatformsKey])
 
   if (!campaign) {
     return (
@@ -148,35 +157,66 @@ export default function CreatorCampaignDetailPage() {
   function handleConnectOnly() {
     connectPlatform(platform)
     toast.success(`${PLATFORM_LABEL[platform]} connected`, {
-      description: 'Paste your content link below, then validate before submitting.',
+      description: 'Paste your content link below.',
     })
   }
 
-  async function handleValidateLink() {
-    if (!campaign || !hasPayoutMethod || !platformConnected) return
+  /** Debounced validation only while the modal is open (avoid background churn on the detail page). */
+  useEffect(() => {
+    if (!open || !campaignId) return
+    const resolved = useCampaignsStore.getState().campaigns.find((x) => x.id === campaignId)
+    if (!resolved) return
+
+    const gen = ++validationGenRef.current
     const trimmed = url.trim()
-    if (!isValidContentUrl(trimmed)) {
-      toast.error('Paste a full content link starting with https:// (e.g. TikTok or Facebook).')
+    const platformsAllowed = resolved.platforms
+
+    if (!trimmed || !hasPayoutMethod || !platformConnected) {
+      if (!trimmed) {
+        setLinkPhase('idle')
+        setSnapshot(null)
+      }
       return
     }
-    if (!campaign.platforms.includes(platform)) {
-      toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
-      return
-    }
-    setLinkPhase('validating')
-    await new Promise((r) => setTimeout(r, 550))
-    const views = mockPostViewsForDemoUrl(trimmed)
-    const likes = Math.max(0, Math.round(views * 0.032))
-    const comments = Math.max(0, Math.round(views * 0.0012))
-    setSnapshot({ views, likes, comments })
-    if (views <= 1_000) {
-      setLinkPhase('below_quota')
-      toast.error('This post is below the 1,000 views minimum for this campaign.')
-    } else {
-      setLinkPhase('ready')
-      toast.success('Link looks good — review the snapshot, then submit.')
-    }
-  }
+
+    const t = window.setTimeout(() => {
+      void (async () => {
+        if (gen !== validationGenRef.current) return
+
+        if (!isValidContentUrl(trimmed)) {
+          if (gen !== validationGenRef.current) return
+          setLinkPhase('idle')
+          setSnapshot(null)
+          return
+        }
+        if (!platformsAllowed.includes(platform)) {
+          if (gen !== validationGenRef.current) return
+          setLinkPhase('idle')
+          setSnapshot(null)
+          toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
+          return
+        }
+
+        setLinkPhase('validating')
+        await new Promise((r) => setTimeout(r, 550))
+        if (gen !== validationGenRef.current) return
+
+        const views = mockPostViewsForDemoUrl(trimmed)
+        const likes = Math.max(0, Math.round(views * 0.032))
+        const comments = Math.max(0, Math.round(views * 0.0012))
+        const snap: FetchedSnapshot = { views, likes, comments }
+        setSnapshot(snap)
+
+        if (views <= 1_000) {
+          setLinkPhase('below_quota')
+        } else {
+          setLinkPhase('ready')
+        }
+      })()
+    }, 550)
+
+    return () => window.clearTimeout(t)
+  }, [open, url, platform, campaignId, campaignPlatformsKey, hasPayoutMethod, platformConnected])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -190,7 +230,7 @@ export default function CreatorCampaignDetailPage() {
       return
     }
     if (linkPhase !== 'ready' || !snapshot || snapshot.views <= 1_000) {
-      toast.error('Validate the link and confirm it meets the 1k views minimum.')
+      toast.error('Wait until stats load and the post is above 1,000 views.')
       return
     }
     if (!isValidContentUrl(url.trim())) {
@@ -221,7 +261,7 @@ export default function CreatorCampaignDetailPage() {
       submittedAt: new Date().toISOString(),
       thumbnailColor: campaign.coverColor,
     })
-    toast.success('Content submitted! Stats are locked at this snapshot; brand review comes next.')
+    toast.success('Content submitted! Brand review comes next.')
     setSubmitting(false)
     setOpen(false)
     resetSubmitModal()
@@ -255,12 +295,12 @@ export default function CreatorCampaignDetailPage() {
             <h1 className="min-w-0 wrap-break-word font-display text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
               {campaign.title}
             </h1>
-            <p className="max-w-full min-w-0 wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-[15px]">
+            <p className="max-w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-base">
               {campaign.description}
             </p>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-4">
-              <div className="min-w-0 max-w-full rounded-2xl border-2 border-blue-200/90 bg-linear-to-br from-blue-50/95 to-sky-50/80 px-5 py-4 dark:border-blue-800/60 dark:from-blue-950/50 dark:to-sky-950/40">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+              <div className="min-w-0 max-w-full rounded-2xl border border-blue-200/90 bg-linear-to-br from-blue-50/95 to-sky-50/80 px-5 py-4 dark:border-blue-800/60 dark:from-blue-950/50 dark:to-sky-950/40">
+                <p className="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
                   Your rate
                 </p>
                 <p className="mt-1.5 font-display text-2xl font-extrabold tabular-nums text-foreground md:text-3xl">
@@ -300,7 +340,10 @@ export default function CreatorCampaignDetailPage() {
               }}
             >
               <DialogTrigger asChild>
-                <Button size="lg" className="bg-phc-gradient font-semibold text-white hover:opacity-90">
+                <Button
+                  size="lg"
+                  className="bg-phc-gradient font-semibold text-white hover:opacity-90"
+                >
                   <Send className="h-4 w-4" />
                   Submit content
                 </Button>
@@ -335,28 +378,27 @@ export default function CreatorCampaignDetailPage() {
                         setSnapshot(null)
                       }}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="h-auto min-h-10 gap-2 border border-border bg-muted/60 py-2.5 text-left  ring-offset-background hover:bg-muted/80 focus-visible:ring-2 dark:border-border dark:bg-muted/40 dark:hover:bg-muted/55">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {campaign.platforms.map((p) => (
                           <SelectItem key={p} value={p}>
-                            {PLATFORM_LABEL[p]}
+                            <span className="flex items-center gap-2">
+                              <PlatformIcon platform={p} className="h-4 w-4" aria-hidden />
+                              {PLATFORM_LABEL[p]}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
-                      TikTok and Facebook each need their own link to your account — connect the one
-                      you are submitting for.
-                    </p>
                   </div>
 
                   {!hasPayoutMethod ? null : !platformConnected ? (
                     <div className="space-y-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
                       <p className="text-sm text-foreground">
-                        Connect <strong>{PLATFORM_LABEL[platform]}</strong> (OAuth) before you paste a
-                        content link. This is separate from submitting.
+                        Connect <strong>{PLATFORM_LABEL[platform]}</strong> (OAuth) before you paste
+                        a content link. This is separate from submitting.
                       </p>
                       <Button
                         type="button"
@@ -382,21 +424,13 @@ export default function CreatorCampaignDetailPage() {
                             setSnapshot(null)
                           }}
                         />
-                        <p className="text-[11px] text-muted-foreground">
-                          Demo: include <code className="rounded bg-muted px-1">demo-low</code> in the URL
-                          to simulate below 1k views.
-                        </p>
                       </div>
                       {platform === 'tiktok' ? (
                         <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
                           <Checkbox
                             id="tiktok-yellow-basket"
                             checked={tikTokYellowBasket}
-                            onCheckedChange={(checked) => {
-                              setTikTokYellowBasket(checked === true)
-                              setLinkPhase('idle')
-                              setSnapshot(null)
-                            }}
+                            onCheckedChange={(checked) => setTikTokYellowBasket(checked === true)}
                             className="mt-0.5"
                           />
                           <div className="min-w-0 space-y-1">
@@ -409,96 +443,112 @@ export default function CreatorCampaignDetailPage() {
                           </div>
                         </div>
                       ) : null}
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="w-full"
-                        disabled={linkPhase === 'validating' || !url.trim()}
-                        onClick={() => void handleValidateLink()}
-                      >
-                        {linkPhase === 'validating' ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Checking link…
-                          </>
-                        ) : (
-                          'Validate link'
-                        )}
-                      </Button>
+                      {snapshot && (linkPhase === 'ready' || linkPhase === 'below_quota') ? (
+                        <div
+                          className={cn(
+                            'space-y-3 rounded-xl border p-3',
+                            linkPhase === 'ready'
+                              ? 'border-emerald-200/90 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/25'
+                              : 'border-amber-200/90 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/30'
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Stats preview
+                            </p>
+                            {linkPhase === 'ready' ? (
+                              <Badge className="flex w-fit shrink-0 gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/35 dark:text-emerald-400">
+                                <BadgeCheck className="h-3 w-3 shrink-0" aria-hidden />
+                                Passed
+                              </Badge>
+                            ) : (
+                              <span className="rounded-full bg-amber-600/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900 dark:bg-amber-400/20 dark:text-amber-100">
+                                Under minimum
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-stretch">
+                            <div className="relative mx-auto aspect-9/16 w-[118px] shrink-0 overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-black/6 dark:bg-black/40 dark:ring-white/15 sm:mx-0 sm:w-[128px]">
+                              <img
+                                src={STATS_PREVIEW_IMAGE_SRC}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  const el = e.currentTarget
+                                  el.src = '/sear-cover.jpg'
+                                }}
+                              />
+                              <div className="absolute bottom-2 left-2 flex h-7 w-7 items-center justify-center rounded-md bg-background/95 p-0.5 shadow-sm ring-1 ring-black/10 dark:bg-background/90 dark:ring-white/10">
+                                <PlatformIcon platform={platform} className="h-[18px] w-[18px]" />
+                              </div>
+                            </div>
+
+                            <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+                              <dl className="grid h-full min-h-54 w-full grid-cols-2 grid-rows-2 gap-2 sm:min-h-[calc(128px*16/9)] sm:flex-1 sm:gap-2.5">
+                                <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-2.5 py-2 dark:bg-black/35">
+                                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Views
+                                  </dt>
+                                  <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
+                                    {formatViews(snapshot.views)}
+                                  </dd>
+                                </div>
+                                <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-2.5 py-2  dark:bg-black/35">
+                                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Likes
+                                  </dt>
+                                  <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
+                                    {formatNumber(snapshot.likes)}
+                                  </dd>
+                                </div>
+                                <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-2.5 py-2 dark:bg-black/35">
+                                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Comments
+                                  </dt>
+                                  <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
+                                    {formatNumber(snapshot.comments)}
+                                  </dd>
+                                </div>
+                                <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-2.5 py-2  dark:bg-black/35">
+                                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Est. payout
+                                  </dt>
+                                  <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-phc-gradient sm:text-xl">
+                                    {formatPHP(
+                                      Math.round(
+                                        (snapshot.views / 1_000) *
+                                          effectiveCreatorRatePer1k(
+                                            creatorRatePer1k,
+                                            platform,
+                                            tikTokYellowBasket
+                                          ) *
+                                          100
+                                      ) / 100,
+                                      { decimals: false }
+                                    )}
+                                  </dd>
+                                </div>
+                              </dl>
+                              {linkPhase === 'below_quota' ? (
+                                <p className="mt-2 rounded-lg border border-amber-200/80 bg-white/80 px-3 py-2 text-center text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/50 dark:text-amber-100">
+                                  This post needs more than 1,000 views to submit for this campaign.
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                     </>
                   )}
-
-                  {linkPhase === 'below_quota' && snapshot ? (
-                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
-                      {formatViews(snapshot.views)} views — needs more than 1,000 to submit for this
-                      campaign.
-                    </p>
-                  ) : null}
-
-                  {linkPhase === 'ready' && snapshot ? (
-                    <div className="space-y-3 rounded-xl border border-border bg-card p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Locked snapshot preview
-                      </p>
-                      <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                        <div>
-                          <p className="font-display font-extrabold tabular-nums">
-                            {formatViews(snapshot.views)}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">Views</p>
-                        </div>
-                        <div>
-                          <p className="font-display font-extrabold tabular-nums">
-                            {formatNumber(snapshot.likes)}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">Likes</p>
-                        </div>
-                        <div>
-                          <p className="font-display font-extrabold tabular-nums">
-                            {formatNumber(snapshot.comments)}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">Comments</p>
-                        </div>
-                      </div>
-                      <p className="text-center text-sm font-semibold text-foreground">
-                        Est. payout at submit:{' '}
-                        <span className="text-phc-gradient tabular-nums">
-                          {formatPHP(
-                            Math.round((snapshot.views / 1_000) * effectiveCreatorRatePer1k(creatorRatePer1k, platform, tikTokYellowBasket) * 100) / 100,
-                            { decimals: false }
-                          )}
-                        </span>
-                      </p>
-                      {platform === 'tiktok' && tikTokYellowBasket ? (
-                        <p className="text-center text-[11px] text-muted-foreground">
-                          Yellow basket split (50/50 on performance) applied to this estimate.
-                        </p>
-                      ) : null}
-                      <p className="text-center text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                        Rules check passed (demo)
-                      </p>
-                    </div>
-                  ) : null}
-
-                  {linkPhase === 'ready' ? (
-                    <div className="rounded-xl border border-violet-200/80 bg-violet-50/90 px-3 py-3 text-xs leading-relaxed text-violet-950 dark:border-violet-900/40 dark:bg-violet-950/35 dark:text-violet-100">
-                      <p className="font-semibold">Content retention</p>
-                      <p className="mt-1 opacity-95">
-                        Your stats lock in when you submit. Keep this post public until the later of
-                        campaign end or one full month after submission. Deleting or hiding it early
-                        can mean forfeiting earnings for this content.
-                      </p>
-                    </div>
-                  ) : null}
 
                   <Button
                     type="submit"
                     className="w-full bg-phc-gradient text-white hover:opacity-90"
                     disabled={
-                      submitting ||
-                      !hasPayoutMethod ||
-                      !platformConnected ||
-                      linkPhase !== 'ready'
+                      submitting || !hasPayoutMethod || !platformConnected || linkPhase !== 'ready'
                     }
                   >
                     {submitting ? (
@@ -506,7 +556,7 @@ export default function CreatorCampaignDetailPage() {
                     ) : (
                       <>
                         <Send className="h-4 w-4" />
-                        Submit &amp; lock snapshot
+                        Submit
                       </>
                     )}
                   </Button>
@@ -526,7 +576,7 @@ export default function CreatorCampaignDetailPage() {
           <p className="min-w-0 font-display text-2xl font-extrabold tabular-nums text-foreground md:text-3xl">
             {reachGoal > 0 ? `${reachProgressPct.toFixed(1)}%` : '—'}
           </p>
-          <p className="min-w-0 wrap-break-word text-sm font-semibold tabular-nums text-blue-600 sm:max-w-[min(100%,24rem)] sm:text-right">
+          <p className="min-w-0 wrap-break-word text-sm font-semibold tabular-nums text-blue-600 sm:max-w-sm sm:text-right">
             {reachGoal > 0 ? (
               <>
                 {formatNumber(Math.round(campaign.campaignViews))} / {formatNumber(reachGoal)} views
@@ -534,14 +584,16 @@ export default function CreatorCampaignDetailPage() {
             ) : (
               <>
                 {formatNumber(Math.round(campaign.campaignViews))} views
-                <span className="block text-xs font-medium text-muted-foreground">No reach goal set</span>
+                <span className="block text-xs font-medium text-muted-foreground">
+                  No reach goal set
+                </span>
               </>
             )}
           </p>
         </div>
         <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-blue-600 transition-[width] duration-700 ease-out"
+            className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
             style={{ width: `${reachProgressPct}%` }}
           />
         </div>
@@ -558,7 +610,9 @@ export default function CreatorCampaignDetailPage() {
               <Megaphone className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0">
-              <h2 className="font-display text-xl font-extrabold tracking-tight">Campaign details</h2>
+              <h2 className="font-display text-xl font-extrabold tracking-tight">
+                Campaign details
+              </h2>
               <p className="mt-1 wrap-break-word text-sm leading-relaxed text-muted-foreground">
                 Where you can post content for this campaign.
               </p>
@@ -570,7 +624,7 @@ export default function CreatorCampaignDetailPage() {
             <h3 className="wrap-break-word font-display text-xl font-extrabold leading-tight tracking-tight md:text-2xl">
               {campaign.title}
             </h3>
-            <p className="max-w-full min-w-0 wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-[15px]">
+            <p className="max-w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-base">
               {campaign.description}
             </p>
           </div>
@@ -591,10 +645,12 @@ export default function CreatorCampaignDetailPage() {
               <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-5 sm:justify-end">
                 {campaign.platforms.map((p) => (
                   <div key={p} className="flex flex-col items-center gap-1.5">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-border bg-card">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border bg-card">
                       <PlatformIcon platform={p} className="h-7 w-7" />
                     </div>
-                    <span className="text-[11px] font-semibold text-muted-foreground">{PLATFORM_LABEL[p]}</span>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {PLATFORM_LABEL[p]}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -627,7 +683,9 @@ export default function CreatorCampaignDetailPage() {
                 <Shield className="h-5 w-5" aria-hidden />
               </div>
               <div className="min-w-0">
-                <h2 className="font-display text-xl font-extrabold tracking-tight">Rules &amp; assets</h2>
+                <h2 className="font-display text-xl font-extrabold tracking-tight">
+                  Rules &amp; assets
+                </h2>
               </div>
             </div>
             <span
@@ -643,7 +701,9 @@ export default function CreatorCampaignDetailPage() {
           </div>
 
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Campaign rules</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Campaign rules
+            </p>
             {campaign.rules.length > 0 ? (
               <ul className="mt-3 space-y-2">
                 {campaign.rules.map((rule, i) => (
@@ -651,18 +711,24 @@ export default function CreatorCampaignDetailPage() {
                     key={i}
                     className="flex min-w-0 gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm leading-relaxed"
                   >
-                    <span className="shrink-0 font-display font-extrabold text-phc-gradient tabular-nums">{i + 1}.</span>
+                    <span className="shrink-0 font-display font-extrabold text-phc-gradient tabular-nums">
+                      {i + 1}.
+                    </span>
                     <span className="min-w-0 wrap-break-word">{rule}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">No rules added for this campaign.</p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                No rules added for this campaign.
+              </p>
             )}
           </div>
 
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Campaign assets</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Campaign assets
+            </p>
 
             {!campaign.assetUrl?.trim() ? (
               <div className="mt-3 rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
@@ -683,7 +749,9 @@ export default function CreatorCampaignDetailPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">Creator asset link</p>
-                  <p className="truncate text-xs text-muted-foreground">{campaign.assetUrl.trim()}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {campaign.assetUrl.trim()}
+                  </p>
                 </div>
                 <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
               </a>
@@ -696,7 +764,9 @@ export default function CreatorCampaignDetailPage() {
                 rel="noreferrer"
                 className="mt-3 flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border bg-muted/30 px-4 py-3 transition-colors hover:bg-muted"
               >
-                <span className="min-w-0 wrap-break-word font-medium">Sample reference content</span>
+                <span className="min-w-0 wrap-break-word font-medium">
+                  Sample reference content
+                </span>
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
             ) : null}
@@ -706,7 +776,9 @@ export default function CreatorCampaignDetailPage() {
 
       <div className="flex min-w-0 flex-wrap items-center justify-center gap-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-center text-xs text-muted-foreground sm:text-sm">
         <Lock className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-        <span className="min-w-0 wrap-break-word">Only approved creators can view and participate in this campaign.</span>
+        <span className="min-w-0 wrap-break-word">
+          Only approved creators can view and participate in this campaign.
+        </span>
       </div>
     </div>
   )

@@ -39,7 +39,10 @@ export default function CreatorAccountPage() {
         </div>
         <div className="grid min-w-0 gap-3 md:grid-cols-2">
           {platformLinks.map((link) => (
-            <div key={link.platform} className="min-w-0 rounded-2xl border border-border bg-muted/40 p-4">
+            <div
+              key={link.platform}
+              className="min-w-0 rounded-2xl border border-border bg-muted/40 p-4"
+            >
               <div className="flex min-w-0 items-start gap-3">
                 <PlatformIcon platform={link.platform} className="h-8 w-8 shrink-0" />
                 <div className="min-w-0 flex-1 space-y-2">
@@ -48,7 +51,7 @@ export default function CreatorAccountPage() {
                     {link.handle}
                   </p>
                   {link.status === 'connected' ? (
-                    <span className="inline-flex whitespace-nowrap rounded-full bg-[#C0FF73] px-3 py-1 text-xs font-semibold text-black">
+                    <span className="inline-flex whitespace-nowrap rounded-full bg-success px-3 py-1 text-xs font-semibold text-black">
                       Connected
                     </span>
                   ) : (

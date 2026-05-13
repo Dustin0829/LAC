@@ -1,6 +1,17 @@
 import { useMemo, useState } from 'react'
 import { ContentStatusBadge } from '@/components/ContentStatusBadge'
-import { PlatformIcon } from '@/components/PlatformIcon'
+import { PersonAvatar } from '@/components/PersonAvatar'
+import { PlatformCell } from '@/components/PlatformIcon'
+import { TablePagination } from '@/components/TablePagination'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { StatCard } from '@/components/StatCard'
 import {
   Select,
@@ -9,19 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { mockEarningsTrend, PLATFORM_LABEL } from '@/lib/mockData'
+import { mockEarningsTrend } from '@/lib/mockData'
 import { useContentStore } from '@/lib/stores/contentStore'
 import { formatDate, formatPHP, formatViews } from '@/lib/utils'
 import { Clock, Scissors, Wallet } from 'lucide-react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 type ChartRange = 'weekly' | 'monthly' | 'yearly'
 
@@ -44,6 +47,8 @@ const chartRangeLabel: Record<ChartRange, string> = {
   yearly: 'Yearly',
 }
 
+const TRANSACTION_PAGE_SIZE = 8
+
 export default function CreatorEarningsPage() {
   const allContent = useContentStore((s) => s.contents)
   const contents = useMemo(
@@ -51,30 +56,44 @@ export default function CreatorEarningsPage() {
     [allContent]
   )
   const [chartRange, setChartRange] = useState<ChartRange>('monthly')
+  const [transactionPage, setTransactionPage] = useState(1)
 
   const barChartData = useMemo(() => barChartRowsForRange(chartRange), [chartRange])
   const rangeBarTotal = barChartData.reduce((s, row) => s + row.earnings, 0)
 
   const totalEarned = contents.reduce((s, c) => s + c.earnings, 0)
-  const paidTotal = contents
-    .filter((c) => c.status === 'paid')
-    .reduce((s, c) => s + c.earnings, 0)
+  const paidTotal = contents.filter((c) => c.status === 'paid').reduce((s, c) => s + c.earnings, 0)
   const unpaidTotal = Math.max(0, totalEarned - paidTotal)
   const ongoingSubmissionCount = contents.filter((c) => c.status === 'pending').length
 
-  const recentTransactions = [...contents]
-    .filter((c) => c.status === 'paid' || (c.status === 'pending' && c.reviewedAt))
-    .sort(
-      (a, b) =>
-        new Date(b.paidAt ?? b.reviewedAt ?? b.submittedAt).getTime() -
-        new Date(a.paidAt ?? a.reviewedAt ?? a.submittedAt).getTime()
-    )
-    .slice(0, 8)
+  const transactionRows = useMemo(
+    () =>
+      [...contents]
+        .filter((c) => c.status === 'paid' || (c.status === 'pending' && c.reviewedAt))
+        .sort(
+          (a, b) =>
+            new Date(b.paidAt ?? b.reviewedAt ?? b.submittedAt).getTime() -
+            new Date(a.paidAt ?? a.reviewedAt ?? a.submittedAt).getTime()
+        ),
+    [contents]
+  )
+
+  const transactionTotalPages = Math.max(
+    1,
+    Math.ceil(transactionRows.length / TRANSACTION_PAGE_SIZE)
+  )
+  const transactionSafePage = Math.min(Math.max(1, transactionPage), transactionTotalPages)
+  const transactionPageRows = transactionRows.slice(
+    (transactionSafePage - 1) * TRANSACTION_PAGE_SIZE,
+    transactionSafePage * TRANSACTION_PAGE_SIZE
+  )
 
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Earnings</p>
+        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Earnings
+        </p>
         <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold">
           Your <span className="text-phc-gradient">payday</span> tracker
         </h1>
@@ -108,7 +127,7 @@ export default function CreatorEarningsPage() {
           <div>
             <h2 className="font-display text-xl font-extrabold">Earnings trend</h2>
             <p className="text-sm text-muted-foreground">
-              Mock accrual windows · {chartRangeLabel[chartRange]}
+              Accrual windows · {chartRangeLabel[chartRange]}
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -156,57 +175,68 @@ export default function CreatorEarningsPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-border bg-card">
-        <div className="flex items-center justify-between p-6">
-          <h2 className="font-display text-xl font-extrabold">Recent transactions</h2>
+      <TableContainer>
+        <div className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-5">
+          <h2 className="font-display text-lg font-extrabold sm:text-xl">Recent transactions</h2>
         </div>
-        {recentTransactions.length === 0 ? (
+        {transactionRows.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">No transactions yet.</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-6 py-3 font-medium">Campaign</th>
-                <th className="px-6 py-3 font-medium">Platform</th>
-                <th className="px-6 py-3 font-medium hidden sm:table-cell">Views</th>
-                <th className="px-6 py-3 font-medium">Earned</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium hidden md:table-cell">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {recentTransactions.map((c) => (
-                <tr key={c.id} className="hover:bg-muted/30">
-                  <td className="px-6 py-4">
-                    <p className="font-medium line-clamp-1">{c.campaignTitle}</p>
-                    <p className="text-xs text-muted-foreground">{c.brandName}</p>
-                  </td>
-                  <td className="px-6 py-4 align-middle">
-                    <div className="flex items-center gap-2">
-                      <PlatformIcon platform={c.platform} className="h-7 w-7" />
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {PLATFORM_LABEL[c.platform]}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 hidden sm:table-cell tabular-nums">
-                    {formatViews(c.views)}
-                  </td>
-                  <td className="px-6 py-4 font-display font-bold tabular-nums text-phc-gradient">
-                    {formatPHP(c.earnings, { decimals: false })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <ContentStatusBadge status={c.status} />
-                  </td>
-                  <td className="px-6 py-4 hidden md:table-cell tabular-nums text-muted-foreground">
-                    {formatDate(c.paidAt ?? c.reviewedAt ?? c.submittedAt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow className="cursor-default hover:bg-transparent">
+                  <TableHead>Campaign</TableHead>
+                  <TableHead>Platform</TableHead>
+                  <TableHead>Views</TableHead>
+                  <TableHead>Earned</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {transactionPageRows.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <PersonAvatar name={c.brandName} size="xs" className="shrink-0" />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{c.campaignTitle}</p>
+                          <p className="truncate text-xs text-muted-foreground">{c.brandName}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <PlatformCell
+                        platform={c.platform}
+                        iconClassName="h-5 w-5"
+                        hasYellowBasket={Boolean(c.hasTikTokYellowBasket)}
+                      />
+                    </TableCell>
+                    <TableCell className="tabular-nums">{formatViews(c.views)}</TableCell>
+                    <TableCell className="font-display text-sm font-bold tabular-nums text-phc-gradient">
+                      {formatPHP(c.earnings, { decimals: false })}
+                    </TableCell>
+                    <TableCell>
+                      <ContentStatusBadge status={c.status} />
+                    </TableCell>
+                    <TableCell className="text-xs tabular-nums text-muted-foreground">
+                      {formatDate(c.paidAt ?? c.reviewedAt ?? c.submittedAt)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <TablePagination
+              page={transactionSafePage}
+              pageSize={TRANSACTION_PAGE_SIZE}
+              totalItems={transactionRows.length}
+              onPageChange={setTransactionPage}
+              itemLabel="transactions"
+            />
+          </>
         )}
-      </div>
+      </TableContainer>
     </div>
   )
 }

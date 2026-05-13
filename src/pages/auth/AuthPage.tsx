@@ -62,7 +62,7 @@ export default function AuthPage() {
       email: trimmed,
       name: trimmed.split('@')[0],
     })
-    toast.success('Verification sent. Demo: code accepted and session created.')
+    toast.success("Verification sent. You're signed in.")
     setSubmitting(false)
     afterAuth()
   }
@@ -72,8 +72,8 @@ export default function AuthPage() {
     await new Promise((r) => setTimeout(r, 700))
     signIn({
       id: `gmail-${Date.now()}`,
-      email: 'demo.user@gmail.com',
-      name: 'Demo User',
+      email: 'alex.martin@gmail.com',
+      name: 'Alex Martin',
       avatarUrl: undefined,
     })
     toast.success('Signed in with Google')
@@ -92,7 +92,7 @@ export default function AuthPage() {
           <div className="w-full max-w-md">
             <Link to="/" className="mb-8 flex flex-col items-center text-center transition-opacity hover:opacity-80">
               <span className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">Arpify</span>
-              <span className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
+              <span className="mt-1 text-xs font-medium uppercase tracking-widest text-muted-foreground md:text-sm">
                 Verified views marketplace
               </span>
             </Link>

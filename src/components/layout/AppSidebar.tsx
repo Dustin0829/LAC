@@ -8,9 +8,7 @@ import {
   LogOut,
   type LucideIcon,
   ArrowLeftRight,
-  Building2,
   Video,
-  ClipboardList,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore, type UserRole } from '@/lib/stores/authStore'
@@ -28,6 +26,8 @@ import { cn } from '@/lib/utils'
 
 interface NavItem {
   label: string
+  /** Shorter label for the narrow (w-24) rail */
+  shortLabel?: string
   to: string
   icon: LucideIcon
 }
@@ -43,7 +43,6 @@ const CREATOR_NAV: NavItem[] = [
 const BRAND_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/brand/dashboard', icon: LayoutDashboard },
   { label: 'Campaigns', to: '/brand/campaigns', icon: Video },
-  { label: 'Content submissions', to: '/brand/submissions', icon: ClipboardList },
   { label: 'Account', to: '/brand/account', icon: User },
 ]
 
@@ -63,13 +62,15 @@ function getInitials(name?: string, email?: string): string {
   return 'U'
 }
 
-export function AppSidebar({ role }: AppSidebarProps) {
+function useAppSidebarModel(role: UserRole) {
   const navigation = role === 'brand' ? BRAND_NAV : CREATOR_NAV
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuth()
   const setRole = useAuthStore((s) => s.setRole)
   const signOut = useAuthStore((s) => s.signOut)
+
+  const homeTo = role === 'brand' ? '/brand/dashboard' : '/creator/dashboard'
 
   function handleSignOut() {
     signOut()
@@ -87,129 +88,149 @@ export function AppSidebar({ role }: AppSidebarProps) {
   const userInitials = getInitials(user?.name, user?.email)
   const displayName = user?.name || user?.email?.split('@')[0] || 'You'
 
+  return {
+    navigation,
+    location,
+    homeTo,
+    user,
+    handleSignOut,
+    handleSwitchRole,
+    userInitials,
+    displayName,
+  }
+}
+
+/** Desktop rail only — use as first flex child next to `<main>` (BugHyve-style shell). */
+export function AppSidebarDesktop({ role }: AppSidebarProps) {
+  const {
+    navigation,
+    location,
+    homeTo,
+    user,
+    userInitials,
+    handleSignOut,
+    handleSwitchRole,
+    displayName,
+  } = useAppSidebarModel(role)
+
   return (
-    <>
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden h-dvh min-h-dvh w-64 shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground border-r border-sidebar-border md:flex">
-        <div className="flex items-center px-6 h-16 border-b border-sidebar-border">
-          <div className="leading-tight">
-            <div className="font-display text-base font-extrabold">Arpify</div>
-            <div className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">
-              {role === 'brand' ? 'Brand' : 'Creator'}
-            </div>
-          </div>
-        </div>
+    <aside className="hidden h-dvh w-24 shrink-0 border-r border-gray-800 bg-gray-900 text-gray-100 md:flex md:flex-col">
+      <div className="flex h-20 shrink-0 items-center justify-center border-b border-gray-800">
+        <Link to={homeTo} className="flex items-center justify-center" title="Arpify">
+          <img
+            src="/arpify-logo.svg"
+            alt=""
+            className="h-12 w-12 rounded-sm object-cover object-left"
+          />
+        </Link>
+      </div>
 
-        <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-          {navigation.map((item) => {
-            const Icon = item.icon
-            const isActive =
-              location.pathname === item.to || location.pathname.startsWith(item.to + '/')
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
+      <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-4">
+        {navigation.map((item) => {
+          const Icon = item.icon
+          const isActive =
+            location.pathname === item.to || location.pathname.startsWith(item.to + '/')
+          const navLabel = item.shortLabel ?? item.label
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              title={item.label}
+              className={cn(
+                'group flex flex-col items-center justify-center gap-1 rounded-sm px-2 py-3 transition-colors',
+                isActive
+                  ? 'bg-sky-500/15 text-primary'
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-gray-300'
+              )}
+            >
+              <Icon
                 className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-white shadow-[rgba(0,0,0,0.12)_0px_3px_8px_0px]'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-foreground'
+                  'h-5 w-5 shrink-0',
+                  isActive ? 'text-primary' : 'text-gray-400 group-hover:text-gray-300'
                 )}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
-                {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />
-                )}
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="border-t border-sidebar-border p-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-sidebar-accent/60 transition-colors text-left">
-                <Avatar className="h-9 w-9 border border-sidebar-border">
-                  <AvatarImage src={user?.avatarUrl} />
-                  <AvatarFallback className="bg-phc-gradient text-white text-xs font-bold">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
-                  <p className="truncate text-[11px] text-sidebar-foreground/60">{user?.email}</p>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="end" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">Signed in as</span>
-                  <span className="text-sm truncate">{user?.email}</span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSwitchRole} className="cursor-pointer">
-                {role === 'brand' ? (
-                  <>
-                    <Scissors className="h-4 w-4" /> Switch to Creator
-                  </>
-                ) : (
-                  <>
-                    <Building2 className="h-4 w-4" /> Switch to Brand
-                  </>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleSignOut}
-                className="cursor-pointer text-destructive focus:text-destructive"
-              >
-                <LogOut className="h-4 w-4" /> Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </aside>
-
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-sidebar-border bg-sidebar text-sidebar-foreground pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        <div
-          className="grid w-full"
-          style={{ gridTemplateColumns: `repeat(${navigation.length}, minmax(0, 1fr))` }}
-        >
-          {navigation.map((item) => {
-            const Icon = item.icon
-            const isActive =
-              location.pathname === item.to || location.pathname.startsWith(item.to + '/')
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  'flex min-h-13 min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-center text-[9px] font-medium leading-tight sm:text-[10px]',
-                  isActive ? 'text-primary' : 'text-sidebar-foreground/60'
-                )}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className="line-clamp-2 w-full hyphens-auto">{item.label}</span>
-              </Link>
-            )
-          })}
-        </div>
+              />
+              <span className="text-center text-[11px] font-medium leading-tight">{navLabel}</span>
+            </Link>
+          )
+        })}
       </nav>
 
-      {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between bg-background/90 backdrop-blur border-b border-border px-4 h-14">
-        <Link to="/" className="flex items-center">
-          <span className="font-display font-extrabold">Arpify</span>
+      <div className="relative space-y-2 border-t border-gray-800 px-2 py-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full cursor-pointer items-center justify-center text-gray-400 outline-none transition-colors hover:text-gray-300"
+              title="Account"
+            >
+              <Avatar className="h-12 w-12 border border-gray-700">
+                <AvatarImage src={user?.avatarUrl} />
+                <AvatarFallback className="bg-phc-gradient text-xs font-bold text-white">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="right" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-xs text-muted-foreground">Signed in as</p>
+                <p className="truncate text-sm text-foreground">{displayName}</p>
+                {user?.email ? (
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                ) : null}
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault()
+                handleSwitchRole()
+              }}
+            >
+              <ArrowLeftRight className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="ml-1">Switch to {role === 'brand' ? 'Creator' : 'Brand'}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer text-destructive focus:text-destructive"
+              onSelect={(e) => {
+                e.preventDefault()
+                handleSignOut()
+              }}
+            >
+              <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+              <span>Sign out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </aside>
+  )
+}
+
+/** Mobile top bar + bottom nav — render inside `<main>` so the layout shell stays sidebar | main only. */
+export function AppSidebarMobile({ role }: AppSidebarProps) {
+  const { navigation, location, homeTo, user, userInitials, handleSignOut, handleSwitchRole } =
+    useAppSidebarModel(role)
+
+  return (
+    <>
+      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur md:hidden">
+        <Link to={homeTo} className="flex items-center gap-2">
+          <img
+            src="/arpify-logo.svg"
+            alt=""
+            className="h-9 w-9 shrink-0 rounded-lg object-cover object-left"
+          />
+          <span className="font-display font-extrabold tracking-tight">Arpify</span>
         </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="p-1">
-              <Avatar className="h-8 w-8">
+            <button type="button" className="p-1 outline-none">
+              <Avatar className="h-8 w-8 border border-gray-700">
                 <AvatarImage src={user?.avatarUrl} />
-                <AvatarFallback className="bg-phc-gradient text-white text-xs font-bold">
+                <AvatarFallback className="bg-phc-gradient text-[10px] font-bold text-white">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
@@ -219,23 +240,57 @@ export function AppSidebar({ role }: AppSidebarProps) {
             <DropdownMenuLabel>
               <div className="flex flex-col">
                 <span className="text-xs text-muted-foreground">Signed in as</span>
-                <span className="text-sm truncate">{user?.email}</span>
+                <span className="truncate text-sm">{user?.email}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSwitchRole} className="cursor-pointer">
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault()
+                handleSwitchRole()
+              }}
+            >
               <ArrowLeftRight className="h-4 w-4" />
               Switch to {role === 'brand' ? 'Creator' : 'Brand'}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={handleSignOut}
               className="cursor-pointer text-destructive focus:text-destructive"
+              onSelect={(e) => {
+                e.preventDefault()
+                handleSignOut()
+              }}
             >
               <LogOut className="h-4 w-4" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-800 bg-gray-900 pb-[env(safe-area-inset-bottom)] md:hidden">
+        <div className="flex items-center justify-between px-2 py-3">
+          {navigation.map((item) => {
+            const Icon = item.icon
+            const isActive =
+              location.pathname === item.to || location.pathname.startsWith(item.to + '/')
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-label={item.label}
+                className={cn(
+                  'flex min-w-0 flex-1 justify-center py-1',
+                  isActive ? 'text-primary' : 'text-gray-400'
+                )}
+              >
+                <Icon
+                  className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary' : 'text-gray-400')}
+                />
+              </Link>
+            )
+          })}
+        </div>
+      </nav>
     </>
   )
 }

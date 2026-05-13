@@ -1,13 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  Wallet,
-  Eye,
-  Scissors,
-  ArrowUpRight,
-  Sparkles,
-  CircleAlert,
-} from 'lucide-react'
+import { Wallet, Eye, Scissors, ArrowUpRight, CircleAlert } from 'lucide-react'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -20,11 +13,25 @@ import {
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useContentStore } from '@/lib/stores/contentStore'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
-import { creatorHeadlineRatePer1k, mockEarningsTrend } from '@/lib/mockData'
+import {
+  creatorHeadlineRatePer1k,
+  mockBrandPerformanceMonthly,
+  mockBrandPerformanceYearly,
+} from '@/lib/mockData'
 import { formatPHP, formatViews } from '@/lib/utils'
 import { StatCard } from '@/components/StatCard'
 import { ContentStatusBadge } from '@/components/ContentStatusBadge'
-import { PlatformIcon } from '@/components/PlatformIcon'
+import { PersonAvatar } from '@/components/PersonAvatar'
+import { PlatformCell } from '@/components/PlatformIcon'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -41,25 +48,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-type PerformanceRange = 'weekly' | 'monthly' | 'yearly'
+type PerformanceRange = 'monthly' | 'yearly'
 
-function sliceEarningsTrend(range: PerformanceRange) {
-  if (range === 'weekly') return mockEarningsTrend.slice(-2)
-  if (range === 'monthly') return mockEarningsTrend.slice(-4)
-  return mockEarningsTrend
-}
-
-function earningsChartRowsForRange(range: PerformanceRange) {
-  return sliceEarningsTrend(range).map((row) => ({
-    ...row,
-    period: row.week,
+/** Same buckets as brand “Campaign performance” — creator sees net payouts over time */
+function creatorEarningsChartRowsForRange(range: PerformanceRange) {
+  const rows =
+    range === 'monthly' ? mockBrandPerformanceMonthly : mockBrandPerformanceYearly
+  return rows.map(({ period, payout }) => ({
+    period,
+    earnings: payout,
   }))
-}
-
-const earningsRangeLabel: Record<PerformanceRange, string> = {
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  yearly: 'Yearly',
 }
 
 export default function CreatorDashboardPage() {
@@ -75,28 +73,31 @@ export default function CreatorDashboardPage() {
   const [attention, setAttention] = useState<{ title: string; body: string } | null>(null)
 
   const earningsChartData = useMemo(
-    () => earningsChartRowsForRange(earningsRange),
+    () => creatorEarningsChartRowsForRange(earningsRange),
     [earningsRange]
   )
-  const rangeEarningsTotal = earningsChartData.reduce((s, row) => s + row.earnings, 0)
 
   const totalEarnings = contents.reduce((sum, c) => sum + c.earnings, 0)
   const totalViews = contents.reduce((sum, c) => sum + c.views, 0)
   const activeContentCount = contents.filter((c) => c.status !== 'rejected').length
-  const recent = useMemo(
+  const RECENT_PAGE_SIZE = 5
+  const sortedRecent = useMemo(
     () =>
-      [...contents]
-        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
-        .slice(0, 5),
+      [...contents].sort(
+        (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+      ),
     [contents]
   )
+  const recent = sortedRecent.slice(0, RECENT_PAGE_SIZE)
+  const recentRangeStart = sortedRecent.length > 0 ? 1 : 0
+  const recentRangeEnd =
+    sortedRecent.length > 0 ? Math.min(RECENT_PAGE_SIZE, sortedRecent.length) : 0
   const featured = campaigns.filter((c) => c.status === 'active').slice(0, 3)
 
   function openAttention(content: (typeof contents)[number]) {
     const body = [content.rejectionReason, content.trustFlag].filter(Boolean).join('\n\n')
     if (!body.trim()) return
-    const title =
-      content.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
+    const title = content.status === 'rejected' ? 'Rejection reason' : 'Needs your attention'
     setAttention({ title, body })
   }
 
@@ -105,10 +106,6 @@ export default function CreatorDashboardPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
-          <p className="inline-flex items-center gap-1.5 rounded-full bg-phc-gradient-soft px-3 py-1 text-xs font-medium text-foreground">
-            <Sparkles className="h-3 w-3" />
-            Creator
-          </p>
           <h1 className="mt-3 font-display text-3xl md:text-4xl font-extrabold tracking-tight">
             {contents.length === 0 ? (
               <>
@@ -121,14 +118,6 @@ export default function CreatorDashboardPage() {
             )}
           </h1>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link to="/creator/content">My content</Link>
-          </Button>
-          <Button asChild className="bg-phc-gradient text-white hover:opacity-90">
-            <Link to="/creator/campaigns">Browse campaigns</Link>
-          </Button>
-        </div>
       </div>
 
       {/* Stats */}
@@ -140,39 +129,32 @@ export default function CreatorDashboardPage() {
           accent="violet"
         />
         <StatCard label="Total views" value={formatViews(totalViews)} icon={Eye} accent="pink" />
-        <StatCard label="Active content" value={activeContentCount} icon={Scissors} accent="orange" />
+        <StatCard
+          label="Active content"
+          value={activeContentCount}
+          icon={Scissors}
+          accent="orange"
+        />
       </div>
 
       {/* Earnings chart */}
-      <div className="rounded-3xl border border-border bg-card p-6">
+      <div className="rounded-3xl border border-border bg-card p-6 shadow-none">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="font-display text-xl font-extrabold">Earnings over time</h2>
-            <p className="text-sm text-muted-foreground">
-              Verified accrual · {earningsRangeLabel[earningsRange]}
-            </p>
           </div>
-          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:gap-4">
-            <div className="text-left sm:text-right">
-              <p className="text-xs text-muted-foreground">In range</p>
-              <p className="font-display text-2xl font-extrabold text-phc-gradient">
-                {formatPHP(rangeEarningsTotal, { decimals: false })}
-              </p>
-            </div>
-            <Select
-              value={earningsRange}
-              onValueChange={(v) => setEarningsRange(v as PerformanceRange)}
-            >
-              <SelectTrigger className="w-full sm:w-44" aria-label="Date range">
-                <SelectValue placeholder="Date range" />
-              </SelectTrigger>
-              <SelectContent align="end">
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Select
+            value={earningsRange}
+            onValueChange={(v) => setEarningsRange(v as PerformanceRange)}
+          >
+            <SelectTrigger className="w-full sm:w-44" aria-label="Date range">
+              <SelectValue placeholder="Date range" />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="h-72 w-full min-w-0">
           <ResponsiveContainer width="100%" height="100%" key={earningsRange}>
@@ -184,7 +166,13 @@ export default function CreatorDashboardPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-              <XAxis dataKey="period" stroke="currentColor" className="text-xs text-muted-foreground" />
+              <XAxis
+                dataKey="period"
+                stroke="currentColor"
+                className="text-xs text-muted-foreground"
+                tickMargin={6}
+                interval="preserveStartEnd"
+              />
               <YAxis
                 stroke="currentColor"
                 className="text-xs text-muted-foreground"
@@ -222,52 +210,63 @@ export default function CreatorDashboardPage() {
           <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
             <Scissors className="mx-auto h-10 w-10 text-muted-foreground" />
             <p className="mt-3 font-medium">No content yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">Browse campaigns and submit your first content.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Browse campaigns and submit your first content.
+            </p>
             <Button asChild className="mt-4 bg-phc-gradient text-white">
               <Link to="/creator/campaigns">Browse campaigns</Link>
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-3xl border border-border bg-card">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-5 py-3 font-medium">Campaign</th>
-                  <th className="px-5 py-3 font-medium">Platform</th>
-                  <th className="px-5 py-3 font-medium">Views</th>
-                  <th className="px-5 py-3 font-medium">Earned</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 w-24 text-center font-medium">Warning</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
+          <TableContainer>
+            <Table className="min-w-2xl">
+              <TableHeader>
+                <TableRow className="cursor-default hover:bg-transparent">
+                  <TableHead>Brand</TableHead>
+                  <TableHead>Campaign</TableHead>
+                  <TableHead>Platform</TableHead>
+                  <TableHead>Views</TableHead>
+                  <TableHead>Earned</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-24 text-center">Alert</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {recent.map((content) => {
                   const hasAttention = Boolean(content.trustFlag || content.rejectionReason)
                   return (
-                    <tr key={content.id} className="transition-colors hover:bg-muted/30">
-                      <td className="max-w-0 px-5 py-4">
-                        <p className="truncate text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          {content.brandName}
-                        </p>
-                        <p className="truncate font-medium text-foreground" title={content.campaignTitle}>
+                    <TableRow key={content.id}>
+                      <TableCell>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <PersonAvatar name={content.brandName} size="xs" />
+                          <span className="truncate font-medium">{content.brandName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-50">
+                        <p
+                          className="truncate font-medium text-foreground"
+                          title={content.campaignTitle}
+                        >
                           {content.campaignTitle}
                         </p>
-                      </td>
-                      <td className="px-5 py-4 align-middle">
-                        <div className="flex justify-start">
-                          <PlatformIcon platform={content.platform} className="h-7 w-7" />
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 font-display font-bold tabular-nums">
+                      </TableCell>
+                      <TableCell>
+                        <PlatformCell
+                          platform={content.platform}
+                          iconClassName="h-5 w-5"
+                          hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-display text-sm font-bold tabular-nums">
                         {formatViews(content.views)}
-                      </td>
-                      <td className="px-5 py-4 font-display font-bold text-phc-gradient tabular-nums">
+                      </TableCell>
+                      <TableCell className="font-display text-sm font-bold tabular-nums text-phc-gradient">
                         {formatPHP(content.earnings, { decimals: false })}
-                      </td>
-                      <td className="px-5 py-4">
+                      </TableCell>
+                      <TableCell>
                         <ContentStatusBadge status={content.status} />
-                      </td>
-                      <td className="px-5 py-4 text-center">
+                      </TableCell>
+                      <TableCell className="text-center">
                         {hasAttention ? (
                           <button
                             type="button"
@@ -284,13 +283,16 @@ export default function CreatorDashboardPage() {
                         ) : (
                           <span className="inline-block w-6" aria-hidden />
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+            <p className="border-t border-border py-3 text-center text-sm text-muted-foreground">
+              Showing {recentRangeStart}-{recentRangeEnd} of {sortedRecent.length} submissions
+            </p>
+          </TableContainer>
         )}
       </div>
 

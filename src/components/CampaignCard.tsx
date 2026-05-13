@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Flame } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { CampaignGoalFireLottie } from '@/components/CampaignGoalFireLottie'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { formatPHP, formatNumber } from '@/lib/utils'
 import { type Campaign } from '@/lib/mockData'
@@ -13,11 +14,12 @@ interface CampaignCardProps {
   showProgress?: boolean
 }
 
-const STATUS_STYLES: Record<Campaign['status'], string> = {
-  active: 'bg-emerald-500/95 text-white border-emerald-600/30',
-  paused: 'bg-amber-500/95 text-white border-amber-600/30',
-  ended: 'bg-zinc-600/95 text-white border-zinc-700/50',
-  draft: 'bg-blue-600/95 text-white border-blue-700/40',
+/** Subtle status chips — match `CampaignDetailPage` status chip palette. */
+const STATUS_STYLES: Record<Campaign['status'], { chip: string; dot: string }> = {
+  active: { chip: 'border-emerald-200 bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500' },
+  paused: { chip: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500' },
+  ended: { chip: 'border-zinc-200 bg-zinc-50 text-zinc-700', dot: 'bg-zinc-400' },
+  draft: { chip: 'border-blue-200 bg-blue-50 text-blue-800', dot: 'bg-blue-500' },
 }
 
 export function CampaignCard({ campaign, to, showProgress = false }: CampaignCardProps) {
@@ -25,14 +27,9 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
   const reachGoal = Math.max(0, campaign.estimatedReach)
   const budgetTotal = Math.max(0, campaign.budget)
   const viewsProgress =
-    isBrandCard && reachGoal > 0
-      ? Math.min(100, (campaign.campaignViews / reachGoal) * 100)
-      : 0
+    isBrandCard && reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0
   const budgetProgress =
-    !isBrandCard && budgetTotal > 0
-      ? Math.min(100, (campaign.spent / budgetTotal) * 100)
-      : 0
-  const progressPercent = isBrandCard ? viewsProgress : budgetProgress
+    !isBrandCard && budgetTotal > 0 ? Math.min(100, (campaign.spent / budgetTotal) * 100) : 0
   const showFire = isBrandCard
     ? reachGoal > 0 && viewsProgress >= 50
     : budgetTotal > 0 && budgetProgress >= 50
@@ -62,26 +59,20 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
             loading="lazy"
           />
         ) : (
-          <div className="absolute inset-0 opacity-30 mix-blend-overlay bg-[radial-gradient(circle_at_30%_20%,white,transparent_60%)]" />
+          <div className="absolute inset-0 bg-radial from-white/35 via-white/10 to-transparent opacity-30 mix-blend-overlay" />
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black/55 via-black/10 to-black/20" />
         <div className="absolute top-3 right-3">
           <Badge
-            className={`${STATUS_STYLES[campaign.status]} rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider`}
+            className={`${STATUS_STYLES[campaign.status].chip} flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize tracking-normal shadow-sm`}
           >
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_STYLES[campaign.status].dot}`}
+              aria-hidden
+            />
             {campaign.status}
           </Badge>
         </div>
-        {/* <div className="absolute bottom-3 right-3 max-w-[min(100%,14rem)]">
-          <div className="rounded-xl border border-white/15 bg-black/45 px-3 py-2 text-white backdrop-blur-md">
-            <p className="text-[9px] font-semibold uppercase leading-tight tracking-[0.12em] text-white/85">
-              Cost per 1K views
-            </p>
-            <p className="mt-0.5 font-display text-xl font-extrabold leading-none tracking-tight">
-              {formatPHP(displayRatePer1k, { decimals: false })}
-            </p>
-          </div>
-        </div> */}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col p-5">
@@ -108,33 +99,23 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
             <span className="flex items-center gap-1.5 text-right text-sm font-semibold tabular-nums">
               {isBrandCard ? (
                 reachGoal > 0 ? (
-                  <>
+                  <div className="flex items-end">
                     <span>
                       {formatNumber(Math.round(campaign.campaignViews))} / {formatNumber(reachGoal)}{' '}
                       Views
                     </span>
-                    {showFire ? (
-                      <Flame
-                        className="h-4 w-4 shrink-0 text-orange-500"
-                        aria-hidden
-                      />
-                    ) : null}
-                  </>
+                    {showFire ? <CampaignGoalFireLottie /> : null}
+                  </div>
                 ) : (
                   <span>{formatNumber(Math.round(campaign.campaignViews))} Views</span>
                 )
               ) : budgetTotal > 0 ? (
-                <>
+                <div className="flex items-end">
                   <span>
                     {formatPHP(campaign.spent)} / {formatPHP(budgetTotal)}
                   </span>
-                  {showFire ? (
-                    <Flame
-                      className="h-4 w-4 shrink-0 text-orange-500"
-                      aria-hidden
-                    />
-                  ) : null}
-                </>
+                  {showFire ? <CampaignGoalFireLottie /> : null}
+                </div>
               ) : (
                 <span>
                   {formatPHP(campaign.spent)} / {formatPHP(Math.max(budgetTotal, campaign.spent))}
@@ -142,28 +123,24 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
               )}
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-phc-gradient transition-[width] duration-1000 ease-out motion-reduce:transition-none"
-              style={{ width: `${barWidth}%` }}
-              role="progressbar"
-              aria-valuenow={Math.round(progressPercent)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={
-                isBrandCard
-                  ? 'Progress toward estimated reach goal'
-                  : 'Share of campaign budget consumed'
-              }
-            />
-          </div>
+          <Progress
+            value={barWidth}
+            max={100}
+            animated
+            indicatorClassName="bg-phc-gradient rounded-full"
+            aria-label={
+              isBrandCard
+                ? 'Progress toward estimated reach goal'
+                : 'Share of campaign budget consumed'
+            }
+          />
           <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
             <div className="flex items-center gap-2">
               {campaign.platforms.map((p) => (
                 <PlatformIcon key={p} platform={p} className="h-6 w-6" />
               ))}
             </div>
-            <span className="text-sm font-bold tracking-tight text-phc-gradient">
+            <span className="text-sm font-medium tracking-tight text-phc-gradient">
               {showProgress ? 'Open Campaign' : 'Join Campaign'}
             </span>
           </div>

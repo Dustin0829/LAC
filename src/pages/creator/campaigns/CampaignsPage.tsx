@@ -4,11 +4,7 @@ import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { CampaignCard } from '@/components/CampaignCard'
-import {
-  PLATFORM_LABEL,
-  creatorHeadlineRatePer1k,
-  type Platform,
-} from '@/lib/mockData'
+import { PLATFORM_LABEL, creatorHeadlineRatePer1k, type Platform } from '@/lib/mockData'
 
 const SORTS = [
   { id: 'rate', label: 'Highest rate' },
@@ -99,7 +95,9 @@ export default function CreatorCampaignsPage() {
               variant={sort === s.id ? 'default' : 'ghost'}
               size="sm"
               className={
-                sort === s.id ? 'shrink-0 bg-phc-gradient text-white hover:opacity-90' : 'shrink-0 text-muted-foreground'
+                sort === s.id
+                  ? 'shrink-0 bg-phc-gradient text-white hover:opacity-90'
+                  : 'shrink-0 text-muted-foreground'
               }
               onClick={() => setSort(s.id)}
             >

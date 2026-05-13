@@ -40,7 +40,7 @@ const DialogContent = React.forwardRef<
     >
       <div
         className={cn(
-          'pointer-events-auto relative mx-auto grid w-full min-w-0 max-h-[min(90dvh,calc(100dvh-2rem))] max-w-[calc(100vw-2rem)] gap-4 overflow-y-auto rounded-2xl border bg-background px-4 py-6 shadow-lg sm:max-w-lg sm:px-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+          'pointer-events-auto relative mx-auto grid w-full min-w-0 max-h-dvh max-w-full gap-4 overflow-y-auto rounded-2xl border border-border bg-card px-4 py-6 shadow-lg sm:max-w-lg sm:px-6 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
           className
         )}
       >
