@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { Facebook, Globe, Instagram } from 'lucide-react'
+import { Facebook, Globe, Instagram, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useSignOut } from '@/lib/hooks/use-sign-out'
 import { useBrandProfileStore } from '@/lib/stores/brandProfileStore'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import { PlatformIcon } from '@/components/PlatformIcon'
 
 export default function BrandAccountPage() {
   const { user } = useAuth()
+  const signOut = useSignOut()
   const fileRef = useRef<HTMLInputElement>(null)
   const profile = useBrandProfileStore((s) => s.profile)
   const setProfile = useBrandProfileStore((s) => s.setProfile)
@@ -47,15 +49,14 @@ export default function BrandAccountPage() {
     'B'
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Account</p>
-        <h1 className="mt-1 font-display text-3xl font-extrabold md:text-4xl">
+    <div className="px-2 py-4 md:p-8 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
           Brand <span className="text-phc-gradient">profile</span>
         </h1>
       </div>
 
-      <section className="rounded-3xl border border-border bg-card p-6 md:p-8">
+      <section className="rounded-3xl border border-border bg-card p-6 shadow-none">
         <div className="space-y-8">
           <div className="flex flex-col items-center sm:items-start">
             <Avatar className="h-24 w-24 shrink-0 rounded-2xl outline-1 outline-border mb-4">
@@ -172,6 +173,20 @@ export default function BrandAccountPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-3xl border border-border bg-card p-6 md:hidden">
+        <h2 className="font-display text-lg font-bold">Session</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Sign out on this device.</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 w-full border-destructive/40 text-destructive hover:bg-destructive/10"
+          onClick={() => signOut()}
+        >
+          <LogOut className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+          Sign out
+        </Button>
       </section>
 
       <div className="flex justify-end">

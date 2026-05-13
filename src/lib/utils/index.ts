@@ -1,4 +1,5 @@
 export { cn } from './cn'
+export { isValidHttpOrHttpsUrl } from './isValidHttpUrl'
 export { brandReviewStatusForBadge } from './brandSubmissionStatus'
 export { formatPHP, formatNumber, formatViews, computeEarnings } from './currency'
 export { formatDate, formatDateTime, formatTimeAgo } from './date'

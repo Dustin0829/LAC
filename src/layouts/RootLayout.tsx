@@ -5,7 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 export default function RootLayout() {
   return (
     <TooltipProvider delayDuration={300} skipDelayDuration={200}>
-      <div className="h-full min-h-0 w-full overflow-x-hidden bg-background text-foreground antialiased">
+      <div className="h-full min-h-0 w-full overflow-hidden bg-background text-foreground antialiased">
         <Outlet />
         <Toaster
           position="bottom-right"

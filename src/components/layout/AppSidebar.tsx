@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Compass,
@@ -7,12 +7,11 @@ import {
   User,
   LogOut,
   type LucideIcon,
-  ArrowLeftRight,
-  Video,
+  Flag,
 } from 'lucide-react'
-import { toast } from 'sonner'
-import { useAuthStore, type UserRole } from '@/lib/stores/authStore'
+import { type UserRole } from '@/lib/stores/authStore'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useSignOut } from '@/lib/hooks/use-sign-out'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -42,7 +41,7 @@ const CREATOR_NAV: NavItem[] = [
 
 const BRAND_NAV: NavItem[] = [
   { label: 'Dashboard', to: '/brand/dashboard', icon: LayoutDashboard },
-  { label: 'Campaigns', to: '/brand/campaigns', icon: Video },
+  { label: 'Campaigns', to: '/brand/campaigns', icon: Flag },
   { label: 'Account', to: '/brand/account', icon: User },
 ]
 
@@ -65,25 +64,10 @@ function getInitials(name?: string, email?: string): string {
 function useAppSidebarModel(role: UserRole) {
   const navigation = role === 'brand' ? BRAND_NAV : CREATOR_NAV
   const location = useLocation()
-  const navigate = useNavigate()
   const { user } = useAuth()
-  const setRole = useAuthStore((s) => s.setRole)
-  const signOut = useAuthStore((s) => s.signOut)
+  const handleSignOut = useSignOut()
 
   const homeTo = role === 'brand' ? '/brand/dashboard' : '/creator/dashboard'
-
-  function handleSignOut() {
-    signOut()
-    toast.success('Signed out')
-    navigate('/auth', { replace: true })
-  }
-
-  function handleSwitchRole() {
-    const next: UserRole = role === 'brand' ? 'creator' : 'brand'
-    setRole(next)
-    navigate(next === 'brand' ? '/brand/dashboard' : '/creator/dashboard', { replace: true })
-    toast.success(`Switched to ${next === 'brand' ? 'Brand' : 'Creator'}`)
-  }
 
   const userInitials = getInitials(user?.name, user?.email)
   const displayName = user?.name || user?.email?.split('@')[0] || 'You'
@@ -94,7 +78,6 @@ function useAppSidebarModel(role: UserRole) {
     homeTo,
     user,
     handleSignOut,
-    handleSwitchRole,
     userInitials,
     displayName,
   }
@@ -102,16 +85,8 @@ function useAppSidebarModel(role: UserRole) {
 
 /** Desktop rail only — use as first flex child next to `<main>` (BugHyve-style shell). */
 export function AppSidebarDesktop({ role }: AppSidebarProps) {
-  const {
-    navigation,
-    location,
-    homeTo,
-    user,
-    userInitials,
-    handleSignOut,
-    handleSwitchRole,
-    displayName,
-  } = useAppSidebarModel(role)
+  const { navigation, location, homeTo, user, userInitials, handleSignOut, displayName } =
+    useAppSidebarModel(role)
 
   return (
     <aside className="hidden h-dvh w-24 shrink-0 border-r border-gray-800 bg-gray-900 text-gray-100 md:flex md:flex-col">
@@ -183,24 +158,15 @@ export function AppSidebarDesktop({ role }: AppSidebarProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem
+              variant="red"
+              icon={<LogOut className="h-4 w-4" aria-hidden />}
               className="cursor-pointer"
-              onSelect={(e) => {
-                e.preventDefault()
-                handleSwitchRole()
-              }}
-            >
-              <ArrowLeftRight className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="ml-1">Switch to {role === 'brand' ? 'Creator' : 'Brand'}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer text-destructive focus:text-destructive"
               onSelect={(e) => {
                 e.preventDefault()
                 handleSignOut()
               }}
             >
-              <LogOut className="h-4 w-4 shrink-0" aria-hidden />
-              <span>Sign out</span>
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -209,88 +175,34 @@ export function AppSidebarDesktop({ role }: AppSidebarProps) {
   )
 }
 
-/** Mobile top bar + bottom nav — render inside `<main>` so the layout shell stays sidebar | main only. */
+/** Mobile bottom nav only — header + account menu removed; sign out lives on Account (mobile). */
 export function AppSidebarMobile({ role }: AppSidebarProps) {
-  const { navigation, location, homeTo, user, userInitials, handleSignOut, handleSwitchRole } =
-    useAppSidebarModel(role)
+  const { navigation, location } = useAppSidebarModel(role)
 
   return (
-    <>
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur md:hidden">
-        <Link to={homeTo} className="flex items-center gap-2">
-          <img
-            src="/arpify-logo.svg"
-            alt=""
-            className="h-9 w-9 shrink-0 rounded-lg object-cover object-left"
-          />
-          <span className="font-display font-extrabold tracking-tight">Arpify</span>
-        </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button" className="p-1 outline-none">
-              <Avatar className="h-8 w-8 border border-gray-700">
-                <AvatarImage src={user?.avatarUrl} />
-                <AvatarFallback className="bg-phc-gradient text-[10px] font-bold text-white">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground">Signed in as</span>
-                <span className="truncate text-sm">{user?.email}</span>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onSelect={(e) => {
-                e.preventDefault()
-                handleSwitchRole()
-              }}
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-800 bg-gray-900 pb-[env(safe-area-inset-bottom)] md:hidden">
+      <div className="flex items-center justify-between px-2 py-3">
+        {navigation.map((item) => {
+          const Icon = item.icon
+          const isActive =
+            location.pathname === item.to || location.pathname.startsWith(item.to + '/')
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              aria-label={item.label}
+              className={cn(
+                'flex min-w-0 flex-1 justify-center py-1',
+                isActive ? 'text-primary' : 'text-gray-400'
+              )}
             >
-              <ArrowLeftRight className="h-4 w-4" />
-              Switch to {role === 'brand' ? 'Creator' : 'Brand'}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer text-destructive focus:text-destructive"
-              onSelect={(e) => {
-                e.preventDefault()
-                handleSignOut()
-              }}
-            >
-              <LogOut className="h-4 w-4" /> Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </header>
-
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-800 bg-gray-900 pb-[env(safe-area-inset-bottom)] md:hidden">
-        <div className="flex items-center justify-between px-2 py-3">
-          {navigation.map((item) => {
-            const Icon = item.icon
-            const isActive =
-              location.pathname === item.to || location.pathname.startsWith(item.to + '/')
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                aria-label={item.label}
-                className={cn(
-                  'flex min-w-0 flex-1 justify-center py-1',
-                  isActive ? 'text-primary' : 'text-gray-400'
-                )}
-              >
-                <Icon
-                  className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary' : 'text-gray-400')}
-                />
-              </Link>
-            )
-          })}
-        </div>
-      </nav>
-    </>
+              <Icon
+                className={cn('h-5 w-5 shrink-0', isActive ? 'text-primary' : 'text-gray-400')}
+              />
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
   )
 }

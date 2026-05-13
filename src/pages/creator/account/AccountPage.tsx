@@ -1,5 +1,6 @@
-import { BadgeCheck, RefreshCw } from 'lucide-react'
+import { BadgeCheck, LogOut, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useSignOut } from '@/lib/hooks/use-sign-out'
 import { Button } from '@/components/ui/button'
 import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSection'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
@@ -7,6 +8,7 @@ import { PlatformIcon } from '@/components/PlatformIcon'
 
 export default function CreatorAccountPage() {
   const { user } = useAuth()
+  const signOut = useSignOut()
   const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
   const reconnectPlatform = useCreatorProfileStore((s) => s.reconnectPlatform)
 
@@ -73,6 +75,20 @@ export default function CreatorAccountPage() {
 
       <section className="rounded-3xl border border-border bg-card p-6 md:p-8">
         <PaymentMethodsSection mode="creator" />
+      </section>
+
+      <section className="rounded-3xl border border-border bg-card p-6 md:hidden">
+        <h2 className="font-display text-lg font-bold">Session</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Sign out on this device.</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 w-full border-destructive/40 text-destructive hover:bg-destructive/10"
+          onClick={() => signOut()}
+        >
+          <LogOut className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+          Sign out
+        </Button>
       </section>
     </div>
   )

@@ -33,6 +33,7 @@ import {
   formatPHP,
   formatViews,
   formatNumber,
+  isValidHttpOrHttpsUrl,
 } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -79,18 +80,6 @@ const PUBLISH_FLOOR = 10_000
 
 /** Matches create-campaign minimum brand gross ₱/1k. */
 const MIN_BRAND_RATE_PER_1K = 35
-
-/** Same rules as `CreateCampaignPage` reference / asset URL checks. */
-function isValidHttpOrHttpsUrl(value: string): boolean {
-  const v = value.trim()
-  if (!v) return false
-  try {
-    const u = new URL(v)
-    return (u.protocol === 'http:' || u.protocol === 'https:') && Boolean(u.hostname)
-  } catch {
-    return false
-  }
-}
 
 /** Details tab per-section Edit / Save (ghost + primary text). */
 const DETAILS_SECTION_ACTION_BTN_CLASS =
@@ -878,8 +867,8 @@ export default function BrandCampaignDetailPage() {
   }
 
   return (
-    <div className="min-w-0 max-w-full space-y-6 rounded-2xl bg-muted/35 px-4 py-6 sm:px-5 sm:py-8 md:-mx-2 md:px-6">
-      <div>
+    <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
+      <div className="flex justify-between items-center mb-6">
         <Link
           to="/brand/campaigns"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -890,7 +879,7 @@ export default function BrandCampaignDetailPage() {
 
       {/* Campaign summary */}
       <div className="min-w-0 rounded-2xl border border-border bg-card p-6 md:p-8">
-        <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-col gap-4 md:gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
             <div
               className={cn(
@@ -1018,7 +1007,7 @@ export default function BrandCampaignDetailPage() {
                     </ul>
                   </div>
 
-                  <DialogFooter>
+                  <DialogFooter className="gap-2 sm:gap-0">
                     <Button
                       type="button"
                       variant="outline"
@@ -1055,10 +1044,6 @@ export default function BrandCampaignDetailPage() {
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Fund &amp; publish</DialogTitle>
-                  <DialogDescription>
-                    Pay your total campaign budget. After checkout, your payout pool updates and the
-                    campaign goes live
-                  </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={(e) => void handleFundPublishSubmit(e)} className="space-y-4">
@@ -1073,10 +1058,7 @@ export default function BrandCampaignDetailPage() {
                       onValueChange={setFundPublishGross}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Minimum gross ₱{MIN_GROSS_CAMPAIGN_BUDGET.toLocaleString('en-PH')}; after the{' '}
-                      {Math.round(platformFeePercent * 100)}% fee, spendable must meet the ₱
-                      {PUBLISH_FLOOR.toLocaleString('en-PH')} publish floor. Requires an asset link
-                      on this campaign.
+                      Minimum ₱{MIN_GROSS_CAMPAIGN_BUDGET.toLocaleString('en-PH')} to publish
                     </p>
                   </div>
 
@@ -1094,7 +1076,7 @@ export default function BrandCampaignDetailPage() {
                       <li className="flex justify-between gap-3">
                         <span className="text-muted-foreground">Brand rate</span>
                         <span className="shrink-0 font-semibold">
-                          {formatPHP(fundPublishBrandRate, { decimals: false })} / 1,000
+                          {formatPHP(fundPublishBrandRate, { decimals: false })} / 1,000 Views
                         </span>
                       </li>
                       <li className="flex justify-between gap-3">
@@ -1159,7 +1141,7 @@ export default function BrandCampaignDetailPage() {
           <Target className="h-3.5 w-3.5 shrink-0" /> Estimated reach progress
         </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <p className="font-display text-2xl font-bold tabular-nums text-foreground md:text-3xl">
+          <p className="font-display text-lg md:text-2xl font-bold tabular-nums text-foreground md:text-3xl">
             {reachGoal > 0 ? `${reachProgressPct.toFixed(1)}%` : '—'}
           </p>
           <p className="text-sm font-semibold tabular-nums text-primary sm:text-right">
@@ -1194,7 +1176,7 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'details'}
             onClick={() => setCampaignTab('details')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors',
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm sm:text-base',
               campaignTab === 'details'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -1213,7 +1195,7 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'submissions-payout'}
             onClick={() => setCampaignTab('submissions-payout')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors ',
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm sm:text-base',
               campaignTab === 'submissions-payout'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -1237,7 +1219,7 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'budget'}
             onClick={() => setCampaignTab('budget')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors ',
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm sm:text-base',
               campaignTab === 'budget'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -1258,7 +1240,7 @@ export default function BrandCampaignDetailPage() {
           role="tabpanel"
           aria-labelledby="campaign-tab-details"
         >
-          <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8">
+          <section className="min-w-0 space-y-4 md:space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8">
             {canEditPreSubmission ? (
               <>
                 <div className="space-y-3">
@@ -1419,9 +1401,9 @@ export default function BrandCampaignDetailPage() {
                 </div>
 
                 <div className="min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4">
-                  <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 flex-col gap-3 md:gap-5 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
+                      <div className="hidden md:flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
                         <Monitor className="h-5 w-5" aria-hidden />
                       </div>
                       <div className="min-w-0">
@@ -1500,7 +1482,7 @@ export default function BrandCampaignDetailPage() {
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-950/45 dark:text-teal-300">
                       <TrendingUp className="h-5 w-5" aria-hidden />
                     </div>
-                    <p className="font-display text-xl font-bold leading-tight tracking-tight tabular-nums text-foreground">
+                    <p className="font-display text-lg md:text-xl font-bold leading-tight tracking-tight tabular-nums text-foreground">
                       {formatPHP(brandHeadlineRatePer1k(campaign), { decimals: false })} / 1,000
                       Views
                     </p>
@@ -1521,7 +1503,7 @@ export default function BrandCampaignDetailPage() {
               )}
             </div>
 
-            <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-violet-200/80 bg-violet-50/90 px-4 py-4 dark:border-violet-900/40 dark:bg-violet-950/35 sm:items-center sm:gap-4">
+            <div className="hidden md:flex min-w-0 items-start gap-3 rounded-2xl border border-violet-200/80 bg-violet-50/90 px-4 py-4 dark:border-violet-900/40 dark:bg-violet-950/35 sm:items-center sm:gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-200/80 text-violet-700 dark:bg-violet-900/60 dark:text-violet-200">
                 <Sparkles className="h-5 w-5" aria-hidden />
               </div>
@@ -1894,11 +1876,11 @@ export default function BrandCampaignDetailPage() {
                   <p className="text-sm text-muted-foreground">Manage funds for this campaign.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-col-reverse md:flex-row">
                 <Button
                   type="button"
                   variant="outline"
-                  className="font-semibold"
+                  className="font-semibold w-full md:w-auto"
                   disabled={remaining <= 0}
                   onClick={() => setRefundOpen(true)}
                 >
@@ -1906,7 +1888,7 @@ export default function BrandCampaignDetailPage() {
                 </Button>
                 <Button
                   type="button"
-                  className="shrink-0 bg-phc-gradient font-semibold text-white hover:opacity-90"
+                  className="shrink-0 bg-phc-gradient font-semibold text-white hover:opacity-90 w-full md:w-auto"
                   onClick={
                     campaign.status === 'draft'
                       ? openFundAndPublishDialog
@@ -1948,7 +1930,7 @@ export default function BrandCampaignDetailPage() {
               <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Budget</p>
-                  <p className="mt-1 font-display text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
                     {formatPHP(campaign.budget, { decimals: false })}
                   </p>
                 </div>
@@ -1960,7 +1942,7 @@ export default function BrandCampaignDetailPage() {
               <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Available</p>
-                  <p className="mt-1 font-display text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
                     {formatPHP(remaining, { decimals: false })}
                   </p>
                 </div>
@@ -1972,7 +1954,7 @@ export default function BrandCampaignDetailPage() {
               <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Reserved</p>
-                  <p className="mt-1 font-display text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
                     {formatPHP(reserved, { decimals: false })}
                   </p>
                 </div>
@@ -1984,7 +1966,7 @@ export default function BrandCampaignDetailPage() {
               <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Paid</p>
-                  <p className="mt-1 font-display text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
                     {formatPHP(paidOut, { decimals: false })}
                   </p>
                 </div>
@@ -2104,7 +2086,7 @@ export default function BrandCampaignDetailPage() {
                         ) : (
                           <Button
                             type="button"
-                            className="bg-phc-gradient font-semibold text-white hover:opacity-90"
+                            className="bg-phc-gradient font-semibold text-white hover:opacity-90 w-full"
                             onClick={() => openReleasePayoutsModal(batch.id)}
                           >
                             <Send className="h-4 w-4" /> Release payout
@@ -2369,7 +2351,7 @@ export default function BrandCampaignDetailPage() {
                       <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Total gross releasing
                       </p>
-                      <p className="mt-1 font-display text-2xl font-bold tabular-nums text-foreground">
+                      <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
                         {formatPHP(totalGross, { decimals: false })}
                       </p>
                       <p className="mt-2 text-sm text-muted-foreground">

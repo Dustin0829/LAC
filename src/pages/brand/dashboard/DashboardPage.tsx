@@ -58,6 +58,11 @@ function chartRowsForRange(range: PerformanceRange) {
 
 const RECENT_PAGE_SIZE = 10
 
+/** Ids produced by the mock `AuthPage` sign-in; they never match `campaign.brandId` in seed data. */
+function isDemoAuthUserId(id: string): boolean {
+  return /^gmail-\d+$/.test(id) || /^user-\d+$/.test(id)
+}
+
 export default function BrandDashboardPage() {
   const { user } = useAuth()
   const [performanceRange, setPerformanceRange] = useState<PerformanceRange>('monthly')
@@ -68,14 +73,26 @@ export default function BrandDashboardPage() {
   )
   const campaigns = useCampaignsStore((s) => s.campaigns)
   const contents = useContentStore((s) => s.contents)
+  const brandCampaigns = useMemo(() => {
+    if (!user?.id) return campaigns
+    const forUser = campaigns.filter((c) => c.brandId === user.id)
+    if (forUser.length > 0) return forUser
+    if (isDemoAuthUserId(user.id)) return campaigns
+    return []
+  }, [campaigns, user?.id])
   const campaignById = useMemo(() => {
     const m = new Map<string, (typeof campaigns)[number]>()
     for (const c of campaigns) m.set(c.id, c)
     return m
   }, [campaigns])
-  const totalSpent = campaigns.reduce((s, c) => s + c.spent, 0)
-  const totalReached = mockBrandPerformanceMonthly.reduce((sum, row) => sum + row.views, 0)
-  const avgCostPerView = totalReached > 0 ? totalSpent / totalReached : null
+  /** Verified views across this brand’s campaigns (same field as reach bars on campaign cards). */
+  const totalReached = brandCampaigns.reduce((s, c) => s + (c.campaignViews ?? 0), 0)
+  /** Brand gross accrued for those views at each campaign’s headline ₱/1k (matches submission accrual math). */
+  const totalBrandGrossOnViews = brandCampaigns.reduce(
+    (s, c) => s + brandGrossAccrualForViews(c.campaignViews ?? 0, brandHeadlineRatePer1k(c)),
+    0
+  )
+  const avgCostPerView = totalReached > 0 ? totalBrandGrossOnViews / totalReached : null
 
   const sortedRecentSubmissions = useMemo(
     () =>
@@ -98,7 +115,7 @@ export default function BrandDashboardPage() {
   }, [sortedRecentSubmissions, recentPage])
 
   return (
-    <div className="px-2 py-4 md:p-8 space-y-6">
+    <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div className="min-w-0">
           <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
@@ -114,10 +131,15 @@ export default function BrandDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Campaigns" value={campaigns.length} icon={Video} accent="violet" />
+        <StatCard
+          label="Total Campaigns"
+          value={brandCampaigns.length}
+          icon={Video}
+          accent="violet"
+        />
         <StatCard
           label="Total Spent"
-          value={formatPHP(totalSpent, { decimals: false })}
+          value={formatPHP(totalBrandGrossOnViews, { decimals: false })}
           icon={Wallet}
           accent="emerald"
         />
@@ -217,7 +239,7 @@ export default function BrandDashboardPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-xl font-bold">Recent submissions</h2>
           <Link to="/brand/campaigns" className="text-sm font-semibold text-phc-gradient">
-            View campaigns <ArrowUpRight className="inline h-3.5 w-3.5" />
+            View Campaigns <ArrowUpRight className="inline h-3.5 w-3.5" />
           </Link>
         </div>
         <TableContainer>
@@ -286,9 +308,7 @@ export default function BrandDashboardPage() {
                         {formatViews(content.views)}
                       </TableCell>
                       <TableCell className="font-display font-semibold tabular-nums text-phc-gradient">
-                        {rowCampaign
-                          ? formatPHP(payoutGross, { decimals: false })
-                          : '—'}
+                        {rowCampaign ? formatPHP(payoutGross, { decimals: false }) : '—'}
                       </TableCell>
                       <TableCell>
                         <ContentStatusBadge
