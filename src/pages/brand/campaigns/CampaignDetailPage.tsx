@@ -1141,7 +1141,7 @@ export default function BrandCampaignDetailPage() {
           <Target className="h-3.5 w-3.5 shrink-0" /> Estimated reach progress
         </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <p className="font-display text-lg md:text-2xl font-bold tabular-nums text-foreground md:text-3xl">
+          <p className="font-display text-lg md:text-xl font-bold tabular-nums text-foreground md:text-3xl">
             {reachGoal > 0 ? `${reachProgressPct.toFixed(1)}%` : '—'}
           </p>
           <p className="text-sm font-semibold tabular-nums text-primary sm:text-right">
@@ -1482,7 +1482,7 @@ export default function BrandCampaignDetailPage() {
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-950/45 dark:text-teal-300">
                       <TrendingUp className="h-5 w-5" aria-hidden />
                     </div>
-                    <p className="font-display text-lg md:text-xl font-bold leading-tight tracking-tight tabular-nums text-foreground">
+                    <p className="font-display text-lg font-semibold leading-tight tracking-tight tabular-nums text-foreground">
                       {formatPHP(brandHeadlineRatePer1k(campaign), { decimals: false })} / 1,000
                       Views
                     </p>
@@ -1930,7 +1930,7 @@ export default function BrandCampaignDetailPage() {
               <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Budget</p>
-                  <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
                     {formatPHP(campaign.budget, { decimals: false })}
                   </p>
                 </div>
@@ -1942,7 +1942,7 @@ export default function BrandCampaignDetailPage() {
               <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Available</p>
-                  <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
                     {formatPHP(remaining, { decimals: false })}
                   </p>
                 </div>
@@ -1954,7 +1954,7 @@ export default function BrandCampaignDetailPage() {
               <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Reserved</p>
-                  <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
                     {formatPHP(reserved, { decimals: false })}
                   </p>
                 </div>
@@ -1966,7 +1966,7 @@ export default function BrandCampaignDetailPage() {
               <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Paid</p>
-                  <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
+                  <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
                     {formatPHP(paidOut, { decimals: false })}
                   </p>
                 </div>
@@ -2351,7 +2351,7 @@ export default function BrandCampaignDetailPage() {
                       <p className="mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Total gross releasing
                       </p>
-                      <p className="mt-1 font-display text-lg md:text-2xl font-bold tabular-nums text-foreground">
+                      <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
                         {formatPHP(totalGross, { decimals: false })}
                       </p>
                       <p className="mt-2 text-sm text-muted-foreground">
