@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+// v1 (post-MVP): import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -44,7 +44,7 @@ import {
 } from '@/components/ui/select'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { cn, formatPHP, formatDate, formatNumber, formatViews } from '@/lib/utils'
-import { creatorHeadlineRatePer1k, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
+import { creatorHeadlineRatePer1k, getCampaignReachViewGoal, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
 
 function isValidContentUrl(value: string): boolean {
   try {
@@ -55,8 +55,9 @@ function isValidContentUrl(value: string): boolean {
   }
 }
 
-/** 50% vs 80% creator share of gross performance → multiply headline ₱/1k by 5/8 */
-const YELLOW_BASKET_RATE_FACTOR = 0.625
+// v1 (post-MVP): TikTok Yellow Basket — optional 50% headline-rate factor for commerce posts (not shipped).
+// /** 50% vs 80% creator share of gross performance → multiply headline ₱/1k by 5/8 */
+// const YELLOW_BASKET_RATE_FACTOR = 0.625
 
 function mockPostViewsForDemoUrl(url: string): number {
   const lower = url.toLowerCase()
@@ -67,14 +68,25 @@ function mockPostViewsForDemoUrl(url: string): number {
 /** Placeholder preview still (replace with thumbnail from oEmbed/API). */
 const STATS_PREVIEW_IMAGE_SRC = '/sear-preview.jpg'
 
+// v1 (post-MVP): when yellow basket was enabled, TikTok + checked used a lower effective ₱/1k.
+// function effectiveCreatorRatePer1k(
+//   basePer1k: number,
+//   platform: Platform,
+//   yellowBasket: boolean
+// ): number {
+//   if (platform === 'tiktok' && yellowBasket) {
+//     return Math.round(basePer1k * YELLOW_BASKET_RATE_FACTOR * 100) / 100
+//   }
+//   return basePer1k
+// }
+
 function effectiveCreatorRatePer1k(
   basePer1k: number,
-  platform: Platform,
-  yellowBasket: boolean
+  _platform: Platform,
+  _yellowBasket: boolean
 ): number {
-  if (platform === 'tiktok' && yellowBasket) {
-    return Math.round(basePer1k * YELLOW_BASKET_RATE_FACTOR * 100) / 100
-  }
+  void _platform
+  void _yellowBasket
   return basePer1k
 }
 
@@ -102,7 +114,7 @@ export default function CreatorCampaignDetailPage() {
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [platform, setPlatform] = useState<Platform>('tiktok')
-  const [tikTokYellowBasket, setTikTokYellowBasket] = useState(false)
+  // v1 (post-MVP): const [tikTokYellowBasket, setTikTokYellowBasket] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [linkPhase, setLinkPhase] = useState<LinkValidationPhase>('idle')
   const [snapshot, setSnapshot] = useState<FetchedSnapshot | null>(null)
@@ -133,7 +145,7 @@ export default function CreatorCampaignDetailPage() {
     )
   }
 
-  const reachGoal = Math.max(0, campaign.estimatedReach)
+  const reachGoal = getCampaignReachViewGoal(campaign)
   const reachProgressPct =
     reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0
   const creatorRatePer1k = creatorHeadlineRatePer1k(campaign)
@@ -148,7 +160,7 @@ export default function CreatorCampaignDetailPage() {
 
   function resetSubmitModal() {
     setUrl('')
-    setTikTokYellowBasket(false)
+    // v1 (post-MVP): setTikTokYellowBasket(false)
     setLinkPhase('idle')
     setSnapshot(null)
     setSubmitting(false)
@@ -241,7 +253,8 @@ export default function CreatorCampaignDetailPage() {
       toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
       return
     }
-    const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, tikTokYellowBasket)
+    const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, false)
+    // v1 (post-MVP): const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, tikTokYellowBasket)
     const earnings = Math.round((snapshot.views / 1_000) * rate * 100) / 100
     setSubmitting(true)
     await new Promise((r) => setTimeout(r, 500))
@@ -254,7 +267,7 @@ export default function CreatorCampaignDetailPage() {
       creatorName: user?.name ?? 'You',
       url: url.trim(),
       platform,
-      ...(platform === 'tiktok' ? { hasTikTokYellowBasket: tikTokYellowBasket } : {}),
+      // v1 (post-MVP): ...(platform === 'tiktok' ? { hasTikTokYellowBasket: tikTokYellowBasket } : {}),
       views: snapshot.views,
       earnings,
       status: 'pending',
@@ -373,7 +386,7 @@ export default function CreatorCampaignDetailPage() {
                       onValueChange={(v) => {
                         const p = v as Platform
                         setPlatform(p)
-                        if (p !== 'tiktok') setTikTokYellowBasket(false)
+                        // v1 (post-MVP): if (p !== 'tiktok') setTikTokYellowBasket(false)
                         setLinkPhase('idle')
                         setSnapshot(null)
                       }}
@@ -425,24 +438,7 @@ export default function CreatorCampaignDetailPage() {
                           }}
                         />
                       </div>
-                      {platform === 'tiktok' ? (
-                        <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3">
-                          <Checkbox
-                            id="tiktok-yellow-basket"
-                            checked={tikTokYellowBasket}
-                            onCheckedChange={(checked) => setTikTokYellowBasket(checked === true)}
-                            className="mt-0.5"
-                          />
-                          <div className="min-w-0 space-y-1">
-                            <label
-                              htmlFor="tiktok-yellow-basket"
-                              className="cursor-pointer text-sm font-medium leading-snug text-foreground"
-                            >
-                              This content has yellow basket
-                            </label>
-                          </div>
-                        </div>
-                      ) : null}
+                      {null /* v1 (post-MVP): TikTok “yellow basket” checkbox lived here (Checkbox + label). */}
                       {snapshot && (linkPhase === 'ready' || linkPhase === 'below_quota') ? (
                         <div
                           className={cn(
@@ -517,13 +513,14 @@ export default function CreatorCampaignDetailPage() {
                                     Est. payout
                                   </dt>
                                   <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-phc-gradient sm:text-xl">
+                                    {/* v1 (post-MVP): payout preview used `tikTokYellowBasket` as third arg to effectiveCreatorRatePer1k */}
                                     {formatPHP(
                                       Math.round(
                                         (snapshot.views / 1_000) *
                                           effectiveCreatorRatePer1k(
                                             creatorRatePer1k,
                                             platform,
-                                            tikTokYellowBasket
+                                            false
                                           ) *
                                           100
                                       ) / 100,

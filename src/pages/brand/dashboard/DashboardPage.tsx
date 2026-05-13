@@ -13,7 +13,12 @@ import {
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { useContentStore } from '@/lib/stores/contentStore'
-import { mockBrandPerformanceMonthly, mockBrandPerformanceYearly } from '@/lib/mockData'
+import {
+  brandGrossAccrualForViews,
+  brandHeadlineRatePer1k,
+  mockBrandPerformanceMonthly,
+  mockBrandPerformanceYearly,
+} from '@/lib/mockData'
 import {
   brandReviewStatusForBadge,
   creatorSocialHrefOrPost,
@@ -63,6 +68,11 @@ export default function BrandDashboardPage() {
   )
   const campaigns = useCampaignsStore((s) => s.campaigns)
   const contents = useContentStore((s) => s.contents)
+  const campaignById = useMemo(() => {
+    const m = new Map<string, (typeof campaigns)[number]>()
+    for (const c of campaigns) m.set(c.id, c)
+    return m
+  }, [campaigns])
   const totalSpent = campaigns.reduce((s, c) => s + c.spent, 0)
   const totalReached = mockBrandPerformanceMonthly.reduce((sum, row) => sum + row.views, 0)
   const avgCostPerView = totalReached > 0 ? totalSpent / totalReached : null
@@ -70,6 +80,7 @@ export default function BrandDashboardPage() {
   const sortedRecentSubmissions = useMemo(
     () =>
       [...contents]
+        .filter((c) => c.creatorId !== 'me')
         .filter((c) => c.status === 'pending' || c.status === 'rejected')
         .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()),
     [contents]
@@ -217,7 +228,7 @@ export default function BrandDashboardPage() {
                 <TableHead>Campaign</TableHead>
                 <TableHead>Platform</TableHead>
                 <TableHead>Views</TableHead>
-                <TableHead>Earnings</TableHead>
+                <TableHead>Payout</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -232,6 +243,9 @@ export default function BrandDashboardPage() {
               ) : (
                 recentPageRows.map((content) => {
                   const postHref = content.url
+                  const rowCampaign = campaignById.get(content.campaignId)
+                  const brandPer1k = rowCampaign ? brandHeadlineRatePer1k(rowCampaign) : 0
+                  const payoutGross = brandGrossAccrualForViews(content.views, brandPer1k)
                   return (
                     <TableRow
                       onClick={() => window.open(postHref, '_blank')}
@@ -265,14 +279,16 @@ export default function BrandDashboardPage() {
                         <PlatformCell
                           platform={content.platform}
                           iconClassName="h-5 w-5"
-                          hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
+                          // v1 (post-MVP): hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
                         />
                       </TableCell>
                       <TableCell className="font-display font-semibold tabular-nums">
                         {formatViews(content.views)}
                       </TableCell>
                       <TableCell className="font-display font-semibold tabular-nums text-phc-gradient">
-                        {formatPHP(content.earnings, { decimals: false })}
+                        {rowCampaign
+                          ? formatPHP(payoutGross, { decimals: false })
+                          : '—'}
                       </TableCell>
                       <TableCell>
                         <ContentStatusBadge

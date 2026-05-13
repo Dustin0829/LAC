@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -50,19 +50,21 @@ import { Textarea } from '@/components/ui/textarea'
 import { ContentStatusBadge } from '@/components/ContentStatusBadge'
 import { PersonAvatar } from '@/components/PersonAvatar'
 import { PlatformCell, PlatformIcon } from '@/components/PlatformIcon'
-import { TablePagination } from '@/components/TablePagination'
 import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
 import {
+  brandGrossAccrualForViews,
   brandHeadlineRatePer1k,
+  countCampaignReachTowardGoal,
+  estimatedReachViewsFromNetPool,
   getAvailableBalance,
+  getCampaignReachViewGoal,
   getCreatorRatePer1k,
   getPlatformFeePercent,
   getPlannedGrossBudgetForFunding,
@@ -77,6 +79,18 @@ const PUBLISH_FLOOR = 10_000
 
 /** Matches create-campaign minimum brand gross ₱/1k. */
 const MIN_BRAND_RATE_PER_1K = 35
+
+/** Same rules as `CreateCampaignPage` reference / asset URL checks. */
+function isValidHttpOrHttpsUrl(value: string): boolean {
+  const v = value.trim()
+  if (!v) return false
+  try {
+    const u = new URL(v)
+    return (u.protocol === 'http:' || u.protocol === 'https:') && Boolean(u.hostname)
+  } catch {
+    return false
+  }
+}
 
 /** Details tab per-section Edit / Save (ghost + primary text). */
 const DETAILS_SECTION_ACTION_BTN_CLASS =
@@ -93,7 +107,7 @@ const XENDIT_CHECKOUT_URL = 'https://checkout.xendit.co/'
 const BRAND_REJECT_PRESETS = [
   { id: 'fraud', label: 'Suspicious or fraudulent activity' },
   { id: 'duplicate', label: 'Duplicate or recycled content' },
-  { id: 'engagement', label: 'Low engagement or questionable view quality' },
+  { id: 'requirements', label: 'Campaign requirements not met' },
   { id: 'policy', label: 'Policy or brand-safety concern' },
   { id: 'other', label: 'Other' },
 ] as const
@@ -103,25 +117,64 @@ const BRAND_REJECTED_ROW_CLASS = 'bg-red-50/90 dark:bg-red-950/35'
 
 /** Red-outlined Reject CTA (outline variant + destructive border/text). */
 const BRAND_REJECT_OUTLINE_BTN_CLASS =
-  'border-destructive/60 text-destructive hover:border-destructive hover:bg-destructive/10 hover:text-destructive'
+  'border-destructive text-destructive shadow-none hover:border-destructive hover:bg-destructive/10 hover:text-destructive'
 
 type BrandRejectPresetId = (typeof BRAND_REJECT_PRESETS)[number]['id']
 
-type BrandRejectTarget =
-  | { scope: 'monthly-line'; lineId: string }
-  | { scope: 'submission'; contentId: string }
+type BrandRejectTarget = { scope: 'monthly-line'; lineId: string }
 
-const SUBMISSIONS_PAGE_SIZE = 10
+/** After bulk release, accrual rows show a short “Releasing Payout…” state (ms). */
+const PAYOUT_SUBMISSION_DISBURSING_MS = 4_500
 
 type DetailsEditSection = 'copy' | 'platforms' | 'grossRate' | 'rules' | 'assets' | 'references'
 
-type CampaignTab = 'details' | 'submissions' | 'payout' | 'budget'
+type CampaignTab = 'details' | 'submissions-payout' | 'budget'
 
-const CAMPAIGN_TABS = new Set<CampaignTab>(['details', 'submissions', 'payout', 'budget'])
+const CAMPAIGN_TABS = new Set<CampaignTab>(['details', 'submissions-payout', 'budget'])
 
 function parseCampaignTabParam(raw: string | null): CampaignTab {
+  if (raw === 'submissions' || raw === 'payout') return 'submissions-payout'
   if (raw && CAMPAIGN_TABS.has(raw as CampaignTab)) return raw as CampaignTab
   return 'details'
+}
+
+/** Restore: spendable must cover re-reserve after a batch reject; views must fit under the higher of (reach bar goal, pool-backed view ceiling from net budget × brand ₱/1k). */
+function canRestorePayoutLineRow(args: {
+  lineSessionRejected: boolean
+  restoreViews: number
+  countedViewsForReach: number
+  viewCeiling: number
+  remainingSpendable: number
+  grossToReReserve: number
+}): boolean {
+  const {
+    lineSessionRejected,
+    restoreViews,
+    countedViewsForReach,
+    viewCeiling,
+    remainingSpendable,
+    grossToReReserve,
+  } = args
+  if (lineSessionRejected && remainingSpendable < grossToReReserve) return false
+  if (viewCeiling > 0 && countedViewsForReach + restoreViews > viewCeiling) return false
+  return true
+}
+
+/** Simulated payment confirmation after opening checkout (add funds). */
+const ADD_FUNDS_CHECKOUT_SIMULATE_MS = 5_000
+
+/** Fixed column shares so every payout-batch `<table>` uses the same geometry (stays aligned when stacked). */
+function PayoutBatchTableColGroup() {
+  return (
+    <colgroup>
+      <col className="w-[24%]" />
+      <col className="w-[20%]" />
+      <col className="w-[12%]" />
+      <col className="w-[15%]" />
+      <col className="w-[17%]" />
+      <col className="w-[12%]" />
+    </colgroup>
+  )
 }
 
 export default function BrandCampaignDetailPage() {
@@ -149,6 +202,7 @@ export default function BrandCampaignDetailPage() {
   )
   const updateCampaign = useCampaignsStore((s) => s.updateCampaign)
   const contents = useContentStore((s) => s.contents)
+  const updateContent = useContentStore((s) => s.updateContent)
   const [addFundsOpen, setAddFundsOpen] = useState(false)
   const [fundAmount, setFundAmount] = useState('')
   const [isAddingFunds, setIsAddingFunds] = useState(false)
@@ -171,9 +225,42 @@ export default function BrandCampaignDetailPage() {
   const [confirmedBatches, setConfirmedBatches] = useState<Record<string, boolean>>({})
   /** Per-batch expanded state in the Payout accordion. */
   const [expandedBatches, setExpandedBatches] = useState<Record<string, boolean>>({})
-  /** contentId → reject reason (session-only; no separate “approve”). */
-  const [submissionRejectReasons, setSubmissionRejectReasons] = useState<Record<string, string>>({})
-  const [submissionsPage, setSubmissionsPage] = useState(1)
+  /** Payout accrual line ids in “Releasing Payout…” UI after confirm release. */
+  const [disbursingPayoutLineIds, setDisbursingPayoutLineIds] = useState<Record<string, boolean>>(
+    {}
+  )
+  const payoutSettleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /** Most recent period first — that accordion row opens by default when opening this campaign. */
+  const latestPayoutBatchIdToExpand = useMemo(() => {
+    if (!id) return undefined
+    const batches = mockMonthlyPayoutBatches
+      .filter((b) => b.campaignId === id)
+      .slice()
+      .sort((a, b) => new Date(b.periodEnd).getTime() - new Date(a.periodEnd).getTime())
+    return batches[0]?.id
+  }, [id])
+
+  const countedViewsForReach = useMemo(
+    () =>
+      id
+        ? countCampaignReachTowardGoal(
+            contents,
+            id,
+            {},
+            monthlyBatchLineRejected,
+            mockMonthlyPayoutBatches
+          )
+        : 0,
+    [id, contents, monthlyBatchLineRejected]
+  )
+
+  useEffect(() => {
+    if (!id) return
+    const latest = useCampaignsStore.getState().campaigns.find((c) => c.id === id)
+    if (!latest || latest.campaignViews === countedViewsForReach) return
+    updateCampaign(id, { campaignViews: countedViewsForReach })
+  }, [id, countedViewsForReach, updateCampaign])
 
   const [draftTitle, setDraftTitle] = useState('')
   const [draftDescription, setDraftDescription] = useState('')
@@ -225,14 +312,35 @@ export default function BrandCampaignDetailPage() {
     }
   }, [campaignDraftSyncSignature, campaign, detailsEditingSections])
 
+  const invalidReferenceDraftLines = useMemo(() => {
+    const lines = draftReferenceLinks.split('\n')
+    const bad: { lineNum: number; text: string }[] = []
+    for (let i = 0; i < lines.length; i += 1) {
+      const t = lines[i].trim()
+      if (!t) continue
+      if (!isValidHttpOrHttpsUrl(t)) bad.push({ lineNum: i + 1, text: t })
+    }
+    return bad
+  }, [draftReferenceLinks])
+
   useEffect(() => {
     if (campaignTab !== 'details') setDetailsEditingSections(new Set())
   }, [campaignTab])
 
   useEffect(() => {
-    setSubmissionsPage(1)
-    setExpandedBatches({})
-  }, [id])
+    setExpandedBatches(latestPayoutBatchIdToExpand ? { [latestPayoutBatchIdToExpand]: true } : {})
+    setDisbursingPayoutLineIds({})
+    if (payoutSettleTimeoutRef.current != null) {
+      clearTimeout(payoutSettleTimeoutRef.current)
+      payoutSettleTimeoutRef.current = null
+    }
+  }, [id, latestPayoutBatchIdToExpand])
+
+  useEffect(() => {
+    return () => {
+      if (payoutSettleTimeoutRef.current != null) clearTimeout(payoutSettleTimeoutRef.current)
+    }
+  }, [])
 
   if (!campaign) {
     return (
@@ -248,12 +356,42 @@ export default function BrandCampaignDetailPage() {
   }
 
   const campaignId = campaign.id
+
+  function releaseCampaignReserve(grossRelease: number) {
+    if (grossRelease <= 0) return
+    const latest = useCampaignsStore.getState().campaigns.find((c) => c.id === campaignId)
+    if (!latest) return
+    const res = Math.max(0, latest.reservedBalance ?? 0)
+    const take = Math.min(res, grossRelease)
+    if (take <= 0) return
+    updateCampaign(campaignId, { reservedBalance: res - take })
+  }
+
+  function returnCampaignReserve(amount: number) {
+    if (amount <= 0) return
+    const latest = useCampaignsStore.getState().campaigns.find((c) => c.id === campaignId)
+    if (!latest) return
+    const res = Math.max(0, latest.reservedBalance ?? 0)
+    updateCampaign(campaignId, { reservedBalance: res + amount })
+  }
+
   const platformFeePercent = campaign.platformFeePercent ?? getPlatformFeePercent()
   const remaining = getAvailableBalance(campaign)
   const reserved = campaign.reservedBalance ?? 0
-  const reachGoal = Math.max(0, campaign.estimatedReach)
+  const reachGoal = getCampaignReachViewGoal(campaign)
   const reachProgressPct =
-    reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0
+    reachGoal > 0 ? Math.min(100, (countedViewsForReach / reachGoal) * 100) : 0
+  /** Post-refund pin can sit below what the net pool can still fund at CPV; restores use the looser ceiling so money and views stay aligned. */
+  const poolBackedViewCeiling = estimatedReachViewsFromNetPool(
+    campaign.budget,
+    brandHeadlineRatePer1k(campaign)
+  )
+  const restoreViewCeiling = Math.max(reachGoal, poolBackedViewCeiling)
+
+  /** Brand gross accrual for a payout row — always from snapshot views × this campaign’s brand ₱/1k (not stale mock `grossAmount`). */
+  function accrualBrandGrossForPayoutLine(line: { snapshotViews: number }): number {
+    return brandGrossAccrualForViews(line.snapshotViews, brandHeadlineRatePer1k(campaign!))
+  }
 
   const fundGrossInput = Number(fundAmount)
   /** Breakdown for this payment only (excludes existing campaign pool). Mirrors create-campaign sidebar math. */
@@ -279,7 +417,7 @@ export default function BrandCampaignDetailPage() {
       ? Math.floor(fundPublishPayoutPool / fundPublishCpv)
       : 0
 
-  const submissions = contents.filter((c) => c.campaignId === campaignId)
+  const submissions = contents.filter((c) => c.campaignId === campaignId && c.creatorId !== 'me')
   const canEditPreSubmission = submissions.length === 0
 
   function addDraftRule() {
@@ -398,6 +536,14 @@ export default function BrandCampaignDetailPage() {
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean)
+    for (const link of links) {
+      if (!isValidHttpOrHttpsUrl(link)) {
+        toast.error(
+          'Each line must be a full http(s) URL (for example https://example.com/page). Fix or remove invalid lines before saving.'
+        )
+        return
+      }
+    }
     updateCampaign(campaignId, {
       referenceLinks: links.length > 0 ? links : undefined,
     })
@@ -412,9 +558,8 @@ export default function BrandCampaignDetailPage() {
       toast.error(`Gross rate must be at least ₱${MIN_BRAND_RATE_PER_1K} per 1,000 views.`)
       return
     }
-    const cpv = gross / 1000
     const nextReach =
-      cpv > 0 ? Math.max(1, Math.floor(campaign.budget / cpv)) : campaign.estimatedReach
+      gross > 0 ? estimatedReachViewsFromNetPool(campaign.budget, gross) : campaign.estimatedReach
     updateCampaign(campaignId, {
       brandRatePer1k: gross,
       ratePer1k: getCreatorRatePer1k(gross),
@@ -433,13 +578,6 @@ export default function BrandCampaignDetailPage() {
     ? (payoutBatches.find((p) => p.id === activeReleaseBatchId) ?? null)
     : null
 
-  const submissionsTotalPages = Math.max(1, Math.ceil(submissions.length / SUBMISSIONS_PAGE_SIZE))
-  const submissionsSafePage = Math.min(Math.max(1, submissionsPage), submissionsTotalPages)
-  const submissionsPageRows = submissions.slice(
-    (submissionsSafePage - 1) * SUBMISSIONS_PAGE_SIZE,
-    submissionsSafePage * SUBMISSIONS_PAGE_SIZE
-  )
-
   const statusVisual = {
     active: { chip: 'border-emerald-200 bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500' },
     paused: { chip: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500' },
@@ -450,9 +588,22 @@ export default function BrandCampaignDetailPage() {
 
   function togglePause() {
     if (!campaign) return
-    const next = campaign.status === 'paused' ? 'active' : 'paused'
-    updateCampaign(campaignId, { status: next })
-    toast.success(next === 'paused' ? 'Campaign paused' : 'Campaign resumed')
+    if (campaign.status !== 'paused') {
+      updateCampaign(campaignId, { status: 'paused' })
+      toast.success('Campaign paused')
+      return
+    }
+    const spendable = getAvailableBalance(campaign)
+    if (campaign.resumeRequiresAddFunds && spendable < PUBLISH_FLOOR) {
+      setAddFundsOpen(true)
+      toast.info('Not enough balance to resume. Add funds to continue.')
+      return
+    }
+    updateCampaign(campaignId, {
+      status: 'active',
+      ...(campaign.resumeRequiresAddFunds ? { resumeRequiresAddFunds: false } : {}),
+    })
+    toast.success('Campaign resumed')
   }
 
   async function handleAddFunds(e: React.FormEvent) {
@@ -465,14 +616,10 @@ export default function BrandCampaignDetailPage() {
       return
     }
 
-    const checkout = window.open(XENDIT_CHECKOUT_URL, '_blank', 'noopener,noreferrer')
-    if (!checkout) {
-      toast.error('Allow pop-ups to open the Xendit checkout.')
-      return
-    }
+    void window.open(XENDIT_CHECKOUT_URL, '_blank', 'noopener,noreferrer')
 
     setIsAddingFunds(true)
-    await new Promise((resolve) => setTimeout(resolve, 650))
+    await new Promise((resolve) => setTimeout(resolve, ADD_FUNDS_CHECKOUT_SIMULATE_MS))
     const net = Math.round(amount * (1 - platformFeePercent))
     const prevRemaining = getAvailableBalance(campaign)
     const nextBudget = campaign.budget + net
@@ -480,6 +627,20 @@ export default function BrandCampaignDetailPage() {
     const nextPatch: Parameters<typeof updateCampaign>[1] = { budget: nextBudget }
     if (campaign.status === 'paused' && prevRemaining === 0 && newRemaining >= PUBLISH_FLOOR) {
       nextPatch.status = 'active'
+    }
+    if (newRemaining >= PUBLISH_FLOOR) {
+      nextPatch.resumeRequiresAddFunds = false
+    }
+    if (net > 0 && campaign.postRefundReachGoalViews != null) {
+      const cpvAdd = addFundsBrandRate / 1000
+      const viewsFromSpendable = cpvAdd > 0 ? Math.floor(newRemaining / cpvAdd) : 0
+      const poolCeilingAfterAdd = estimatedReachViewsFromNetPool(nextBudget, addFundsBrandRate)
+      nextPatch.postRefundReachGoalViews = undefined
+      nextPatch.estimatedReach = Math.max(
+        countedViewsForReach + viewsFromSpendable,
+        poolCeilingAfterAdd,
+        campaign.estimatedReach ?? 0
+      )
     }
     updateCampaign(campaignId, nextPatch)
     setIsAddingFunds(false)
@@ -489,10 +650,7 @@ export default function BrandCampaignDetailPage() {
     if (nextPatch.status === 'active' && campaign.status === 'paused' && prevRemaining === 0) {
       publishNote = ' Campaign resumed — spendable balance is back above the floor.'
     }
-    toast.success(
-      `${formatPHP(net, { decimals: false })} added to this campaign pool (${formatPHP(amount, { decimals: false })} payment after the platform fee).` +
-        publishNote
-    )
+    toast.success(publishNote)
   }
 
   async function confirmRefundAvailable() {
@@ -509,15 +667,28 @@ export default function BrandCampaignDetailPage() {
     const reserved = latest.reservedBalance ?? 0
     const newBudget = latest.spent + reserved
     const wasActive = latest.status === 'active'
+    const countedNow = countCampaignReachTowardGoal(
+      useContentStore.getState().contents,
+      campaignId,
+      {},
+      monthlyBatchLineRejected,
+      mockMonthlyPayoutBatches
+    )
+    const postRefundGoal = Math.max(1, countedNow)
     updateCampaign(campaignId, {
       budget: newBudget,
+      resumeRequiresAddFunds: true,
+      postRefundReachGoalViews: postRefundGoal,
+      estimatedReach: postRefundGoal,
       ...(wasActive ? { status: 'paused' as const } : {}),
     })
     setIsRefunding(false)
     setRefundOpen(false)
     toast.success(
-      `${formatPHP(net, { decimals: false })} available balance refunded. Budget updated to ${formatPHP(newBudget, { decimals: false })}.` +
-        (wasActive ? ' Campaign paused until you add new spendable balance.' : '')
+      `${formatPHP(net, { decimals: false })} available balance refunded.` +
+        (wasActive
+          ? ' Campaign paused until you add new spendable balance.'
+          : ' Not enough balance to resume. Add funds to continue.')
     )
   }
 
@@ -548,25 +719,23 @@ export default function BrandCampaignDetailPage() {
       return
     }
 
-    const checkout = window.open(XENDIT_CHECKOUT_URL, '_blank', 'noopener,noreferrer')
-    if (!checkout) {
-      toast.error('Allow pop-ups to open the Xendit checkout.')
-      return
-    }
+    void window.open(XENDIT_CHECKOUT_URL, '_blank', 'noopener,noreferrer')
 
     setIsFundingPublish(true)
     await new Promise((resolve) => setTimeout(resolve, 650))
 
-    const cpv = brandRate / 1000
     const platformFeeAmount = gross * platformFeePercent
     const payoutPoolForReach = Math.max(0, gross - platformFeeAmount)
     const newReach =
-      cpv > 0 ? Math.max(1, Math.floor(payoutPoolForReach / cpv)) : campaign.estimatedReach
+      brandRate > 0
+        ? estimatedReachViewsFromNetPool(payoutPoolForReach, brandRate)
+        : campaign.estimatedReach
 
     updateCampaign(campaignId, {
       budget: netPool,
       plannedGrossBudget: gross,
       estimatedReach: newReach,
+      postRefundReachGoalViews: undefined,
       status: 'active',
     })
     setIsFundingPublish(false)
@@ -602,30 +771,48 @@ export default function BrandCampaignDetailPage() {
 
   async function confirmReleasePayouts() {
     if (!activeReleaseBatch) return
-    const payableLines = activeReleaseBatch.lines.filter((l) => !monthlyBatchLineRejected[l.id])
+    const payableLines = activeReleaseBatch.lines.filter((l) => !isPayoutLineExcluded(l))
     if (payableLines.length === 0) {
       toast.error('No payable lines — every line was rejected for this batch.')
       return
     }
     setIsConfirmingRelease(true)
     await new Promise((r) => setTimeout(r, 700))
-    const total = payableLines.reduce((s, l) => s + l.grossAmount, 0)
+    const total = payableLines.reduce((s, l) => s + accrualBrandGrossForPayoutLine(l), 0)
     const latest = useCampaignsStore.getState().campaigns.find((c) => c.id === campaignId)
     if (!latest) {
       setIsConfirmingRelease(false)
       return
     }
     const roundedTotal = Math.round(total)
+    const reserved = Math.max(0, latest.reservedBalance ?? 0)
+    const nextReserved = Math.max(0, reserved - roundedTotal)
     updateCampaign(campaignId, {
       spent: latest.spent + roundedTotal,
+      reservedBalance: nextReserved,
     })
     const batchId = activeReleaseBatch.id
     setConfirmedBatches((prev) => ({ ...prev, [batchId]: true }))
     setIsConfirmingRelease(false)
     setActiveReleaseBatchId(null)
+    const releasedLineIds = payableLines.map((l) => l.id)
+    setDisbursingPayoutLineIds((prev) => {
+      const next = { ...prev }
+      for (const lid of releasedLineIds) next[lid] = true
+      return next
+    })
     toast.success(
       `Payout released: ${formatPHP(total, { decimals: false })} for ${payableLines.length} line${payableLines.length === 1 ? '' : 's'}. Disbursements are in flight.`
     )
+    if (payoutSettleTimeoutRef.current != null) clearTimeout(payoutSettleTimeoutRef.current)
+    payoutSettleTimeoutRef.current = setTimeout(() => {
+      payoutSettleTimeoutRef.current = null
+      setDisbursingPayoutLineIds((prev) => {
+        const next = { ...prev }
+        for (const lid of releasedLineIds) delete next[lid]
+        return next
+      })
+    }, PAYOUT_SUBMISSION_DISBURSING_MS)
   }
 
   function toggleBatchExpanded(batchId: string) {
@@ -636,14 +823,14 @@ export default function BrandCampaignDetailPage() {
     return contents.find((c) => c.id === contentId)?.url
   }
 
-  function openRejectForMonthlyLine(lineId: string) {
-    setRejectTarget({ scope: 'monthly-line', lineId })
-    setRejectPreset('fraud')
-    setRejectOtherDetail('')
+  /** Session batch reject or submission already rejected in store — excluded from payout totals. */
+  function isPayoutLineExcluded(line: { id: string; contentId: string }): boolean {
+    if (monthlyBatchLineRejected[line.id]) return true
+    return contents.find((c) => c.id === line.contentId)?.status === 'rejected'
   }
 
-  function openRejectForSubmission(contentId: string) {
-    setRejectTarget({ scope: 'submission', contentId })
+  function openRejectForMonthlyLine(lineId: string) {
+    setRejectTarget({ scope: 'monthly-line', lineId })
     setRejectPreset('fraud')
     setRejectOtherDetail('')
   }
@@ -668,28 +855,24 @@ export default function BrandCampaignDetailPage() {
       const preset = BRAND_REJECT_PRESETS.find((p) => p.id === rejectPreset)
       reason = preset?.label ?? rejectPreset
     }
-    if (rejectTarget.scope === 'monthly-line') {
-      setMonthlyBatchLineRejected((prev) => ({ ...prev, [rejectTarget.lineId]: reason }))
-      toast.success('Submission rejected — excluded from this payout batch.')
-    } else {
-      setSubmissionRejectReasons((prev) => ({ ...prev, [rejectTarget.contentId]: reason }))
-      toast.success('Submission rejected — excluded from payout. The creator is notified.')
+    const line = mockMonthlyPayoutBatches
+      .flatMap((b) => b.lines)
+      .find((l) => l.id === rejectTarget.lineId)
+    if (line?.campaignId === campaignId) {
+      releaseCampaignReserve(accrualBrandGrossForPayoutLine(line))
     }
+    setMonthlyBatchLineRejected((prev) => ({ ...prev, [rejectTarget.lineId]: reason }))
+    toast.success('Submission rejected — excluded from this payout batch.')
     resetRejectDialog()
   }
 
-  function restoreMonthlyBatchLine(lineId: string) {
+  function restoreMonthlyBatchLine(lineId: string, reReserveGross = 0) {
+    if (reReserveGross > 0) {
+      returnCampaignReserve(reReserveGross)
+    }
     setMonthlyBatchLineRejected((prev) => {
       const next = { ...prev }
       delete next[lineId]
-      return next
-    })
-  }
-
-  function restoreSubmission(contentId: string) {
-    setSubmissionRejectReasons((prev) => {
-      const next = { ...prev }
-      delete next[contentId]
       return next
     })
   }
@@ -756,13 +939,20 @@ export default function BrandCampaignDetailPage() {
                 </>
               )}
             </div>
-            <Dialog open={addFundsOpen} onOpenChange={setAddFundsOpen}>
+            <Dialog
+              open={addFundsOpen}
+              onOpenChange={(open) => {
+                if (!open && isAddingFunds) return
+                setAddFundsOpen(open)
+              }}
+            >
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Add funds to campaign</DialogTitle>
                   <DialogDescription>
-                    Funds will be added after payment confirmation. Confirming opens Xendit checkout
-                    in a new tab.
+                    Funds will be added after payment confirmation. Confirming attempts to open
+                    Xendit checkout in a new tab, then simulates confirmation for a few seconds
+                    before updating your balance.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -799,7 +989,7 @@ export default function BrandCampaignDetailPage() {
                       <li className="flex justify-between gap-3">
                         <span className="text-muted-foreground">Brand rate</span>
                         <span className="shrink-0 font-semibold">
-                          {formatPHP(addFundsBrandRate, { decimals: false })} / 1,000
+                          {formatPHP(addFundsBrandRate, { decimals: false })} / 1,000 Views
                         </span>
                       </li>
                       <li className="flex justify-between gap-3">
@@ -844,7 +1034,7 @@ export default function BrandCampaignDetailPage() {
                     >
                       {isAddingFunds ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" /> Processing
+                          <Loader2 className="h-4 w-4 animate-spin" /> Confirming payment…
                         </>
                       ) : (
                         'Confirm'
@@ -975,11 +1165,11 @@ export default function BrandCampaignDetailPage() {
           <p className="text-sm font-semibold tabular-nums text-primary sm:text-right">
             {reachGoal > 0 ? (
               <>
-                {formatNumber(Math.round(campaign.campaignViews))} / {formatNumber(reachGoal)} views
+                {formatNumber(Math.round(countedViewsForReach))} / {formatNumber(reachGoal)} views
               </>
             ) : (
               <>
-                {formatNumber(Math.round(campaign.campaignViews))} views
+                {formatNumber(Math.round(countedViewsForReach))} views
                 <span className="block text-xs font-medium text-muted-foreground">
                   No reach goal set
                 </span>
@@ -996,7 +1186,7 @@ export default function BrandCampaignDetailPage() {
       </div>
 
       <div className="min-w-0 border-b border-border" role="tablist" aria-label="Campaign sections">
-        <div className="grid w-full grid-cols-4">
+        <div className="grid w-full grid-cols-3">
           <button
             type="button"
             role="tab"
@@ -1004,13 +1194,13 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'details'}
             onClick={() => setCampaignTab('details')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center text-xs font-semibold transition-colors sm:text-sm',
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors',
               campaignTab === 'details'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Shield className="h-4 w-4 shrink-0" />
+            <Shield className="h-4.5 w-4.5 shrink-0" />
             <span className="leading-snug">Details</span>
             {campaignTab === 'details' ? (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
@@ -1019,43 +1209,24 @@ export default function BrandCampaignDetailPage() {
           <button
             type="button"
             role="tab"
-            id="campaign-tab-submissions"
-            aria-selected={campaignTab === 'submissions'}
-            onClick={() => setCampaignTab('submissions')}
+            id="campaign-tab-submissions-payout"
+            aria-selected={campaignTab === 'submissions-payout'}
+            onClick={() => setCampaignTab('submissions-payout')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center text-xs font-semibold transition-colors sm:text-sm',
-              campaignTab === 'submissions'
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors ',
+              campaignTab === 'submissions-payout'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Play className="h-4 w-4 shrink-0" />
+            <CircleDollarSign className="h-4.5 w-4.5 shrink-0" />
             <span className="leading-snug">
               Submissions
-              <span className="ml-1 tabular-nums text-xs font-medium opacity-80">
+              <span className="ml-1 tabular-nums font-medium opacity-80">
                 ({submissions.length})
               </span>
             </span>
-            {campaignTab === 'submissions' ? (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
-            ) : null}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="campaign-tab-payout"
-            aria-selected={campaignTab === 'payout'}
-            onClick={() => setCampaignTab('payout')}
-            className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center text-xs font-semibold transition-colors sm:text-sm',
-              campaignTab === 'payout'
-                ? 'text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <CircleDollarSign className="h-4 w-4 shrink-0" />
-            <span className="leading-snug">Payout</span>
-            {campaignTab === 'payout' ? (
+            {campaignTab === 'submissions-payout' ? (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
             ) : null}
           </button>
@@ -1066,7 +1237,7 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'budget'}
             onClick={() => setCampaignTab('budget')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center text-xs font-semibold transition-colors sm:text-sm',
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors ',
               campaignTab === 'budget'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -1083,7 +1254,7 @@ export default function BrandCampaignDetailPage() {
 
       {campaignTab === 'details' ? (
         <div
-          className="grid min-w-0 gap-6 md:grid-cols-2"
+          className="grid min-w-0 gap-4 md:grid-cols-2"
           role="tabpanel"
           aria-labelledby="campaign-tab-details"
         >
@@ -1127,10 +1298,9 @@ export default function BrandCampaignDetailPage() {
                           id="campaign-detail-title"
                           value={draftTitle}
                           onChange={(e) => setDraftTitle(e.target.value)}
-                          className="font-display text-xl font-bold tracking-tight"
+                          className="bg-white font-normal dark:bg-card"
                         />
                       </div>
-                      <div className="h-px w-full min-w-0 bg-border" aria-hidden />
                       <div className="space-y-1.5">
                         <Label htmlFor="campaign-detail-description">Description</Label>
                         <Textarea
@@ -1138,7 +1308,7 @@ export default function BrandCampaignDetailPage() {
                           value={draftDescription}
                           onChange={(e) => setDraftDescription(e.target.value)}
                           rows={5}
-                          className="min-h-[120px] resize-y text-sm leading-relaxed"
+                          className="min-h-[120px] resize-y bg-white text-sm leading-relaxed dark:bg-card"
                         />
                       </div>
                     </>
@@ -1196,7 +1366,7 @@ export default function BrandCampaignDetailPage() {
                       )}
                     </div>
                     {detailsEditingSections.has('platforms') ? (
-                      <div className="flex flex-wrap gap-3">
+                      <div className="flex flex-wrap gap-2">
                         {PLATFORM_OPTIONS.map(({ id: platformId, label }) => {
                           const selected = draftPlatforms.includes(platformId)
                           return (
@@ -1205,7 +1375,7 @@ export default function BrandCampaignDetailPage() {
                               type="button"
                               onClick={() => togglePlatformPill(platformId)}
                               className={cn(
-                                'inline-flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
+                                'inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
                                 selected
                                   ? 'border-primary bg-primary/10 text-foreground shadow-sm'
                                   : 'border-border bg-card text-muted-foreground hover:bg-muted/50'
@@ -1276,17 +1446,32 @@ export default function BrandCampaignDetailPage() {
             )}
 
             <div className="rounded-2xl border border-border bg-muted/25 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-950/45 dark:text-teal-300">
-                    <TrendingUp className="h-5 w-5" aria-hidden />
-                  </div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Gross rate per 1K views
-                  </p>
-                </div>
-                {canEditPreSubmission ? (
-                  detailsEditingSections.has('grossRate') ? (
+              {canEditPreSubmission && detailsEditingSections.has('grossRate') ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div
+                      className="flex min-w-0 flex-1 flex-wrap items-center gap-3"
+                      role="group"
+                      aria-label="Gross rate per 1,000 views"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-950/45 dark:text-teal-300">
+                        <TrendingUp className="h-5 w-5" aria-hidden />
+                      </div>
+                      <div className="min-w-0 space-y-1.5">
+                        <Label htmlFor="campaign-gross-rate-details" className="sr-only">
+                          Gross rate per 1,000 views (PHP)
+                        </Label>
+                        <IntegerInput
+                          id="campaign-gross-rate-details"
+                          pesoPrefix
+                          min={MIN_BRAND_RATE_PER_1K}
+                          value={draftGrossRateDigits}
+                          onValueChange={setDraftGrossRateDigits}
+                          className="max-w-56 font-display text-xl font-bold"
+                          aria-describedby="campaign-gross-rate-details-hint"
+                        />
+                      </div>
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -1297,7 +1482,30 @@ export default function BrandCampaignDetailPage() {
                       <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
                       Save
                     </Button>
-                  ) : (
+                  </div>
+                  <p
+                    className="mt-4 text-xs text-muted-foreground"
+                    id="campaign-gross-rate-details-hint"
+                  >
+                    Minimum ₱{MIN_BRAND_RATE_PER_1K.toLocaleString('en-PH')} per 1,000 views.
+                  </p>
+                </>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div
+                    className="flex min-w-0 items-center gap-3"
+                    role="group"
+                    aria-label="Gross rate per 1,000 views"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-600 dark:bg-teal-950/45 dark:text-teal-300">
+                      <TrendingUp className="h-5 w-5" aria-hidden />
+                    </div>
+                    <p className="font-display text-xl font-bold leading-tight tracking-tight tabular-nums text-foreground">
+                      {formatPHP(brandHeadlineRatePer1k(campaign), { decimals: false })} / 1,000
+                      Views
+                    </p>
+                  </div>
+                  {canEditPreSubmission ? (
                     <Button
                       type="button"
                       variant="ghost"
@@ -1308,44 +1516,8 @@ export default function BrandCampaignDetailPage() {
                       <PencilLine className="h-4 w-4 shrink-0" aria-hidden />
                       Edit
                     </Button>
-                  )
-                ) : null}
-              </div>
-              {canEditPreSubmission && detailsEditingSections.has('grossRate') ? (
-                <>
-                  <p className="mt-4 text-xs text-muted-foreground">
-                    Minimum ₱{MIN_BRAND_RATE_PER_1K.toLocaleString('en-PH')} per 1,000 views.
-                  </p>
-                  <div className="mt-2 space-y-1.5">
-                    <Label htmlFor="campaign-gross-rate-details" className="sr-only">
-                      Gross rate per 1,000 views (PHP)
-                    </Label>
-                    <IntegerInput
-                      id="campaign-gross-rate-details"
-                      pesoPrefix
-                      min={MIN_BRAND_RATE_PER_1K}
-                      value={draftGrossRateDigits}
-                      onValueChange={setDraftGrossRateDigits}
-                      className="max-w-56 font-display text-xl font-bold"
-                      aria-describedby="campaign-gross-rate-details-hint"
-                    />
-                  </div>
-                </>
-              ) : canEditPreSubmission ? (
-                <>
-                  <p className="mt-4 font-display text-2xl font-bold tabular-nums text-foreground">
-                    {formatPHP(brandHeadlineRatePer1k(campaign), { decimals: false })} / 1,000 views
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="mt-4 font-display text-2xl font-bold tabular-nums text-foreground">
-                    {formatPHP(brandHeadlineRatePer1k(campaign), { decimals: false })} / 1,000 views
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Rate is fixed once creators have submitted to this campaign.
-                  </p>
-                </>
+                  ) : null}
+                </div>
               )}
             </div>
 
@@ -1413,19 +1585,18 @@ export default function BrandCampaignDetailPage() {
                     <>
                       <div className="mt-3 space-y-2">
                         {draftRules.map((rule, index) => (
-                          <div
-                            key={index}
-                            className="grid min-w-0 grid-cols-[2.25rem_1fr_auto] items-center gap-x-3 rounded-xl border border-border bg-muted/30 px-2 py-2"
-                          >
-                            <span className="justify-self-end font-display text-base font-bold tabular-nums leading-none text-phc-gradient">
-                              {index + 1}.
-                            </span>
-                            <Input
-                              value={rule}
-                              onChange={(e) => setDraftRuleAt(index, e.target.value)}
-                              placeholder={`Rule ${index + 1}`}
-                              className="min-w-0 border-0 bg-transparent px-0 text-sm font-medium leading-snug shadow-none focus-visible:ring-0 md:text-base"
-                            />
+                          <div key={index} className="flex min-w-0 items-center gap-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-border bg-white px-4 py-3 dark:bg-card">
+                              <span className="shrink-0 font-display font-bold tabular-nums text-phc-gradient text-sm leading-relaxed">
+                                {index + 1}.
+                              </span>
+                              <Input
+                                value={rule}
+                                onChange={(e) => setDraftRuleAt(index, e.target.value)}
+                                placeholder={`Rule ${index + 1}`}
+                                className="h-auto min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 py-0 text-sm font-normal leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
+                              />
+                            </div>
                             <Button
                               type="button"
                               variant="outline"
@@ -1511,6 +1682,7 @@ export default function BrandCampaignDetailPage() {
                         placeholder="https://drive.google.com/..."
                         value={draftAssetUrl}
                         onChange={(e) => setDraftAssetUrl(e.target.value)}
+                        className="bg-white dark:bg-card"
                       />
                       <p className="text-xs text-muted-foreground">
                         Link to Drive, Dropbox, or brand kit for creators.
@@ -1547,7 +1719,7 @@ export default function BrandCampaignDetailPage() {
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Reference links
+                      Reference links (one per line)
                     </p>
                     {detailsEditingSections.has('references') ? (
                       <Button
@@ -1575,15 +1747,30 @@ export default function BrandCampaignDetailPage() {
                   </div>
                   {detailsEditingSections.has('references') ? (
                     <div className="mt-3 space-y-1.5">
-                      <Label htmlFor="campaign-detail-refs">URLs (one per line)</Label>
                       <Textarea
-                        id="campaign-detail-refs"
                         value={draftReferenceLinks}
                         onChange={(e) => setDraftReferenceLinks(e.target.value)}
                         rows={3}
-                        placeholder="One URL per line"
-                        className="resize-none text-sm"
+                        spellCheck={false}
+                        placeholder="https://example.com/brand-guidelines"
+                        aria-invalid={invalidReferenceDraftLines.length > 0}
+                        className={cn(
+                          'resize-none bg-white text-sm dark:bg-card',
+                          invalidReferenceDraftLines.length > 0 &&
+                            'border-destructive focus-visible:ring-destructive/25'
+                        )}
                       />
+                      {invalidReferenceDraftLines.length > 0 ? (
+                        <p className="text-xs text-destructive" role="alert">
+                          Non-empty lines must be valid URLs starting with{' '}
+                          <span className="whitespace-nowrap">http://</span> or{' '}
+                          <span className="whitespace-nowrap">https://</span>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Paste full links only; plain text or hashtags cannot be saved.
+                        </p>
+                      )}
                     </div>
                   ) : (campaign.referenceLinks?.length ?? 0) > 0 ? (
                     <ul className="mt-2 space-y-2">
@@ -1851,146 +2038,18 @@ export default function BrandCampaignDetailPage() {
             </DialogContent>
           </Dialog>
         </div>
-      ) : campaignTab === 'submissions' ? (
-        <div className="space-y-6" role="tabpanel" aria-labelledby="campaign-tab-submissions">
-          <section className="space-y-4">
-            {submissions.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
-                <p className="font-medium">No submissions yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Creators will start submitting soon.
-                </p>
-              </div>
-            ) : (
-              <TableContainer>
-                <Table className="min-w-3xl">
-                  <TableHeader>
-                    <TableRow className="cursor-default hover:bg-transparent">
-                      <TableHead>Creator</TableHead>
-                      <TableHead>Platform</TableHead>
-                      <TableHead>Views</TableHead>
-                      <TableHead>Earnings</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right"> </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {submissionsPageRows.map((content) => {
-                      const submissionRejected = Boolean(submissionRejectReasons[content.id])
-                      const postHref = content.url
-                      return (
-                        <TableRow
-                          key={content.id}
-                          className={cn(
-                            'cursor-pointer',
-                            submissionRejected
-                              ? cn(
-                                  BRAND_REJECTED_ROW_CLASS,
-                                  'hover:bg-red-100/80 dark:hover:bg-red-950/45'
-                                )
-                              : 'hover:bg-muted/40'
-                          )}
-                          onClick={() => window.open(postHref, '_blank', 'noopener,noreferrer')}
-                        >
-                          <TableCell
-                            className={cn(
-                              'max-w-56',
-                              submissionRejected && 'text-muted-foreground'
-                            )}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <a
-                              href={creatorSocialHrefOrPost(content.url, content.platform)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            >
-                              <PersonAvatar
-                                name={content.creatorName}
-                                src={content.creatorAvatarUrl}
-                                size="xs"
-                                className="shrink-0"
-                              />
-                              <span
-                                className={cn(
-                                  'min-w-0 font-medium leading-snug text-foreground underline-offset-2 hover:underline',
-                                  submissionRejected && 'line-through'
-                                )}
-                              >
-                                {content.creatorName}
-                              </span>
-                            </a>
-                          </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <PlatformCell
-                              platform={content.platform}
-                              iconClassName="h-5 w-5"
-                              className={cn(submissionRejected && 'opacity-60')}
-                              hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
-                            />
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'font-semibold',
-                              submissionRejected && 'line-through text-muted-foreground'
-                            )}
-                          >
-                            {formatViews(content.views)}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'font-display text-sm font-bold tabular-nums text-phc-gradient',
-                              submissionRejected && 'line-through opacity-70'
-                            )}
-                          >
-                            {formatPHP(content.earnings, { decimals: false })}
-                          </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <ContentStatusBadge
-                              status={brandReviewStatusForBadge(content.status, submissionRejected)}
-                            />
-                          </TableCell>
-                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              type="button"
-                              variant={submissionRejected ? 'secondary' : 'outline'}
-                              size="xs"
-                              className={cn(
-                                'shrink-0 rounded-md font-normal',
-                                !submissionRejected && BRAND_REJECT_OUTLINE_BTN_CLASS
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (submissionRejected) restoreSubmission(content.id)
-                                else openRejectForSubmission(content.id)
-                              }}
-                            >
-                              {submissionRejected ? 'Restore' : 'Reject'}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-                <TablePagination
-                  page={submissionsPage}
-                  pageSize={SUBMISSIONS_PAGE_SIZE}
-                  totalItems={submissions.length}
-                  onPageChange={setSubmissionsPage}
-                  itemLabel="submissions"
-                />
-              </TableContainer>
-            )}
-          </section>
-        </div>
-      ) : campaignTab === 'payout' ? (
-        <div className="space-y-4" role="tabpanel" aria-labelledby="campaign-tab-payout">
+      ) : campaignTab === 'submissions-payout' ? (
+        <div
+          className="space-y-4"
+          role="tabpanel"
+          aria-labelledby="campaign-tab-submissions-payout"
+        >
           {payoutBatches.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
-              <p className="font-medium">No payout periods yet</p>
+              <p className="font-medium">No submissions yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Arpify generates breakdowns at the end of each cycle.
+                Creator posts for this campaign will show here. VidU adds payout breakdowns by cycle
+                once there is activity.
               </p>
             </div>
           ) : (
@@ -1998,8 +2057,11 @@ export default function BrandCampaignDetailPage() {
               {payoutBatches.map((batch) => {
                 const isExpanded = Boolean(expandedBatches[batch.id])
                 const isReleased = isBatchReleased(batch.id, batch.status)
-                const includedLines = batch.lines.filter((l) => !monthlyBatchLineRejected[l.id])
-                const includedTotal = includedLines.reduce((s, l) => s + l.grossAmount, 0)
+                const includedLines = batch.lines.filter((l) => !isPayoutLineExcluded(l))
+                const includedTotal = includedLines.reduce(
+                  (s, l) => s + accrualBrandGrossForPayoutLine(l),
+                  0
+                )
                 return (
                   <section
                     key={batch.id}
@@ -2015,7 +2077,7 @@ export default function BrandCampaignDetailPage() {
                       >
                         <ChevronDown
                           className={cn(
-                            'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                            'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-out motion-reduce:transition-none',
                             isExpanded ? 'rotate-0' : '-rotate-90'
                           )}
                           aria-hidden
@@ -2050,146 +2112,217 @@ export default function BrandCampaignDetailPage() {
                         )}
                       </div>
                     </header>
-                    {isExpanded ? (
-                      <div
-                        id={`payout-batch-${batch.id}`}
-                        className="border-t border-border bg-muted/20"
-                      >
-                        <Table className="min-w-3xl">
-                          <TableHeader>
-                            <TableRow className="cursor-default border-border bg-muted/40 hover:bg-muted/40">
-                              <TableHead>Creator</TableHead>
-                              <TableHead>Platform</TableHead>
-                              <TableHead>Views</TableHead>
-                              <TableHead>Earnings</TableHead>
-                              <TableHead>Status</TableHead>
-                              {isReleased ? null : <TableHead className="text-right"> </TableHead>}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {batch.lines.map((line) => {
-                              const lineRejected = Boolean(monthlyBatchLineRejected[line.id])
-                              const contentUrl = getContentPostUrl(line.contentId)
-                              const linkedContent = contents.find((c) => c.id === line.contentId)
-                              const lineAvatar = linkedContent?.creatorAvatarUrl
-                              const lineStatus: ContentStatus = isReleased
-                                ? lineRejected
-                                  ? 'rejected'
-                                  : 'paid'
-                                : brandReviewStatusForBadge(
-                                    linkedContent?.status ?? 'pending',
-                                    lineRejected
-                                  )
-                              return (
-                                <TableRow
-                                  key={line.id}
-                                  onClick={() => {
-                                    if (contentUrl)
-                                      window.open(contentUrl, '_blank', 'noopener,noreferrer')
-                                  }}
-                                  className={cn(
-                                    'border-border',
-                                    contentUrl &&
-                                      cn(
-                                        'cursor-pointer',
-                                        lineRejected
-                                          ? 'hover:bg-red-100/75 dark:hover:bg-red-950/45'
-                                          : 'hover:bg-muted/25'
-                                      ),
-                                    lineRejected ? BRAND_REJECTED_ROW_CLASS : ''
-                                  )}
-                                >
-                                  <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <div className="flex items-center gap-2">
-                                      <PersonAvatar
-                                        name={line.creatorName}
-                                        src={lineAvatar}
-                                        size="xs"
-                                        className="shrink-0"
-                                      />
-                                      <div
-                                        className={cn(
-                                          'min-w-0 max-w-56 leading-snug',
-                                          lineRejected && 'line-through text-muted-foreground'
-                                        )}
-                                      >
-                                        {contentUrl ? (
-                                          <a
-                                            href={creatorSocialHrefOrPost(
-                                              contentUrl,
-                                              line.platform
-                                            )}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="font-medium text-foreground underline-offset-2 hover:underline"
-                                          >
-                                            {line.creatorName}
-                                          </a>
-                                        ) : (
-                                          <span className="font-medium">{line.creatorName}</span>
-                                        )}
+                    <div
+                      className={cn(
+                        'grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none',
+                        isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                      )}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                        <div
+                          id={`payout-batch-${batch.id}`}
+                          role="region"
+                          aria-hidden={!isExpanded}
+                          inert={!isExpanded || undefined}
+                          className="border-t border-border bg-muted/20"
+                        >
+                          <Table className="min-w-3xl table-fixed">
+                            <PayoutBatchTableColGroup />
+                            <TableHeader>
+                              <TableRow className="cursor-default border-border bg-muted/40 hover:bg-muted/40">
+                                <TableHead>Creator</TableHead>
+                                <TableHead>Platform</TableHead>
+                                <TableHead>Views</TableHead>
+                                <TableHead>Payout</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right"> </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {batch.lines.map((line) => {
+                                const lineSessionRejected = Boolean(
+                                  monthlyBatchLineRejected[line.id]
+                                )
+                                const contentUrl = getContentPostUrl(line.contentId)
+                                const linkedContent = contents.find((c) => c.id === line.contentId)
+                                const contentRejectedInStore = linkedContent?.status === 'rejected'
+                                const lineExcludedFromPayout =
+                                  lineSessionRejected || contentRejectedInStore
+                                const lineAvatar = linkedContent?.creatorAvatarUrl
+                                const restoreViews = linkedContent?.views ?? line.snapshotViews
+                                const canRestoreThisLine =
+                                  lineExcludedFromPayout &&
+                                  canRestorePayoutLineRow({
+                                    lineSessionRejected,
+                                    restoreViews,
+                                    countedViewsForReach,
+                                    viewCeiling: restoreViewCeiling,
+                                    remainingSpendable: remaining,
+                                    grossToReReserve: accrualBrandGrossForPayoutLine(line),
+                                  })
+                                const lineStatus: ContentStatus = isReleased
+                                  ? lineExcludedFromPayout
+                                    ? 'rejected'
+                                    : 'paid'
+                                  : brandReviewStatusForBadge(
+                                      linkedContent?.status ?? 'pending',
+                                      lineSessionRejected
+                                    )
+                                return (
+                                  <TableRow
+                                    key={line.id}
+                                    onClick={() => {
+                                      if (contentUrl)
+                                        window.open(contentUrl, '_blank', 'noopener,noreferrer')
+                                    }}
+                                    className={cn(
+                                      'border-border',
+                                      contentUrl &&
+                                        cn(
+                                          'cursor-pointer',
+                                          lineExcludedFromPayout
+                                            ? 'hover:bg-red-100/75 dark:hover:bg-red-950/45'
+                                            : 'hover:bg-muted/25'
+                                        ),
+                                      lineExcludedFromPayout ? BRAND_REJECTED_ROW_CLASS : ''
+                                    )}
+                                  >
+                                    <TableCell
+                                      className="max-w-56"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <PersonAvatar
+                                          name={line.creatorName}
+                                          src={lineAvatar}
+                                          size="xs"
+                                          className="shrink-0"
+                                        />
+                                        <div
+                                          className={cn(
+                                            'min-w-0 max-w-56 leading-snug',
+                                            lineExcludedFromPayout &&
+                                              'line-through text-muted-foreground'
+                                          )}
+                                        >
+                                          {contentUrl ? (
+                                            <a
+                                              href={creatorSocialHrefOrPost(
+                                                contentUrl,
+                                                line.platform
+                                              )}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="font-medium text-foreground underline-offset-2 hover:underline"
+                                            >
+                                              {line.creatorName}
+                                            </a>
+                                          ) : (
+                                            <span className="font-medium">{line.creatorName}</span>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell
-                                    className={cn(lineRejected && 'opacity-60')}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <PlatformCell
-                                      platform={line.platform}
-                                      iconClassName="h-5 w-5"
-                                      hasYellowBasket={Boolean(line.isYellowBasket)}
-                                    />
-                                  </TableCell>
-                                  <TableCell
-                                    className={cn(
-                                      'font-semibold',
-                                      lineRejected && 'line-through text-muted-foreground'
-                                    )}
-                                  >
-                                    {formatViews(line.snapshotViews)}
-                                  </TableCell>
-                                  <TableCell
-                                    className={cn(
-                                      'font-display text-sm font-bold tabular-nums text-phc-gradient',
-                                      lineRejected && 'line-through opacity-70'
-                                    )}
-                                  >
-                                    {formatPHP(line.creatorNet, { decimals: false })}
-                                  </TableCell>
-                                  <TableCell>
-                                    <ContentStatusBadge status={lineStatus} />
-                                  </TableCell>
-                                  {isReleased ? null : (
+                                    </TableCell>
+                                    <TableCell
+                                      className={cn(lineExcludedFromPayout && 'opacity-60')}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <PlatformCell
+                                        platform={line.platform}
+                                        iconClassName="h-5 w-5"
+                                        // v1 (post-MVP): hasYellowBasket={Boolean(line.isYellowBasket)}
+                                      />
+                                    </TableCell>
+                                    <TableCell
+                                      className={cn(
+                                        'font-display font-semibold tabular-nums',
+                                        lineExcludedFromPayout &&
+                                          'line-through text-muted-foreground'
+                                      )}
+                                    >
+                                      {formatViews(line.snapshotViews)}
+                                    </TableCell>
+                                    <TableCell
+                                      className={cn(
+                                        'font-display font-semibold tabular-nums text-phc-gradient',
+                                        lineExcludedFromPayout && 'line-through opacity-70'
+                                      )}
+                                    >
+                                      {formatPHP(accrualBrandGrossForPayoutLine(line), {
+                                        decimals: false,
+                                      })}
+                                    </TableCell>
+                                    <TableCell>
+                                      {disbursingPayoutLineIds[line.id] &&
+                                      !lineExcludedFromPayout ? (
+                                        <span
+                                          className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+                                          role="status"
+                                          aria-live="polite"
+                                        >
+                                          <Loader2
+                                            className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none"
+                                            aria-hidden
+                                          />
+                                          Releasing Payout…
+                                        </span>
+                                      ) : (
+                                        <ContentStatusBadge status={lineStatus} />
+                                      )}
+                                    </TableCell>
                                     <TableCell
                                       className="text-right"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      <Button
-                                        type="button"
-                                        variant={lineRejected ? 'secondary' : 'outline'}
-                                        size="xs"
-                                        className={cn(
-                                          'rounded-md font-normal',
-                                          !lineRejected && BRAND_REJECT_OUTLINE_BTN_CLASS
-                                        )}
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          if (lineRejected) restoreMonthlyBatchLine(line.id)
-                                          else openRejectForMonthlyLine(line.id)
-                                        }}
-                                      >
-                                        {lineRejected ? 'Restore' : 'Reject'}
-                                      </Button>
+                                      {isReleased ? (
+                                        <span className="inline-block min-w-17" aria-hidden />
+                                      ) : lineExcludedFromPayout && canRestoreThisLine ? (
+                                        <Button
+                                          type="button"
+                                          variant="secondary"
+                                          size="xs"
+                                          className="rounded-md font-normal"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            if (lineSessionRejected)
+                                              restoreMonthlyBatchLine(
+                                                line.id,
+                                                accrualBrandGrossForPayoutLine(line)
+                                              )
+                                            if (contentRejectedInStore)
+                                              updateContent(line.contentId, { status: 'pending' })
+                                          }}
+                                        >
+                                          Restore
+                                        </Button>
+                                      ) : lineExcludedFromPayout ? (
+                                        <span className="inline-block min-w-17" aria-hidden />
+                                      ) : (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="xs"
+                                          className={cn(
+                                            'rounded-md font-normal',
+                                            BRAND_REJECT_OUTLINE_BTN_CLASS
+                                          )}
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            openRejectForMonthlyLine(line.id)
+                                          }}
+                                        >
+                                          Reject
+                                        </Button>
+                                      )}
                                     </TableCell>
-                                  )}
-                                </TableRow>
-                              )
-                            })}
-                          </TableBody>
-                        </Table>
+                                  </TableRow>
+                                )
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
-                    ) : null}
+                    </div>
                   </section>
                 )
               })}
@@ -2216,11 +2349,13 @@ export default function BrandCampaignDetailPage() {
           {activeReleaseBatch
             ? (() => {
                 const includedLines = activeReleaseBatch.lines.filter(
-                  (l) => !monthlyBatchLineRejected[l.id]
+                  (l) => !isPayoutLineExcluded(l)
                 )
                 const excludedCount = activeReleaseBatch.lines.length - includedLines.length
-                const totalGross = includedLines.reduce((s, l) => s + l.grossAmount, 0)
-                const totalCreatorNet = includedLines.reduce((s, l) => s + l.creatorNet, 0)
+                const totalGross = includedLines.reduce(
+                  (s, l) => s + accrualBrandGrossForPayoutLine(l),
+                  0
+                )
                 const noPayable = includedLines.length === 0
                 return (
                   <div className="space-y-4">
@@ -2242,16 +2377,10 @@ export default function BrandCampaignDetailPage() {
                         included
                         {excludedCount > 0 ? ` · ${excludedCount} rejected and skipped` : null}
                       </p>
-                      <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">
-                        Estimated to creators (net):{' '}
-                        <span className="font-semibold tabular-nums text-foreground">
-                          {formatPHP(totalCreatorNet, { decimals: false })}
-                        </span>
-                      </p>
                     </div>
                     {noPayable ? (
                       <p className="text-sm text-destructive">
-                        Nothing left to release — restore a row in the table or cancel.
+                        Nothing left to release — restore a row if the button is shown, or cancel.
                       </p>
                     ) : null}
                   </div>
@@ -2273,7 +2402,7 @@ export default function BrandCampaignDetailPage() {
               disabled={
                 isConfirmingRelease ||
                 !activeReleaseBatch ||
-                activeReleaseBatch.lines.filter((l) => !monthlyBatchLineRejected[l.id]).length === 0
+                activeReleaseBatch.lines.filter((l) => !isPayoutLineExcluded(l)).length === 0
               }
               onClick={() => void confirmReleasePayouts()}
             >
@@ -2298,21 +2427,16 @@ export default function BrandCampaignDetailPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {rejectTarget?.scope === 'monthly-line'
+              {rejectTarget
                 ? `Reject ${
                     payoutBatches.flatMap((b) => b.lines).find((l) => l.id === rejectTarget.lineId)
                       ?.creatorName ?? 'this creator'
                   } from this batch?`
-                : rejectTarget?.scope === 'submission'
-                  ? `Reject ${submissions.find((c) => c.id === rejectTarget.contentId)?.creatorName ?? 'this creator'}'s submission?`
-                  : 'Reject submission?'}
+                : 'Reject submission?'}
             </DialogTitle>
             <DialogDescription>
-              {rejectTarget?.scope === 'monthly-line'
-                ? 'This submission will not be paid when you release the payout for this batch. Pick the closest reason.'
-                : rejectTarget?.scope === 'submission'
-                  ? 'Rejection excludes this content from pay and would notify the creator in product. There is no separate approve step — not rejected means it keeps accruing.'
-                  : null}
+              This submission will not be paid when you release the payout for this batch. Pick the
+              closest reason.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">

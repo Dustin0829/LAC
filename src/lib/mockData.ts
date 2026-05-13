@@ -26,10 +26,9 @@ export const MIN_GROSS_CAMPAIGN_BUDGET = 10_000
  * Gross budget to pre-fill Fund & Publish (create page “Total budget”).
  * Uses `plannedGrossBudget` when set; otherwise infers from net `budget` and intake fee.
  */
-export function getPlannedGrossBudgetForFunding(campaign: Pick<
-  Campaign,
-  'plannedGrossBudget' | 'budget' | 'platformFeePercent'
->): number {
+export function getPlannedGrossBudgetForFunding(
+  campaign: Pick<Campaign, 'plannedGrossBudget' | 'budget' | 'platformFeePercent'>
+): number {
   if (
     typeof campaign.plannedGrossBudget === 'number' &&
     Number.isFinite(campaign.plannedGrossBudget) &&
@@ -81,6 +80,15 @@ export function getAvailableBalance(
   return Math.max(0, campaign.budget - campaign.spent - reserved)
 }
 
+/** Reach bar denominator: pinned post-refund goal when set, otherwise `estimatedReach`. */
+export function getCampaignReachViewGoal(
+  campaign: Pick<Campaign, 'estimatedReach' | 'postRefundReachGoalViews'>
+): number {
+  const pinned = campaign.postRefundReachGoalViews
+  if (typeof pinned === 'number' && pinned > 0) return pinned
+  return Math.max(0, campaign.estimatedReach)
+}
+
 export interface CampaignAsset {
   id: string
   name: string
@@ -112,13 +120,30 @@ export interface Campaign {
   /** ₱ already paid out to creators (accrual / released payouts). */
   spent: number
   reservedBalance?: number
+  /**
+   * When true (e.g. after refunding uncommitted balance), the brand must add funds until
+   * spendable balance reaches the publish floor before Resume can turn the campaign active.
+   */
+  resumeRequiresAddFunds?: boolean
   minimumPublishBalance?: number
   /** Brand’s intended gross funding (₱) from create / fund dialog — pre-fills checkout. */
   plannedGrossBudget?: number
   /** Cumulative views across all content on this campaign (mock aggregate). */
   campaignViews: number
-  /** Target view volume the campaign is aiming for (goal bar). */
+  /**
+   * View cap used for the reach bar: max views the current **net** campaign pool can fund at
+   * `brandRatePer1k` (see `estimatedReachViewsFromNetPool`), unless `postRefundReachGoalViews` pins
+   * the denominator after a refund.
+   */
   estimatedReach: number
+  /**
+   * After refunding all spendable balance, fixed view goal for the reach bar (counted views at
+   * refund). New spendable headroom does not raise this until new funds clear the pin. Rejecting
+   * submissions lowers counted views but does not change this cap. **Add funds** clears the pin and
+   * bumps `estimatedReach` by at least the pool-backed view ceiling so restores stay consistent
+   * with budget.
+   */
+  postRefundReachGoalViews?: number
   platforms: Platform[]
   status: CampaignStatus
   startDate: string
@@ -158,7 +183,9 @@ export interface Content {
   /** Submitted content URL (TikTok/Facebook only in MVP) */
   url: string
   platform: Platform
-  /** TikTok-only: creator declared yellow basket (shop/commerce) on this post */
+  /**
+   * TikTok Yellow Basket (post–v1): optional flag on `Content`. UI & payout splits disabled for v1.
+   */
   hasTikTokYellowBasket?: boolean
   /** Views locked at submit (stats frozen at this moment per policy). */
   views: number
@@ -200,11 +227,11 @@ export interface MonthlyPayoutLine {
   snapshotViews: number
   /** Gross performance value (brandGrossPer1k * snapshotViews / 1000). */
   grossAmount: number
-  /** Creator's net share (80% default, 50% if TikTok yellow basket). */
+  /** Creator's net share (80% of gross in v1; post–v1 may use 50% for TikTok yellow basket). */
   creatorNet: number
-  /** Platform's cut (20% default, 50% if TikTok yellow basket). */
+  /** Platform's cut (20% of gross in v1; post–v1 may use 50% for TikTok yellow basket). */
   platformFee: number
-  /** Whether the source submission was declared as TikTok yellow basket. */
+  /** Post–v1: whether the source submission used TikTok yellow basket (splits); unused in v1 UI. */
   isYellowBasket?: boolean
   flag?: string
   status: 'ready' | 'held' | 'released' | 'paid' | 'failed'
@@ -218,6 +245,33 @@ export interface MonthlyPayoutBatch {
   periodEnd: string
   status: MonthlyPackageStatus
   lines: MonthlyPayoutLine[]
+}
+
+/**
+ * Sum of submission `views` that count toward estimated reach — same rows as the brand
+ * Submissions tab (excludes preview rows with `creatorId === 'me'`), minus effectively rejected
+ * content: store `rejected`, session submission rejects, and content tied to a session-rejected
+ * payout accrual line.
+ */
+export function countCampaignReachTowardGoal(
+  contents: Content[],
+  campaignId: string,
+  submissionRejectReasons: Record<string, string>,
+  monthlyLineRejectedLineIds: Record<string, string>,
+  payoutBatches: MonthlyPayoutBatch[]
+): number {
+  const payoutExcludedContentIds = new Set<string>()
+  for (const lineId of Object.keys(monthlyLineRejectedLineIds)) {
+    const line = payoutBatches.flatMap((b) => b.lines).find((l) => l.id === lineId)
+    if (line?.campaignId === campaignId) payoutExcludedContentIds.add(line.contentId)
+  }
+  return contents
+    .filter((c) => c.campaignId === campaignId)
+    .filter((c) => c.creatorId !== 'me')
+    .filter((c) => c.status !== 'rejected')
+    .filter((c) => !submissionRejectReasons[c.id])
+    .filter((c) => !payoutExcludedContentIds.has(c.id))
+    .reduce((sum, c) => sum + c.views, 0)
 }
 
 export interface PaymentMethod {
@@ -259,21 +313,31 @@ function mockContentEarnings(views: number, ratePer1k: number): number {
   return Math.round((views / 1000) * ratePer1k * 100) / 100
 }
 
+/** Brand gross ₱ for locked views × brand headline ₱/1k (matches accrual line `grossAmount`). */
+export function brandGrossAccrualForViews(views: number, brandPer1k: number): number {
+  return Math.round((views / 1000) * brandPer1k * 100) / 100
+}
+
+/**
+ * View count the given spendable pool can fund at this brand headline CPV (₱ gross per 1k views).
+ * Same rule as create / fund flows: `floor(pool / (brandRatePer1k / 1000))`.
+ */
+export function estimatedReachViewsFromNetPool(poolForCpv: number, brandRatePer1k: number): number {
+  const cpv = brandRatePer1k / 1000
+  if (!(cpv > 0) || !Number.isFinite(poolForCpv) || poolForCpv <= 0) return 1
+  return Math.max(1, Math.floor(poolForCpv / cpv))
+}
+
 /**
  * Retention end (ISO): later of (campaign end) or (submitted + 30 days).
  * Mirrors the policy in docs/06-policies-and-trust.md#content-retention.
  */
-export function computeRetentionEnd(
-  submittedAtIso: string,
-  campaignEndAtIso: string
-): string {
+export function computeRetentionEnd(submittedAtIso: string, campaignEndAtIso: string): string {
   const submittedPlus30 = new Date(submittedAtIso)
   submittedPlus30.setDate(submittedPlus30.getDate() + 30)
   const campaignEnd = new Date(campaignEndAtIso)
   return (
-    submittedPlus30.getTime() > campaignEnd.getTime()
-      ? submittedPlus30
-      : campaignEnd
+    submittedPlus30.getTime() > campaignEnd.getTime() ? submittedPlus30 : campaignEnd
   ).toISOString()
 }
 
@@ -282,29 +346,6 @@ const DEMO_CMP001_BRAND = 62
 const DEMO_CMP001_CREATOR = getCreatorRatePer1k(DEMO_CMP001_BRAND)
 const DEMO_CMP002_BRAND = 58
 const DEMO_CMP002_CREATOR = getCreatorRatePer1k(DEMO_CMP002_BRAND)
-const DEMO_CMP003_BRAND = 54
-const DEMO_CMP003_CREATOR = getCreatorRatePer1k(DEMO_CMP003_BRAND)
-const DEMO_CMP004_BRAND = 70
-const DEMO_CMP004_CREATOR = getCreatorRatePer1k(DEMO_CMP004_BRAND)
-const DEMO_CMP005_BRAND = 66
-const DEMO_CMP005_CREATOR = getCreatorRatePer1k(DEMO_CMP005_BRAND)
-
-/**
- * Per-line payout slice from locked snapshot views.
- * Default split: 80% creator / 20% platform on gross performance.
- * TikTok yellow basket: 50% / 50% on that line.
- */
-function demoPayoutSlice(
-  snapshotViews: number,
-  brandPer1k: number,
-  options: { isYellowBasket?: boolean } = {}
-) {
-  const grossAmount = mockContentEarnings(snapshotViews, brandPer1k)
-  const creatorShare = options.isYellowBasket ? 0.5 : CREATOR_PAYOUT_PERCENT
-  const creatorNet = Math.round(grossAmount * creatorShare * 100) / 100
-  const platformFee = Math.round((grossAmount - creatorNet) * 100) / 100
-  return { snapshotViews, grossAmount, creatorNet, platformFee }
-}
 
 export const mockCampaigns: Campaign[] = [
   {
@@ -312,23 +353,20 @@ export const mockCampaigns: Campaign[] = [
     brandId: 'brand-1',
     brandName: 'Wok Bang',
     brandLogoColor: 'from-orange-950 to-amber-800',
-    title: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
+    title: 'Kitchen Glow-Up ',
     description:
-      'Show how Wok Bang upgrades everyday cooking. Content recipe videos, satisfying cooking moments, kitchen transformations, or create your own cooking UGC. Higher engagement = higher payout.\n\n' +
-      'Help us make cooking content more exciting with Wok Bang. Create short-form content featuring our cookware, satisfying cooking shots, recipe videos, before-and-after kitchen moments, or lifestyle cooking content.\n\n' +
-      'We reward creators based on performance — the more views and engagement your content gets, the higher your earnings.\n\n' +
-      'Post on TikTok, Facebook, or Instagram Reels.\n\n' +
-      'Creator notes — strong content usually includes fast-paced editing, satisfying cooking shots, steam or sizzle moments, before vs after cooking scenes, family and home vibes, and relatable Filipino cooking moments.',
+      'We want to show our new kitchen products in real cooking videos so people see what they look like on a stove and in a normal kitchen. We want more shoppers to know the Wok Bang name, use our campaign hashtags, and find our site or stores from the post.',
     brandRatePer1k: DEMO_CMP001_BRAND,
     ratePer1k: DEMO_CMP001_CREATOR,
-    budget: 78_950,
+    budget: 50_000,
     platformFeePercent: 0.15,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
-    spent: 13_000,
-    reservedBalance: 12_400,
+    spent: 0,
+    reservedBalance: brandGrossAccrualForViews(100_000, DEMO_CMP001_BRAND),
     minimumPublishBalance: 10_000,
-    campaignViews: 412_000,
-    estimatedReach: 700_000,
+    /** Equals `countCampaignReachTowardGoal` for counting submissions (synced on detail). */
+    campaignViews: 100_000,
+    estimatedReach: estimatedReachViewsFromNetPool(50_000, DEMO_CMP001_BRAND),
     platforms: ['tiktok', 'facebook'],
     status: 'active',
     startDate: daysAgo(10),
@@ -344,22 +382,13 @@ export const mockCampaigns: Campaign[] = [
         type: 'application/zip',
         url: 'https://drive.google.com/file/wokbang-product-photos',
       },
-      {
-        id: 'asset-wb-002',
-        name: 'kitchen-broll-sizzle.mp4',
-        size: 118_000_000,
-        type: 'video/mp4',
-        url: 'https://drive.google.com/file/wokbang-kitchen-broll',
-      },
     ],
     rules: [
       'Content must be at least 15 seconds long',
       'Tag @wokbangph in the caption',
       'Use #WokBangKitchen #LutoWithWokBang',
       'No stolen or reused content',
-      'Use original voiceover or licensed audio only',
       'Product must be visible within first 5 seconds',
-      'Avoid blurry or low-quality uploads',
     ],
     coverColor: COVER_COLORS[0],
     coverImageUrl:
@@ -368,120 +397,21 @@ export const mockCampaigns: Campaign[] = [
   {
     id: 'cmp-002',
     brandId: 'brand-2',
-    brandName: 'Likha',
-    brandLogoColor: 'from-violet-950 to-purple-800',
-    title: 'Protection & Energy — UGC Story Campaign',
-    description:
-      'Share your personal story, daily routine, or aesthetic content featuring Likha pieces. Authentic emotional content performs best.\n\n' +
-      'Create emotional, aesthetic, or storytelling content featuring Likha accessories. Talk about energy, confidence, protection, spirituality, manifestation, or everyday routines.\n\n' +
-      'Creators can make POV content, lifestyle edits, outfit videos, daily rituals, voiceover storytelling, or soft aesthetic edits. Higher watch time and engagement unlock higher payouts.\n\n' +
-      'Post on TikTok, Facebook, or Instagram Reels.\n\n' +
-      'Top-performing styles include emotional storytelling, calm cinematic edits, POV hooks, relatable life moments, “this changed my energy” angles, and minimal luxury aesthetic.',
-    brandRatePer1k: DEMO_CMP002_BRAND,
-    ratePer1k: DEMO_CMP002_CREATOR,
-    budget: 68_900,
-    platformFeePercent: 0.15,
-    refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
-    spent: 11_500,
-    reservedBalance: 9_200,
-    minimumPublishBalance: 10_000,
-    campaignViews: 278_000,
-    estimatedReach: 500_000,
-    platforms: ['tiktok', 'facebook'],
-    status: 'active',
-    startDate: daysAgo(12),
-    endDate: daysFromNow(18),
-    sampleUrl: 'https://www.tiktok.com/@likhaofficial/video/sample',
-    assetUrl: 'https://drive.google.com/folder/likha-assets',
-    assets: [
-      {
-        id: 'asset-lk-001',
-        name: 'likha-lookbook-stills.zip',
-        size: 41_000_000,
-        type: 'application/zip',
-        url: 'https://drive.google.com/file/likha-lookbook-stills',
-      },
-    ],
-    rules: [
-      'Content must be at least 10 seconds long',
-      'Use #LikhaLifestyle and tag @likhaofficial',
-      'No misleading spiritual claims',
-      'Original edits only',
-      'Use trending or licensed sounds only',
-      'Avoid political or offensive content',
-    ],
-    coverColor: COVER_COLORS[5],
-    coverImageUrl:
-      'https://cdn.shopify.com/s/files/1/0884/2434/9860/files/dsc04316.jpg?v=1758188112&width=1200',
-  },
-  {
-    id: 'cmp-003',
-    brandId: 'brand-3',
-    brandName: 'Casa Daily',
-    brandLogoColor: 'from-stone-900 to-neutral-700',
-    title: 'Aesthetic Home Finds — Everyday UGC Campaign',
-    description:
-      'Create cozy, aesthetic, and relatable home content featuring Casa Daily products. Clean visuals and authentic routines perform best.\n\n' +
-      'Help us promote Casa Daily through relatable home lifestyle content. Showcase product setups, room organization, cleaning routines, desk aesthetics, or everyday home moments.\n\n' +
-      'Simple but authentic content often performs best.\n\n' +
-      'Post on TikTok, Facebook, or Instagram Reels.\n\n' +
-      'Strong angles include room transformations, clean girl / cozy aesthetics, product organization, daily routine videos, ASMR cleaning content, and minimal lifestyle edits.',
-    brandRatePer1k: DEMO_CMP003_BRAND,
-    ratePer1k: DEMO_CMP003_CREATOR,
-    budget: 49_800,
-    platformFeePercent: 0.15,
-    refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
-    spent: 9_000,
-    reservedBalance: 5_600,
-    minimumPublishBalance: 10_000,
-    campaignViews: 189_000,
-    estimatedReach: 420_000,
-    platforms: ['tiktok', 'facebook'],
-    status: 'active',
-    startDate: daysAgo(6),
-    endDate: daysFromNow(34),
-    sampleUrl: 'https://www.tiktok.com/@casadailyph/video/sample',
-    assetUrl: 'https://drive.google.com/folder/casadaily-assets',
-    assets: [
-      {
-        id: 'asset-cd-001',
-        name: 'casa-daily-product-flatlays.zip',
-        size: 36_500_000,
-        type: 'application/zip',
-        url: 'https://drive.google.com/file/casadaily-flatlays',
-      },
-    ],
-    rules: [
-      'Minimum video length: 12 seconds',
-      'Use #CasaDailyHome and tag @casadailyph',
-      'No reposted content',
-      'Product should be clearly visible',
-      'Avoid copyrighted audio',
-    ],
-    coverColor: COVER_COLORS[1],
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'cmp-004',
-    brandId: 'brand-4',
     brandName: 'Brew Theory',
     brandLogoColor: 'from-amber-950 to-yellow-900',
-    title: 'Cafe Vibes — Coffee Lifestyle Content',
+    title: 'Cafe Vibes',
     description:
-      'Capture cozy coffee moments, aesthetic cafe shots, and relatable caffeine content. Real moments perform best.\n\n' +
-      'Create engaging coffee content for Brew Theory. Showcase drinks, cafe atmosphere, study sessions, work setups, coffee runs, or relaxing lifestyle edits.\n\n' +
-      'UGC, cinematic shots, and relatable humor are highly encouraged. Post on TikTok, Facebook, or Instagram Reels.',
-    brandRatePer1k: DEMO_CMP004_BRAND,
-    ratePer1k: DEMO_CMP004_CREATOR,
-    budget: 107_400,
+      'We want more people near our shops to know we are here, what we sell, and what a visit costs. We want short videos of the drinks and food we actually serve, filmed in or in front of our cafes, with the branch name or link so someone who watches can come in or order the same thing.',
+    brandRatePer1k: DEMO_CMP002_BRAND,
+    ratePer1k: DEMO_CMP002_CREATOR,
+    budget: 50_000,
     platformFeePercent: 0.15,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
-    spent: 11_000,
-    reservedBalance: 14_800,
+    spent: 0,
+    reservedBalance: 0,
     minimumPublishBalance: 10_000,
-    campaignViews: 501_000,
-    estimatedReach: 800_000,
+    campaignViews: 0,
+    estimatedReach: estimatedReachViewsFromNetPool(50_000, DEMO_CMP002_BRAND),
     platforms: ['tiktok', 'facebook'],
     status: 'active',
     startDate: daysAgo(16),
@@ -502,57 +432,10 @@ export const mockCampaigns: Campaign[] = [
       'Use #BrewTheoryCafe',
       'Tag @brewtheoryph',
       'No reused content',
-      'Original edits only',
     ],
     coverColor: COVER_COLORS[3],
     coverImageUrl:
       'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'cmp-005',
-    brandId: 'brand-5',
-    brandName: 'Luna Skin',
-    brandLogoColor: 'from-rose-950 to-pink-900',
-    title: 'Real Skin Journey — Honest UGC Campaign',
-    description:
-      'Share your skincare routine, honest reactions, or aesthetic self-care content featuring Luna Skin products.\n\n' +
-      'Create authentic skincare content using Luna Skin products. Show routines, before/after glow-ups, reactions, GRWM content, or relatable skincare struggles.\n\n' +
-      'Natural and relatable videos perform best. Post on TikTok, Facebook, or Instagram Reels.',
-    brandRatePer1k: DEMO_CMP005_BRAND,
-    ratePer1k: DEMO_CMP005_CREATOR,
-    budget: 61_200,
-    platformFeePercent: 0.15,
-    refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
-    spent: 5_500,
-    reservedBalance: 9_100,
-    minimumPublishBalance: 10_000,
-    campaignViews: 246_000,
-    estimatedReach: 530_000,
-    platforms: ['tiktok', 'facebook'],
-    status: 'active',
-    startDate: daysAgo(9),
-    endDate: daysFromNow(52),
-    sampleUrl: 'https://www.tiktok.com/@lunaskinph/video/sample',
-    assetUrl: 'https://drive.google.com/folder/lunaskin-assets',
-    assets: [
-      {
-        id: 'asset-ls-001',
-        name: 'luna-skin-routine-broll.mp4',
-        size: 92_000_000,
-        type: 'video/mp4',
-        url: 'https://drive.google.com/file/luna-skin-routine-broll',
-      },
-    ],
-    rules: [
-      'Minimum video length: 10 seconds',
-      'Use #LunaSkinPH',
-      'Tag @lunaskinph',
-      'No fake claims or filters hiding results',
-      'Original content only',
-    ],
-    coverColor: COVER_COLORS[4],
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=1200&q=80',
   },
 ]
 
@@ -571,96 +454,19 @@ function withCreatorDemoAvatars(items: Content[]): Content[] {
 const rawMockContent: Content[] = [
   {
     id: 'content-001',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'me',
-    creatorName: 'You',
-    url: 'https://www.tiktok.com/@you/video/01',
-    platform: 'tiktok',
-    views: 142_300,
-    earnings: mockContentEarnings(142_300, DEMO_CMP001_CREATOR),
-    status: 'paid',
-    submittedAt: daysAgo(7),
-    reviewedAt: daysAgo(6),
-    paidAt: daysAgo(2),
-    retentionEndAt: daysFromNow(30 - 7),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[0],
-  },
-  {
-    id: 'content-002',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'me',
-    creatorName: 'You',
-    url: 'https://www.tiktok.com/@you/video/02',
-    platform: 'tiktok',
-    views: 41_000,
-    earnings: mockContentEarnings(41_000, DEMO_CMP001_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(3),
-    reviewedAt: daysAgo(2),
-    retentionEndAt: daysFromNow(30 - 3),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[5],
-  },
-  {
-    id: 'content-003',
     campaignId: 'cmp-002',
-    campaignTitle: 'Protection & Energy — UGC Story Campaign',
-    brandName: 'Likha',
-    creatorId: 'me',
-    creatorName: 'You',
-    url: 'https://www.facebook.com/reel/abc',
-    platform: 'facebook',
-    views: 9_400,
-    earnings: mockContentEarnings(9_400, DEMO_CMP002_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(1),
-    retentionEndAt: daysFromNow(30 - 1),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[2],
-  },
-  {
-    id: 'content-004',
-    campaignId: 'cmp-003',
-    campaignTitle: 'Aesthetic Home Finds — Everyday UGC Campaign',
-    brandName: 'Casa Daily',
-    creatorId: 'me',
-    creatorName: 'You',
-    url: 'https://www.tiktok.com/@you/video/04',
-    platform: 'tiktok',
-    views: 21_500,
-    earnings: mockContentEarnings(21_500, DEMO_CMP003_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(5),
-    reviewedAt: daysAgo(4),
-    retentionEndAt: daysFromNow(30 - 5),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[1],
-  },
-  {
-    id: 'content-005',
-    campaignId: 'cmp-004',
-    campaignTitle: 'Cafe Vibes — Coffee Lifestyle Content',
+    campaignTitle: 'Cafe Vibes',
     brandName: 'Brew Theory',
     creatorId: 'me',
     creatorName: 'You',
-    url: 'https://www.tiktok.com/@you/video/05',
+    url: 'https://www.tiktok.com/@you/video/cafe-01',
     platform: 'tiktok',
-    views: 1_200,
-    rejectionReason: 'Post was uploaded before the campaign became active.',
-    earnings: 0,
-    status: 'rejected',
-    submittedAt: daysAgo(10),
-    reviewedAt: daysAgo(9),
-    retentionEndAt: daysFromNow(30 - 10),
+    views: 12_000,
+    earnings: mockContentEarnings(12_000, DEMO_CMP002_CREATOR),
+    status: 'pending',
+    submittedAt: daysAgo(7),
+    reviewedAt: daysAgo(6),
+    retentionEndAt: daysFromNow(30 - 7),
     ruleCheckResult: 'pass',
     livenessStatus: 'live',
     thumbnailColor: COVER_COLORS[3],
@@ -674,18 +480,18 @@ const rawMockBrandContent: Content[] = [
   {
     id: 'bcontent-001',
     campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
+    campaignTitle: 'Kitchen Glow-Up',
     brandName: 'Wok Bang',
     creatorId: 'creator-1',
     creatorName: 'Mika Reyes',
     url: 'https://www.tiktok.com/@mika/video/01',
     platform: 'tiktok',
-    views: 234_000,
-    earnings: mockContentEarnings(234_000, DEMO_CMP001_CREATOR),
-    status: 'paid',
+    // v1 (post-MVP): hasTikTokYellowBasket: true,
+    views: 18_000,
+    earnings: mockContentEarnings(18_000, DEMO_CMP001_CREATOR),
+    status: 'pending',
     submittedAt: daysAgo(8),
     reviewedAt: daysAgo(7),
-    paidAt: daysAgo(3),
     retentionEndAt: daysFromNow(30 - 8),
     ruleCheckResult: 'pass',
     livenessStatus: 'live',
@@ -694,16 +500,14 @@ const rawMockBrandContent: Content[] = [
   {
     id: 'bcontent-002',
     campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
+    campaignTitle: 'Kitchen Glow-Up',
     brandName: 'Wok Bang',
     creatorId: 'creator-2',
     creatorName: 'Diego Cruz',
     url: 'https://www.tiktok.com/@diego/video/01',
     platform: 'tiktok',
-    hasTikTokYellowBasket: true,
-    views: 92_000,
-    trustFlag: 'Unusual view spike: review engagement before release.',
-    earnings: Math.round((92_000 / 1000) * DEMO_CMP001_BRAND * 0.5 * 100) / 100,
+    views: 22_000,
+    earnings: mockContentEarnings(22_000, DEMO_CMP001_CREATOR),
     status: 'pending',
     submittedAt: daysAgo(5),
     reviewedAt: daysAgo(4),
@@ -715,236 +519,60 @@ const rawMockBrandContent: Content[] = [
   {
     id: 'bcontent-003',
     campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
+    campaignTitle: 'Kitchen Glow-Up',
     brandName: 'Wok Bang',
     creatorId: 'creator-3',
-    creatorName: 'Anna Lim',
-    url: 'https://www.facebook.com/reel/xyz',
+    creatorName: 'Lena Ortiz',
+    url: 'https://www.facebook.com/reel/lena-kitchen-glow/01',
     platform: 'facebook',
-    views: 6_400,
-    earnings: mockContentEarnings(6_400, DEMO_CMP001_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(1),
-    retentionEndAt: daysFromNow(30 - 1),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[3],
-  },
-  {
-    id: 'bcontent-004',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-4',
-    creatorName: 'Rico Perez',
-    url: 'https://www.tiktok.com/@rico/video/01',
-    platform: 'tiktok',
-    views: 1_100,
-    rejectionReason: 'Creator submitted from an account that does not match their linked profile.',
-    earnings: 0,
-    status: 'rejected',
-    submittedAt: daysAgo(2),
-    reviewedAt: daysAgo(1),
-    retentionEndAt: daysFromNow(30 - 2),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[4],
-  },
-  {
-    id: 'bcontent-005',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-5',
-    creatorName: 'Sofia Torres',
-    url: 'https://www.tiktok.com/@sofia/video/kape-01',
-    platform: 'tiktok',
-    views: 45_000,
-    earnings: mockContentEarnings(45_000, DEMO_CMP001_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(6),
-    reviewedAt: daysAgo(5),
-    retentionEndAt: daysFromNow(30 - 6),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[2],
-  },
-  {
-    id: 'bcontent-006',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-6',
-    creatorName: 'Jay Mendoza',
-    url: 'https://www.facebook.com/reel/jay-kape-latte',
-    platform: 'facebook',
-    views: 24_200,
-    earnings: mockContentEarnings(24_200, DEMO_CMP001_CREATOR),
+    views: 20_000,
+    earnings: mockContentEarnings(20_000, DEMO_CMP001_CREATOR),
     status: 'pending',
     submittedAt: daysAgo(4),
     reviewedAt: daysAgo(3),
     retentionEndAt: daysFromNow(30 - 4),
     ruleCheckResult: 'pass',
     livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[3],
+    thumbnailColor: COVER_COLORS[2],
   },
   {
-    id: 'bcontent-007',
+    id: 'bcontent-004',
     campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
+    campaignTitle: 'Kitchen Glow-Up',
     brandName: 'Wok Bang',
-    creatorId: 'creator-7',
-    creatorName: 'Lena Kim',
-    url: 'https://www.tiktok.com/@lena/video/latte-ugc',
+    creatorId: 'creator-4',
+    creatorName: 'Paolo Mendoza',
+    url: 'https://www.tiktok.com/@paolo/video/wokbang-basket',
     platform: 'tiktok',
-    views: 118_000,
-    earnings: mockContentEarnings(118_000, DEMO_CMP001_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(7),
-    reviewedAt: daysAgo(6),
-    retentionEndAt: daysFromNow(30 - 7),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[1],
-  },
-  {
-    id: 'bcontent-008',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-8',
-    creatorName: 'Marco Diaz',
-    url: 'https://www.facebook.com/reel/marco-kape',
-    platform: 'facebook',
-    views: 11_500,
-    earnings: mockContentEarnings(11_500, DEMO_CMP001_CREATOR),
+    // v1 (post-MVP): hasTikTokYellowBasket: true,
+    views: 22_000,
+    earnings: mockContentEarnings(22_000, DEMO_CMP001_CREATOR),
     status: 'pending',
     submittedAt: daysAgo(3),
     reviewedAt: daysAgo(2),
     retentionEndAt: daysFromNow(30 - 3),
-    ruleCheckResult: 'soft_flag',
-    ruleCheckNote: 'Caption uses #wokbang but #WokBangKitchen and #LutoWithWokBang were missing from the rules list. Brand can still leave included.',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[5],
-  },
-  {
-    id: 'bcontent-009',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-9',
-    creatorName: 'Nina Santos',
-    url: 'https://www.tiktok.com/@nina/video/kape-reel',
-    platform: 'tiktok',
-    views: 88_000,
-    earnings: mockContentEarnings(88_000, DEMO_CMP001_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(5),
-    reviewedAt: daysAgo(4),
-    retentionEndAt: daysFromNow(30 - 5),
     ruleCheckResult: 'pass',
     livenessStatus: 'live',
     thumbnailColor: COVER_COLORS[0],
   },
   {
-    id: 'bcontent-010',
+    id: 'bcontent-005',
     campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
+    campaignTitle: 'Kitchen Glow-Up',
     brandName: 'Wok Bang',
-    creatorId: 'creator-10',
-    creatorName: 'Paolo Villanueva',
-    url: 'https://www.tiktok.com/@paolo/video/latte-hops',
+    creatorId: 'creator-5',
+    creatorName: 'Sam Aquino',
+    url: 'https://www.tiktok.com/@sam/video/kitchen-glow',
     platform: 'tiktok',
-    hasTikTokYellowBasket: true,
-    views: 41_000,
-    trustFlag: 'TikTok yellow basket — 50/50 split locked at submit.',
-    earnings: Math.round((41_000 / 1000) * DEMO_CMP001_BRAND * 0.5 * 100) / 100,
+    views: 18_000,
+    earnings: mockContentEarnings(18_000, DEMO_CMP001_CREATOR),
     status: 'pending',
     submittedAt: daysAgo(2),
     reviewedAt: daysAgo(1),
     retentionEndAt: daysFromNow(30 - 2),
     ruleCheckResult: 'pass',
     livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[4],
-  },
-  {
-    id: 'bcontent-011',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-11',
-    creatorName: 'Carla Bautista',
-    url: 'https://www.facebook.com/reel/carla-spanish-latte',
-    platform: 'facebook',
-    views: 17_800,
-    earnings: mockContentEarnings(17_800, DEMO_CMP001_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(6),
-    reviewedAt: daysAgo(5),
-    retentionEndAt: daysFromNow(30 - 6),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'failing',
-    trustFlag: 'Liveness probe failed in the last 12 hours — post may be private or removed.',
-    thumbnailColor: COVER_COLORS[2],
-  },
-  {
-    id: 'bcontent-012',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-12',
-    creatorName: 'Erin Garcia',
-    url: 'https://www.tiktok.com/@erin/video/kape-manila',
-    platform: 'tiktok',
-    views: 76_000,
-    earnings: mockContentEarnings(76_000, DEMO_CMP001_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(4),
-    reviewedAt: daysAgo(3),
-    retentionEndAt: daysFromNow(30 - 4),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[3],
-  },
-  {
-    id: 'bcontent-013',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-13',
-    creatorName: 'Tom Ramos',
-    url: 'https://www.tiktok.com/@tom/video/latte-challenge',
-    platform: 'tiktok',
-    hasTikTokYellowBasket: true,
-    views: 52_400,
-    trustFlag: 'TikTok yellow basket — 50/50 split locked at submit.',
-    earnings: Math.round((52_400 / 1000) * DEMO_CMP001_BRAND * 0.5 * 100) / 100,
-    status: 'pending',
-    submittedAt: daysAgo(3),
-    reviewedAt: daysAgo(2),
-    retentionEndAt: daysFromNow(30 - 3),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
     thumbnailColor: COVER_COLORS[1],
-  },
-  {
-    id: 'bcontent-014',
-    campaignId: 'cmp-001',
-    campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-    brandName: 'Wok Bang',
-    creatorId: 'creator-14',
-    creatorName: 'Ivy Wong',
-    url: 'https://www.facebook.com/reel/ivy-kape-drop',
-    platform: 'facebook',
-    views: 9_600,
-    earnings: mockContentEarnings(9_600, DEMO_CMP001_CREATOR),
-    status: 'pending',
-    submittedAt: daysAgo(1),
-    reviewedAt: daysAgo(1),
-    retentionEndAt: daysFromNow(30 - 1),
-    ruleCheckResult: 'pass',
-    livenessStatus: 'live',
-    thumbnailColor: COVER_COLORS[5],
   },
 ]
 
@@ -974,12 +602,30 @@ export const mockPaymentMethods: PaymentMethod[] = [
 const LEGACY_DEMO_CREATOR_NET_REF = 94.4
 
 export const mockEarningsTrend = [
-  { week: 'Week 1', earnings: Math.round((1240 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF) },
-  { week: 'Week 2', earnings: Math.round((2100 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF) },
-  { week: 'Week 3', earnings: Math.round((3580 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF) },
-  { week: 'Week 4', earnings: Math.round((2980 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF) },
-  { week: 'Week 5', earnings: Math.round((4520 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF) },
-  { week: 'Week 6', earnings: Math.round((6210 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF) },
+  {
+    week: 'Week 1',
+    earnings: Math.round((1240 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF),
+  },
+  {
+    week: 'Week 2',
+    earnings: Math.round((2100 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF),
+  },
+  {
+    week: 'Week 3',
+    earnings: Math.round((3580 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF),
+  },
+  {
+    week: 'Week 4',
+    earnings: Math.round((2980 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF),
+  },
+  {
+    week: 'Week 5',
+    earnings: Math.round((4520 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF),
+  },
+  {
+    week: 'Week 6',
+    earnings: Math.round((6210 * DEMO_CMP001_CREATOR) / LEGACY_DEMO_CREATOR_NET_REF),
+  },
 ]
 
 /** Brand dashboard chart — views & creator payout per calendar month (full year). */
@@ -1024,6 +670,23 @@ export const mockCreatorPlatformLinks: CreatorPlatformLink[] = [
   },
 ]
 
+/** Payout accrual line amounts from snapshot views × brand ₱/1k (same formula as brand campaign UI). */
+function demoMonthlyLinePayoutSplit(
+  snapshotViews: number,
+  brandPer1k: number,
+  // v1 (post-MVP): pass `{ isYellowBasket: true }` for 50/50 creator vs platform on gross (not shipped).
+  // options: { isYellowBasket?: boolean } = {}
+  _options: { isYellowBasket?: boolean } = {}
+) {
+  void _options
+  const grossAmount = brandGrossAccrualForViews(snapshotViews, brandPer1k)
+  // const creatorShare = options.isYellowBasket ? 0.5 : CREATOR_PAYOUT_PERCENT
+  const creatorShare = CREATOR_PAYOUT_PERCENT
+  const creatorNet = Math.round(grossAmount * creatorShare * 100) / 100
+  const platformFee = Math.round((grossAmount - creatorNet) * 100) / 100
+  return { grossAmount, creatorNet, platformFee }
+}
+
 export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
   {
     id: 'pkg-001',
@@ -1035,189 +698,60 @@ export const mockMonthlyPayoutBatches: MonthlyPayoutBatch[] = [
     lines: [
       {
         id: 'line-001',
-        contentId: 'bcontent-002',
-        creatorName: 'Diego Cruz',
+        contentId: 'bcontent-001',
+        creatorName: 'Mika Reyes',
         campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
+        campaignTitle: 'Kitchen Glow-Up',
         platform: 'tiktok',
-        isYellowBasket: true,
-        ...demoPayoutSlice(92_000, DEMO_CMP001_BRAND, { isYellowBasket: true }),
-        flag: 'TikTok yellow basket — 50/50 split locked at submit.',
+        // v1 (post-MVP): isYellowBasket: true,
+        snapshotViews: 18_000,
+        ...demoMonthlyLinePayoutSplit(18_000, DEMO_CMP001_BRAND /* , { isYellowBasket: true } */),
         status: 'ready',
       },
       {
         id: 'line-002',
-        contentId: 'bcontent-003',
-        creatorName: 'Anna Lim',
+        contentId: 'bcontent-002',
+        creatorName: 'Diego Cruz',
         campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'facebook',
-        ...demoPayoutSlice(6_400, DEMO_CMP001_BRAND),
+        campaignTitle: 'Kitchen Glow-Up',
+        platform: 'tiktok',
+        snapshotViews: 22_000,
+        ...demoMonthlyLinePayoutSplit(22_000, DEMO_CMP001_BRAND),
         status: 'ready',
       },
       {
         id: 'line-003',
-        contentId: 'bcontent-005',
-        creatorName: 'Sofia Torres',
+        contentId: 'bcontent-003',
+        creatorName: 'Lena Ortiz',
         campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        ...demoPayoutSlice(45_000, DEMO_CMP001_BRAND),
+        campaignTitle: 'Kitchen Glow-Up',
+        platform: 'facebook',
+        snapshotViews: 20_000,
+        ...demoMonthlyLinePayoutSplit(20_000, DEMO_CMP001_BRAND),
         status: 'ready',
       },
       {
         id: 'line-004',
-        contentId: 'bcontent-006',
-        creatorName: 'Jay Mendoza',
+        contentId: 'bcontent-004',
+        creatorName: 'Paolo Mendoza',
         campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'facebook',
-        ...demoPayoutSlice(24_200, DEMO_CMP001_BRAND),
+        campaignTitle: 'Kitchen Glow-Up',
+        platform: 'tiktok',
+        // v1 (post-MVP): isYellowBasket: true,
+        snapshotViews: 22_000,
+        ...demoMonthlyLinePayoutSplit(22_000, DEMO_CMP001_BRAND /* , { isYellowBasket: true } */),
         status: 'ready',
       },
       {
         id: 'line-005',
-        contentId: 'bcontent-007',
-        creatorName: 'Lena Kim',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        ...demoPayoutSlice(118_000, DEMO_CMP001_BRAND),
-        status: 'ready',
-      },
-      {
-        id: 'line-006',
-        contentId: 'bcontent-008',
-        creatorName: 'Marco Diaz',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'facebook',
-        ...demoPayoutSlice(11_500, DEMO_CMP001_BRAND),
-        status: 'ready',
-      },
-      {
-        id: 'line-007',
-        contentId: 'bcontent-009',
-        creatorName: 'Nina Santos',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        ...demoPayoutSlice(88_000, DEMO_CMP001_BRAND),
-        status: 'ready',
-      },
-      {
-        id: 'line-008',
-        contentId: 'bcontent-010',
-        creatorName: 'Paolo Villanueva',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        isYellowBasket: true,
-        flag: 'TikTok yellow basket — 50/50 split locked at submit.',
-        ...demoPayoutSlice(41_000, DEMO_CMP001_BRAND, { isYellowBasket: true }),
-        status: 'ready',
-      },
-      {
-        id: 'line-009',
-        contentId: 'bcontent-011',
-        creatorName: 'Carla Bautista',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'facebook',
-        ...demoPayoutSlice(17_800, DEMO_CMP001_BRAND),
-        status: 'ready',
-      },
-      {
-        id: 'line-010',
-        contentId: 'bcontent-012',
-        creatorName: 'Erin Garcia',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        ...demoPayoutSlice(76_000, DEMO_CMP001_BRAND),
-        status: 'ready',
-      },
-      {
-        id: 'line-011',
-        contentId: 'bcontent-013',
-        creatorName: 'Tom Ramos',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        isYellowBasket: true,
-        flag: 'TikTok yellow basket — 50/50 split locked at submit.',
-        ...demoPayoutSlice(52_400, DEMO_CMP001_BRAND, { isYellowBasket: true }),
-        status: 'ready',
-      },
-      {
-        id: 'line-012',
-        contentId: 'bcontent-014',
-        creatorName: 'Ivy Wong',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'facebook',
-        ...demoPayoutSlice(9_600, DEMO_CMP001_BRAND),
-        status: 'ready',
-      },
-    ],
-  },
-  {
-    id: 'pkg-002',
-    campaignId: 'cmp-001',
-    periodLabel: 'April 1 – May 1, 2026',
-    periodStart: '2026-04-01',
-    periodEnd: '2026-05-01',
-    status: 'released',
-    lines: [
-      {
-        id: 'line-201',
-        contentId: 'bcontent-001',
-        creatorName: 'Mika Reyes',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        ...demoPayoutSlice(188_000, DEMO_CMP001_BRAND),
-        status: 'paid',
-      },
-      {
-        id: 'line-202',
-        contentId: 'bcontent-002',
-        creatorName: 'Diego Cruz',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        ...demoPayoutSlice(50_000, DEMO_CMP001_BRAND),
-        status: 'paid',
-      },
-      {
-        id: 'line-203',
         contentId: 'bcontent-005',
-        creatorName: 'Sofia Torres',
+        creatorName: 'Sam Aquino',
         campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
+        campaignTitle: 'Kitchen Glow-Up',
         platform: 'tiktok',
-        ...demoPayoutSlice(33_000, DEMO_CMP001_BRAND),
-        status: 'paid',
-      },
-      {
-        id: 'line-204',
-        contentId: 'bcontent-007',
-        creatorName: 'Lena Kim',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        ...demoPayoutSlice(96_000, DEMO_CMP001_BRAND),
-        status: 'paid',
-      },
-      {
-        id: 'line-205',
-        contentId: 'bcontent-009',
-        creatorName: 'Nina Santos',
-        campaignId: 'cmp-001',
-        campaignTitle: 'Kitchen Glow-Up — Viral Cooking Content Campaign',
-        platform: 'tiktok',
-        ...demoPayoutSlice(73_000, DEMO_CMP001_BRAND),
-        status: 'paid',
+        snapshotViews: 18_000,
+        ...demoMonthlyLinePayoutSplit(18_000, DEMO_CMP001_BRAND),
+        status: 'ready',
       },
     ],
   },

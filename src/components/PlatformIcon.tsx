@@ -1,8 +1,8 @@
-import { ShoppingBag } from 'lucide-react'
-
 import { cn } from '@/lib/utils'
 import { PLATFORM_LABEL, type Platform } from '@/lib/mockData'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+// v1 (post-MVP): Yellow basket tooltip — not shipped yet.
+// import { ShoppingBag } from 'lucide-react'
+// import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const PLATFORM_SRC: Record<Platform, string> = {
   tiktok: '/tiktok-mono.svg',
@@ -31,7 +31,7 @@ interface PlatformCellProps {
   /** Icon size; label stays `text-sm`. */
   iconClassName?: string
   className?: string
-  /** TikTok-only: show yellow basket indicator when declared at submit. */
+  /** Post–v1 TikTok Yellow Basket indicator (UI disabled for v1). */
   hasYellowBasket?: boolean
 }
 
@@ -40,9 +40,9 @@ export function PlatformCell({
   platform,
   iconClassName = 'h-5 w-5',
   className,
-  hasYellowBasket = false,
+  hasYellowBasket: _hasYellowBasket = false,
 }: PlatformCellProps) {
-  const showBasket = platform === 'tiktok' && hasYellowBasket
+  void _hasYellowBasket
 
   return (
     <div className={cn('flex min-w-0 items-center gap-2', className)}>
@@ -50,21 +50,12 @@ export function PlatformCell({
       <span className="truncate text-sm font-medium text-foreground">
         {PLATFORM_LABEL[platform]}
       </span>
+      {/*
+      v1 (post-MVP): TikTok Yellow basket badge (ShoppingBag + Tooltip) lived here.
       {showBasket ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex shrink-0 rounded-md text-yellow-500 outline-none hover:text-yellow-600 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              aria-label="Yellow basket"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ShoppingBag className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">This submission has yellow basket</TooltipContent>
-        </Tooltip>
+        <Tooltip>...</Tooltip>
       ) : null}
+      */}
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress'
 import { CampaignGoalFireLottie } from '@/components/CampaignGoalFireLottie'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { formatPHP, formatNumber } from '@/lib/utils'
-import { type Campaign } from '@/lib/mockData'
+import { type Campaign, getCampaignReachViewGoal } from '@/lib/mockData'
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -24,7 +24,7 @@ const STATUS_STYLES: Record<Campaign['status'], { chip: string; dot: string }> =
 
 export function CampaignCard({ campaign, to, showProgress = false }: CampaignCardProps) {
   const isBrandCard = showProgress
-  const reachGoal = Math.max(0, campaign.estimatedReach)
+  const reachGoal = getCampaignReachViewGoal(campaign)
   const budgetTotal = Math.max(0, campaign.budget)
   const viewsProgress =
     isBrandCard && reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0

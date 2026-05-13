@@ -221,7 +221,7 @@ export default function MyContentPage() {
                         <PlatformCell
                           platform={content.platform}
                           iconClassName="h-5 w-5"
-                          hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
+                          // v1 (post-MVP): hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
                         />
                       </TableCell>
                       <TableCell>

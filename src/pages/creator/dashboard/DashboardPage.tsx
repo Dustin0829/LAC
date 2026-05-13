@@ -254,7 +254,7 @@ export default function CreatorDashboardPage() {
                         <PlatformCell
                           platform={content.platform}
                           iconClassName="h-5 w-5"
-                          hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
+                          // v1 (post-MVP): hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
                         />
                       </TableCell>
                       <TableCell className="font-display text-sm font-bold tabular-nums">

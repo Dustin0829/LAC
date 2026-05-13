@@ -210,7 +210,7 @@ export default function CreatorEarningsPage() {
                       <PlatformCell
                         platform={c.platform}
                         iconClassName="h-5 w-5"
-                        hasYellowBasket={Boolean(c.hasTikTokYellowBasket)}
+                        // v1 (post-MVP): hasYellowBasket={Boolean(c.hasTikTokYellowBasket)}
                       />
                     </TableCell>
                     <TableCell className="tabular-nums">{formatViews(c.views)}</TableCell>

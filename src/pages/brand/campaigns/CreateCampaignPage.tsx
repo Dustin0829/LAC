@@ -29,6 +29,7 @@ import { paymentLogoSrc } from '@/lib/constants/paymentLogos'
 import {
   PLATFORM_LABEL,
   DEFAULT_REFUNDABLE_PERCENT,
+  estimatedReachViewsFromNetPool,
   getCreatorRatePer1k,
   getPlatformFeePercent,
   MIN_GROSS_CAMPAIGN_BUDGET,
@@ -204,8 +205,7 @@ export default function CreateCampaignPage() {
     const netPool = Math.max(0, Math.round(totalBudget * (1 - platformFeePercent)))
     const platformFee = totalBudget * platformFeePercent
     const payoutPool = Math.max(0, totalBudget - platformFee)
-    const cpv = brandRate > 0 ? brandRate / 1000 : 0
-    const reach = cpv > 0 ? Math.floor(payoutPool / cpv) : 0
+    const reach = estimatedReachViewsFromNetPool(payoutPool, brandRate)
     addCampaign({
       id,
       brandId: user?.id ?? 'brand',
@@ -223,7 +223,7 @@ export default function CreateCampaignPage() {
       reservedBalance: 0,
       minimumPublishBalance: 10_000,
       campaignViews: 0,
-      estimatedReach: Math.max(reach, 1),
+      estimatedReach: reach,
       platforms,
       status,
       startDate: new Date().toISOString(),
@@ -246,8 +246,8 @@ export default function CreateCampaignPage() {
   const platformFeePercent = getPlatformFeePercent()
   const platformFee = totalBudget * platformFeePercent
   const payoutPool = Math.max(0, totalBudget - platformFee)
+  const totalReach = estimatedReachViewsFromNetPool(payoutPool, brandRate)
   const cpv = brandRate > 0 ? brandRate / 1000 : 0
-  const totalReach = cpv > 0 ? Math.floor(payoutPool / cpv) : 0
 
   return (
     <div className="space-y-8">
