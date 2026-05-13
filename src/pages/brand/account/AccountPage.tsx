@@ -57,8 +57,8 @@ export default function BrandAccountPage() {
 
       <section className="rounded-3xl border border-border bg-card p-6 md:p-8">
         <div className="space-y-8">
-          <div className="flex flex-col">
-            <Avatar className="h-24 w-24 rounded-2xl outline-1 outline-border mb-4">
+          <div className="flex flex-col items-center sm:items-start">
+            <Avatar className="h-24 w-24 shrink-0 rounded-2xl outline-1 outline-border mb-4">
               <AvatarImage
                 src={profile.logoDataUrl ?? undefined}
                 className="rounded-2xl object-cover"
