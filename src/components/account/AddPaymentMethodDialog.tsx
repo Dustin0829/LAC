@@ -282,11 +282,7 @@ export function AddPaymentMethodDialog({
                   variant="outline"
                   className="flex-1"
                   onClick={() => {
-                    setMethodType(null)
-                    setProvider('')
-                    setAccountNumber('')
-                    setAccountName('')
-                    setErrors({})
+                    closeModal()
                   }}
                 >
                   Go Back

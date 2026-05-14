@@ -101,7 +101,7 @@ export default function RoleSelectionPage() {
                     key={role}
                     type="button"
                     onClick={() => setSelected(role)}
-                    className={`group rounded-3xl border bg-card p-6 text-left transition-all ${
+                    className={`group cursor-pointer rounded-3xl border bg-card p-6 text-left transition-all ${
                       isSelected
                         ? 'border-blue-500 shadow-xl shadow-blue-500/20 ring-2 ring-blue-500/20 ring-offset-2 ring-offset-[#f4f8fd]'
                         : 'border-border hover:border-foreground/20'
