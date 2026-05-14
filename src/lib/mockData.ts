@@ -276,13 +276,13 @@ export function countCampaignReachTowardGoal(
 
 export interface PaymentMethod {
   id: string
-  type: 'gcash' | 'maya' | 'bank'
-  /** Display label e.g. "GCash · 0917 ••• 1234" */
+  type: 'gcash' | 'maya' | 'grabpay' | 'shopeepay' | 'bank'
+  /** Provider / bank display title (e.g. "GCash", full bank legal name) */
   label: string
   /** Account number / phone (masked for display) */
   accountNumber: string
   accountName: string
-  /** Bank name when type === 'bank' */
+  /** Full bank option label when `type === 'bank'` (matches bank picker). */
   bank?: string
   isDefault: boolean
 }
@@ -471,6 +471,26 @@ const rawMockContent: Content[] = [
     livenessStatus: 'live',
     thumbnailColor: COVER_COLORS[3],
   },
+  {
+    id: 'content-002',
+    campaignId: 'cmp-001',
+    campaignTitle: 'Kitchen Glow-Up',
+    brandName: 'Wok Bang',
+    creatorId: 'me',
+    creatorName: 'You',
+    url: 'https://www.tiktok.com/@you/video/wokbang-approved',
+    platform: 'tiktok',
+    views: 8_500,
+    earnings: mockContentEarnings(8_500, DEMO_CMP001_CREATOR),
+    status: 'paid',
+    submittedAt: daysAgo(45),
+    reviewedAt: daysAgo(44),
+    paidAt: daysAgo(10),
+    retentionEndAt: daysFromNow(60),
+    ruleCheckResult: 'pass',
+    livenessStatus: 'live',
+    thumbnailColor: COVER_COLORS[0],
+  },
 ]
 
 export const mockContent: Content[] = withCreatorDemoAvatars(rawMockContent)
@@ -582,7 +602,7 @@ export const mockPaymentMethods: PaymentMethod[] = [
   {
     id: 'pm-1',
     type: 'gcash',
-    label: 'GCash · 0917 ••• 1234',
+    label: 'GCash',
     accountNumber: '09171234567',
     accountName: 'Juan Dela Cruz',
     isDefault: true,
@@ -590,10 +610,10 @@ export const mockPaymentMethods: PaymentMethod[] = [
   {
     id: 'pm-2',
     type: 'bank',
-    label: 'BPI · ••• 4421',
+    label: 'Bank of the Philippine Islands (BPI)',
     accountNumber: '1234564421',
     accountName: 'Juan Dela Cruz',
-    bank: 'BPI',
+    bank: 'Bank of the Philippine Islands (BPI)',
     isDefault: false,
   },
 ]
@@ -657,16 +677,14 @@ export const mockCreatorPlatformLinks: CreatorPlatformLink[] = [
   {
     platform: 'tiktok',
     label: 'TikTok',
-    handle: '@mika.creates',
-    status: 'connected',
-    connectedAt: daysAgo(18),
+    handle: 'Not connected',
+    status: 'reconnect',
   },
   {
     platform: 'facebook',
     label: 'Facebook',
-    handle: 'facebook.com/mika.creates',
+    handle: 'Not connected',
     status: 'reconnect',
-    connectedAt: daysAgo(41),
   },
 ]
 

@@ -15,6 +15,8 @@ interface AuthState {
   loading: boolean
   signIn: (user: AuthUser) => void
   setRole: (role: UserRole) => void
+  /** Merge into the signed-in user and persist (e.g. display name on Account). */
+  updateUser: (patch: Partial<Pick<AuthUser, 'name' | 'avatarUrl'>>) => void
   signOut: () => void
   hydrate: () => void
 }
@@ -37,6 +39,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem(ROLE_KEY, role)
     }
     set({ role })
+  },
+  updateUser: (patch) => {
+    set((state) => {
+      const prev = state.user
+      if (!prev) return state
+      const user = { ...prev, ...patch }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(USER_KEY, JSON.stringify(user))
+      }
+      return { user }
+    })
   },
   signOut: () => {
     if (typeof window !== 'undefined') {

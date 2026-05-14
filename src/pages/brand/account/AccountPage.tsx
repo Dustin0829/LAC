@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Facebook, Globe, Instagram, LogOut } from 'lucide-react'
+import { Facebook, Globe, Instagram, LogOut, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useSignOut } from '@/lib/hooks/use-sign-out'
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSection'
 import { PlatformIcon } from '@/components/PlatformIcon'
 
 export default function BrandAccountPage() {
@@ -22,6 +23,18 @@ export default function BrandAccountPage() {
   useEffect(() => {
     if (user?.name) seedBrandNameIfEmpty(user.name)
   }, [user?.name, seedBrandNameIfEmpty])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash !== '#brand-refund-receiving') return
+    const t = window.setTimeout(() => {
+      document.getElementById('brand-refund-receiving')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 100)
+    return () => window.clearTimeout(t)
+  }, [])
 
   function onLogoFile(files: FileList | null) {
     const file = files?.[0]
@@ -49,7 +62,7 @@ export default function BrandAccountPage() {
     'B'
 
   return (
-    <div className="px-2 py-4 md:p-8 space-y-6">
+    <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
           Brand <span className="text-phc-gradient">profile</span>
@@ -173,6 +186,24 @@ export default function BrandAccountPage() {
             </div>
           </div>
         </div>
+        <div className="flex justify-end mt-6">
+          <Button
+            type="button"
+            size="lg"
+            className="w-full bg-phc-gradient font-semibold text-white hover:opacity-90 sm:w-auto min-w-36"
+            onClick={onSave}
+          >
+            <Save className="h-4 w-4" />
+            Save
+          </Button>
+        </div>
+      </section>
+
+      <section
+        id="brand-refund-receiving"
+        className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-none"
+      >
+        <PaymentMethodsSection mode="brand" />
       </section>
 
       <section className="rounded-3xl border border-border bg-card p-6 md:hidden">
@@ -188,17 +219,6 @@ export default function BrandAccountPage() {
           Sign out
         </Button>
       </section>
-
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          size="lg"
-          className="w-full bg-phc-gradient font-semibold text-white hover:opacity-90 sm:w-auto min-w-36"
-          onClick={onSave}
-        >
-          Save
-        </Button>
-      </div>
     </div>
   )
 }

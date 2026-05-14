@@ -63,7 +63,7 @@ export default function RoleSelectionPage() {
     await new Promise((r) => setTimeout(r, 400))
     setRole(selected)
     toast.success(selected === 'brand' ? 'Welcome, Brand!' : 'Welcome, Creator!')
-    navigate(selected === 'brand' ? '/brand/dashboard' : '/creator/dashboard', { replace: true })
+    navigate(selected === 'brand' ? '/brand/dashboard' : '/dashboard', { replace: true })
   }
 
   return (

@@ -49,6 +49,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { TablePagination } from '@/components/TablePagination'
+import { RefreshButton } from '@/components/RefreshButton'
 
 type PerformanceRange = 'monthly' | 'yearly'
 
@@ -67,6 +68,7 @@ export default function BrandDashboardPage() {
   const { user } = useAuth()
   const [performanceRange, setPerformanceRange] = useState<PerformanceRange>('monthly')
   const [recentPage, setRecentPage] = useState(1)
+  const [refreshing, setRefreshing] = useState(false)
   const performanceChartData = useMemo(
     () => chartRowsForRange(performanceRange),
     [performanceRange]
@@ -123,14 +125,34 @@ export default function BrandDashboardPage() {
             <span className="text-phc-gradient">flying.</span>
           </h1>
         </div>
-        <Button asChild className="w-full shrink-0 bg-phc-gradient text-white sm:w-auto">
-          <Link to="/brand/campaigns/new">
-            <Plus className="h-4 w-4" /> New campaign
-          </Link>
-        </Button>
+        <div className=" flex flex-wrap items-center justify-end gap-2">
+          <RefreshButton
+            variant="outline"
+            isRefreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true)
+              try {
+                await new Promise((r) => setTimeout(r, 500))
+              } finally {
+                setRefreshing(false)
+              }
+            }}
+            successMessage="Dashboard updated"
+            aria-label="Refresh dashboard"
+            className="w-full md:w-auto"
+          />
+          <Button
+            asChild
+            className="hidden md:flex flex-1 shrink-0 bg-phc-gradient text-white sm:w-auto"
+          >
+            <Link to="/brand/campaigns/new">
+              <Plus className="h-4 w-4" /> New campaign
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 -mt-2 md:-mt-0">
         <StatCard
           label="Total Campaigns"
           value={brandCampaigns.length}

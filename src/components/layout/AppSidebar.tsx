@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Compass,
   Scissors,
-  Wallet,
   User,
   LogOut,
   type LucideIcon,
@@ -32,11 +31,10 @@ interface NavItem {
 }
 
 const CREATOR_NAV: NavItem[] = [
-  { label: 'Dashboard', to: '/creator/dashboard', icon: LayoutDashboard },
-  { label: 'Discover', to: '/creator/campaigns', icon: Compass },
-  { label: 'My Content', to: '/creator/content', icon: Scissors },
-  { label: 'Earnings', to: '/creator/earnings', icon: Wallet },
-  { label: 'Account', to: '/creator/account', icon: User },
+  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+  { label: 'Campaigns', to: '/campaigns', icon: Compass },
+  { label: 'Submissions', shortLabel: 'Submissions', to: '/submissions', icon: Scissors },
+  { label: 'Account', to: '/account', icon: User },
 ]
 
 const BRAND_NAV: NavItem[] = [
@@ -67,7 +65,7 @@ function useAppSidebarModel(role: UserRole) {
   const { user } = useAuth()
   const handleSignOut = useSignOut()
 
-  const homeTo = role === 'brand' ? '/brand/dashboard' : '/creator/dashboard'
+  const homeTo = role === 'brand' ? '/brand/dashboard' : '/dashboard'
 
   const userInitials = getInitials(user?.name, user?.email)
   const displayName = user?.name || user?.email?.split('@')[0] || 'You'

@@ -16,7 +16,6 @@ import {
   Plus,
   Send,
   Shield,
-  Sparkles,
   Target,
   TrendingUp,
   Undo2,
@@ -26,6 +25,7 @@ import {
 import { toast } from 'sonner'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { useContentStore } from '@/lib/stores/contentStore'
+import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import {
   brandReviewStatusForBadge,
   cn,
@@ -36,6 +36,7 @@ import {
   isValidHttpOrHttpsUrl,
 } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { RefreshButton } from '@/components/RefreshButton'
 import {
   Dialog,
   DialogContent,
@@ -192,6 +193,7 @@ export default function BrandCampaignDetailPage() {
   const updateCampaign = useCampaignsStore((s) => s.updateCampaign)
   const contents = useContentStore((s) => s.contents)
   const updateContent = useContentStore((s) => s.updateContent)
+  const [headerRefreshing, setHeaderRefreshing] = useState(false)
   const [addFundsOpen, setAddFundsOpen] = useState(false)
   const [fundAmount, setFundAmount] = useState('')
   const [isAddingFunds, setIsAddingFunds] = useState(false)
@@ -206,6 +208,7 @@ export default function BrandCampaignDetailPage() {
   const [rejectPreset, setRejectPreset] = useState<BrandRejectPresetId>('fraud')
   const [rejectOtherDetail, setRejectOtherDetail] = useState('')
   const [refundOpen, setRefundOpen] = useState(false)
+  const [refundNeedAccountOpen, setRefundNeedAccountOpen] = useState(false)
   const [isRefunding, setIsRefunding] = useState(false)
   /** Active batch in the release-payouts confirmation modal. */
   const [activeReleaseBatchId, setActiveReleaseBatchId] = useState<string | null>(null)
@@ -643,6 +646,11 @@ export default function BrandCampaignDetailPage() {
   }
 
   async function confirmRefundAvailable() {
+    if (usePaymentMethodsStore.getState().methods.length === 0) {
+      toast.error('Add a refund receiving account on Brand account before refunding.')
+      setRefundOpen(false)
+      return
+    }
     const latest = useCampaignsStore.getState().campaigns.find((c) => c.id === campaignId)
     if (!latest) return
     const net = getAvailableBalance(latest)
@@ -1137,9 +1145,27 @@ export default function BrandCampaignDetailPage() {
 
       {/* Estimated reach */}
       <div className="w-full rounded-2xl border border-border bg-card p-5 md:p-6">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Target className="h-3.5 w-3.5 shrink-0" /> Estimated reach progress
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <Target className="h-3.5 w-3.5 shrink-0" />
+            Goal Progress
+          </p>
+          <RefreshButton
+            variant="outline"
+            size="icon"
+            isRefreshing={headerRefreshing}
+            onRefresh={async () => {
+              setHeaderRefreshing(true)
+              try {
+                await new Promise((r) => setTimeout(r, 500))
+              } finally {
+                setHeaderRefreshing(false)
+              }
+            }}
+            successMessage="Campaign updated"
+            aria-label="Refresh campaign"
+          />
+        </div>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <p className="font-display text-lg md:text-xl font-bold tabular-nums text-foreground md:text-3xl">
             {reachGoal > 0 ? `${reachProgressPct.toFixed(1)}%` : '—'}
@@ -1176,7 +1202,7 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'details'}
             onClick={() => setCampaignTab('details')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm sm:text-base',
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm',
               campaignTab === 'details'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -1195,7 +1221,7 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'submissions-payout'}
             onClick={() => setCampaignTab('submissions-payout')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm sm:text-base',
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm',
               campaignTab === 'submissions-payout'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -1219,7 +1245,7 @@ export default function BrandCampaignDetailPage() {
             aria-selected={campaignTab === 'budget'}
             onClick={() => setCampaignTab('budget')}
             className={cn(
-              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm sm:text-base',
+              'relative flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 px-2 py-3.5 text-center font-medium transition-colors text-sm',
               campaignTab === 'budget'
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -1308,84 +1334,6 @@ export default function BrandCampaignDetailPage() {
                     </>
                   )}
                 </div>
-
-                <div className="min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4">
-                  <div className="flex min-w-0 flex-col gap-4">
-                    <div className="flex min-w-0 items-start justify-between gap-3">
-                      <div className="flex min-w-0 gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
-                          <Monitor className="h-5 w-5" aria-hidden />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-display font-bold text-foreground">Platforms</p>
-                          <p className="wrap-break-word text-sm text-muted-foreground">
-                            Where your content can be posted.
-                          </p>
-                        </div>
-                      </div>
-                      {detailsEditingSections.has('platforms') ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className={DETAILS_SECTION_ACTION_BTN_CLASS}
-                          onClick={savePlatformsSection}
-                        >
-                          <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
-                          Save
-                        </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className={DETAILS_SECTION_ACTION_BTN_CLASS}
-                          onClick={() => beginEditSection('platforms')}
-                        >
-                          <PencilLine className="h-4 w-4 shrink-0" aria-hidden />
-                          Edit
-                        </Button>
-                      )}
-                    </div>
-                    {detailsEditingSections.has('platforms') ? (
-                      <div className="flex flex-wrap gap-2">
-                        {PLATFORM_OPTIONS.map(({ id: platformId, label }) => {
-                          const selected = draftPlatforms.includes(platformId)
-                          return (
-                            <button
-                              key={platformId}
-                              type="button"
-                              onClick={() => togglePlatformPill(platformId)}
-                              className={cn(
-                                'inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
-                                selected
-                                  ? 'border-primary bg-primary/10 text-foreground shadow-sm'
-                                  : 'border-border bg-card text-muted-foreground hover:bg-muted/50'
-                              )}
-                            >
-                              <PlatformIcon
-                                platform={platformId}
-                                className="h-5 w-5 shrink-0"
-                                aria-hidden
-                              />
-                              {label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-2">
-                        {campaign.platforms.map((p) => (
-                          <div key={p} className="flex flex-col items-center gap-1.5">
-                            <div className="flex size-12 shrink-0 items-center justify-center rounded-full border border-border bg-card">
-                              <PlatformIcon platform={p} className="h-6 w-6" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
               </>
             ) : (
               <>
@@ -1398,31 +1346,6 @@ export default function BrandCampaignDetailPage() {
                   <p className="max-w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-base">
                     {campaign.description}
                   </p>
-                </div>
-
-                <div className="min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4">
-                  <div className="flex min-w-0 flex-col gap-3 md:gap-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 gap-3">
-                      <div className="hidden md:flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
-                        <Monitor className="h-5 w-5" aria-hidden />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-display font-bold text-foreground">Platforms</p>
-                        <p className="wrap-break-word text-sm text-muted-foreground">
-                          Where your content can be posted.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-2 sm:justify-end">
-                      {campaign.platforms.map((p) => (
-                        <div key={p} className="flex flex-col items-center gap-1.5">
-                          <div className="flex size-12 shrink-0 items-center justify-center rounded-full border border-border bg-card">
-                            <PlatformIcon platform={p} className="h-6 w-6" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </>
             )}
@@ -1503,19 +1426,110 @@ export default function BrandCampaignDetailPage() {
               )}
             </div>
 
-            <div className="hidden md:flex min-w-0 items-start gap-3 rounded-2xl border border-violet-200/80 bg-violet-50/90 px-4 py-4 dark:border-violet-900/40 dark:bg-violet-950/35 sm:items-center sm:gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-200/80 text-violet-700 dark:bg-violet-900/60 dark:text-violet-200">
-                <Sparkles className="h-5 w-5" aria-hidden />
+            {canEditPreSubmission ? (
+              <div className="min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4">
+                <div className="flex min-w-0 flex-col gap-4">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
+                        <Monitor className="h-5 w-5" aria-hidden />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-display font-bold text-foreground">Platforms</p>
+                        <p className="wrap-break-word text-sm text-muted-foreground">
+                          Where your content can be posted.
+                        </p>
+                      </div>
+                    </div>
+                    {detailsEditingSections.has('platforms') ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={DETAILS_SECTION_ACTION_BTN_CLASS}
+                        onClick={savePlatformsSection}
+                      >
+                        <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
+                        Save
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={DETAILS_SECTION_ACTION_BTN_CLASS}
+                        onClick={() => beginEditSection('platforms')}
+                      >
+                        <PencilLine className="h-4 w-4 shrink-0" aria-hidden />
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                  {detailsEditingSections.has('platforms') ? (
+                    <div className="flex flex-wrap gap-2">
+                      {PLATFORM_OPTIONS.map(({ id: platformId, label }) => {
+                        const selected = draftPlatforms.includes(platformId)
+                        return (
+                          <button
+                            key={platformId}
+                            type="button"
+                            onClick={() => togglePlatformPill(platformId)}
+                            className={cn(
+                              'inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors',
+                              selected
+                                ? 'border-primary bg-primary/10 text-foreground shadow-sm'
+                                : 'border-border bg-card text-muted-foreground hover:bg-muted/50'
+                            )}
+                          >
+                            <PlatformIcon
+                              platform={platformId}
+                              className="h-5 w-5 shrink-0"
+                              aria-hidden
+                            />
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-2">
+                      {campaign.platforms.map((p) => (
+                        <div key={p} className="flex flex-col items-center gap-1.5">
+                          <div className="flex size-12 shrink-0 items-center justify-center rounded-full border border-border bg-card">
+                            <PlatformIcon platform={p} className="h-6 w-6" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="wrap-break-word font-display font-bold text-violet-950 dark:text-violet-50">
-                  The more engaging your content, the higher your payout.
-                </p>
-                <p className="wrap-break-word text-sm leading-snug text-violet-800/90 dark:text-violet-200/90">
-                  Focus on creativity, authenticity, and high-quality content.
-                </p>
+            ) : (
+              <div className="min-w-0 rounded-2xl border border-border/80 bg-muted/25 p-4">
+                <div className="flex min-w-0 flex-col gap-3 md:gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 gap-3">
+                    <div className="hidden md:flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300">
+                      <Monitor className="h-5 w-5" aria-hidden />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-display font-bold text-foreground">Platforms</p>
+                      <p className="wrap-break-word text-sm text-muted-foreground">
+                        Where your content can be posted.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-2 sm:justify-end">
+                    {campaign.platforms.map((p) => (
+                      <div key={p} className="flex flex-col items-center gap-1.5">
+                        <div className="flex size-12 shrink-0 items-center justify-center rounded-full border border-border bg-card">
+                          <PlatformIcon platform={p} className="h-6 w-6" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </section>
 
           <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8">
@@ -1882,7 +1896,13 @@ export default function BrandCampaignDetailPage() {
                   variant="outline"
                   className="font-semibold w-full md:w-auto"
                   disabled={remaining <= 0}
-                  onClick={() => setRefundOpen(true)}
+                  onClick={() => {
+                    if (usePaymentMethodsStore.getState().methods.length === 0) {
+                      setRefundNeedAccountOpen(true)
+                      return
+                    }
+                    setRefundOpen(true)
+                  }}
                 >
                   <Undo2 className="h-4 w-4" /> Refund Available Balance
                 </Button>
@@ -1989,8 +2009,8 @@ export default function BrandCampaignDetailPage() {
                 <DialogTitle>Refund available balance?</DialogTitle>
                 <DialogDescription>
                   This returns your available balance ({formatPHP(remaining, { decimals: false })})
-                  to your brand wallet. Paid and reserved amounts are unchanged. Total budget
-                  becomes paid plus reserved after this refund.
+                  to your default refund receiving account (Brand account). Paid and reserved
+                  amounts are unchanged. Total budget becomes paid plus reserved after this refund.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2 sm:gap-0">
@@ -2015,6 +2035,39 @@ export default function BrandCampaignDetailPage() {
                   ) : (
                     `Refund ${formatPHP(remaining, { decimals: false })}`
                   )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={refundNeedAccountOpen} onOpenChange={setRefundNeedAccountOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add a refund receiving account</DialogTitle>
+                <DialogDescription>
+                  We need a bank or e-wallet on file before we can send a campaign balance refund.
+                  Add one under Brand account, then try again.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRefundNeedAccountOpen(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-phc-gradient font-semibold text-white hover:opacity-90"
+                  asChild
+                >
+                  <Link
+                    to="/brand/account#brand-refund-receiving"
+                    onClick={() => setRefundNeedAccountOpen(false)}
+                  >
+                    Go to Brand account
+                  </Link>
                 </Button>
               </DialogFooter>
             </DialogContent>

@@ -140,7 +140,7 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
                 <PlatformIcon key={p} platform={p} className="h-6 w-6" />
               ))}
             </div>
-            <span className="text-sm font-medium tracking-tight text-phc-gradient">
+            <span className="text-sm font-semibold tracking-tight text-phc-gradient">
               {showProgress ? 'Open Campaign' : 'Join Campaign'}
             </span>
           </div>

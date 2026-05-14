@@ -1,25 +1,56 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { Button } from '@/components/ui/button'
 import { CampaignCard } from '@/components/CampaignCard'
+import { RefreshButton } from '@/components/RefreshButton'
 
 export default function BrandCampaignsPage() {
   const campaigns = useCampaignsStore((s) => s.campaigns)
+  const [refreshing, setRefreshing] = useState(false)
 
   return (
     <div className="px-2 py-4 md:p-8 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="mt-1 font-display text-3xl md:text-4xl font-extrabold">
+        <div className="min-w-0 flex items-center gap-2 justify-between">
+          <h1 className="font-display text-3xl md:text-4xl font-extrabold">
             Your <span className="text-phc-gradient">Campaigns</span>
           </h1>
+          <RefreshButton
+            variant="outline"
+            isRefreshing={refreshing}
+            size="icon"
+            onRefresh={async () => {
+              setRefreshing(true)
+            }}
+            successMessage="Campaigns updated"
+            aria-label="Refresh campaigns"
+            className="md:hidden"
+          />
         </div>
-        <Button asChild className="bg-phc-gradient text-white">
-          <Link to="/brand/campaigns/new">
-            <Plus className="h-4 w-4" /> New campaign
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <RefreshButton
+            variant="outline"
+            isRefreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true)
+              try {
+                await new Promise((r) => setTimeout(r, 500))
+              } finally {
+                setRefreshing(false)
+              }
+            }}
+            successMessage="Campaigns updated"
+            aria-label="Refresh campaigns"
+            className="hidden md:block"
+          />
+          <Button asChild className="flex flex-1 shrink-0 bg-phc-gradient text-white sm:w-auto">
+            <Link to="/brand/campaigns/new">
+              <Plus className="h-4 w-4" /> New campaign
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {campaigns.length === 0 ? (

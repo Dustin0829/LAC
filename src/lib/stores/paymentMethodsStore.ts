@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { mockPaymentMethods, type PaymentMethod } from '@/lib/mockData'
+import type { PaymentMethod } from '@/lib/mockData'
 
 interface PaymentMethodsState {
   methods: PaymentMethod[]
@@ -9,7 +9,7 @@ interface PaymentMethodsState {
 }
 
 export const usePaymentMethodsStore = create<PaymentMethodsState>((set) => ({
-  methods: mockPaymentMethods,
+  methods: [],
   addMethod: (method) =>
     set((s) => ({
       methods: s.methods.length === 0 ? [{ ...method, isDefault: true }] : [...s.methods, method],

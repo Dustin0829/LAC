@@ -38,7 +38,7 @@ export default function AuthPage() {
 
   function afterAuth() {
     if (role === 'creator' || role === 'brand') {
-      navigate(role === 'brand' ? '/brand/dashboard' : '/creator/dashboard', { replace: true })
+      navigate(role === 'brand' ? '/brand/dashboard' : '/dashboard', { replace: true })
     } else {
       navigate('/onboarding/role', { replace: true })
     }

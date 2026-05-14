@@ -1,28 +1,25 @@
 import type { PaymentMethod } from '@/lib/mockData'
+import { getPaymentMethodIcon } from '@/lib/constants/paymentMethodIcons'
 
-const BASE = '/payment-logos'
-
-/** Short labels used in bank picker — maps to vendored SVG filenames under `public/payment-logos/`. */
-export const BANK_LOGO_FILES: Record<string, string> = {
-  BPI: 'bpi.svg',
-  BDO: 'bdo.svg',
-  Metrobank: 'metrobank.svg',
-  UnionBank: 'unionbank.svg',
-  Landbank: 'landbank.svg',
-  PNB: 'pnb.svg',
-  'Security Bank': 'securitybank.svg',
+const EWALLET_LABEL_BY_TYPE: Record<Exclude<PaymentMethod['type'], 'bank'>, string> = {
+  gcash: 'GCash',
+  maya: 'Maya',
+  grabpay: 'GrabPay',
+  shopeepay: 'ShopeePay',
 }
 
+/**
+ * Logo URL for a saved {@link PaymentMethod} or picker row (Vite-resolved asset URLs).
+ */
 export function paymentLogoSrc(params: {
   type: PaymentMethod['type']
   bank?: string | null
-}): string | null {
+}): string | undefined {
   const { type, bank } = params
-  if (type === 'gcash') return `${BASE}/gcash.svg`
-  if (type === 'maya') return `${BASE}/maya.svg`
   if (type === 'bank' && bank) {
-    const file = BANK_LOGO_FILES[bank]
-    return file ? `${BASE}/${file}` : null
+    return getPaymentMethodIcon('local-bank', bank)
   }
-  return null
+  const label = EWALLET_LABEL_BY_TYPE[type as Exclude<PaymentMethod['type'], 'bank'>]
+  if (label) return getPaymentMethodIcon('e-wallet', label)
+  return undefined
 }

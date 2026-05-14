@@ -518,7 +518,7 @@ export default function CreateCampaignPage() {
               <div>
                 <h2 className="font-display text-xl font-bold">Reference links</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Reference posts, product pages, or tracking URLs. One https URL per line.
+                  Reference posts, product pages, or tracking URLs.
                 </p>
               </div>
             </div>
@@ -658,7 +658,7 @@ export default function CreateCampaignPage() {
                   'Fund & Publish'
                 )}
               </Button>
-              <p className="text-xs text-muted-foreground mt-2 text-center w-3/4 mx-auto">
+              <p className="text-xs text-muted-foreground mt-2 text-center md:w-3/4 mx-auto">
                 This will open xendit checkout in a new tab, once you confirm payment, the campaign
                 will go live for creators.
               </p>

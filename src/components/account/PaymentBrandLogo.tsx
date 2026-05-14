@@ -16,22 +16,20 @@ export function PaymentBrandLogo({
 }) {
   const src = paymentLogoSrc({ type, bank })
   const Icon = type === 'bank' ? Building2 : Smartphone
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        className={cn('shrink-0 object-contain', className, imgClassName)}
+      />
+    )
+  }
+
   return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-center rounded-xl border border-border bg-white p-1 dark:bg-white',
-        className
-      )}
-    >
-      {src ? (
-        <img
-          src={src}
-          alt=""
-          className={cn('max-h-full max-w-full object-contain', imgClassName)}
-        />
-      ) : (
-        <Icon className={cn('text-muted-foreground', imgClassName ?? 'h-5 w-5')} />
-      )}
-    </div>
+    <Icon
+      className={cn('shrink-0 text-muted-foreground', className ?? 'h-5 w-5', imgClassName)}
+    />
   )
 }
