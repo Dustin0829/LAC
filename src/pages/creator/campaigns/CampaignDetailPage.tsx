@@ -15,7 +15,6 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { useContentStore } from '@/lib/stores/contentStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
@@ -44,6 +43,7 @@ import {
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { cn, formatPHP, formatNumber, formatViews } from '@/lib/utils'
 import { creatorHeadlineRatePer1k, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
+import { toast } from 'sonner'
 
 function isValidContentUrl(value: string): boolean {
   try {
@@ -210,7 +210,6 @@ export default function CreatorCampaignDetailPage() {
           if (gen !== validationGenRef.current) return
           setLinkPhase('idle')
           setSnapshot(null)
-          toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
           return
         }
 
@@ -255,23 +254,18 @@ export default function CreatorCampaignDetailPage() {
     e.preventDefault()
     if (!url.trim() || !campaign) return
     if (!hasPayoutMethod) {
-      toast.error('Add a payout method in Account before submitting.')
       return
     }
     if (!platformConnected) {
-      toast.error(`Connect ${PLATFORM_LABEL[platform]} first.`)
       return
     }
     if (linkPhase !== 'ready' || !snapshot || snapshot.views <= 1_000) {
-      toast.error('Wait until stats load and the post is above 1,000 views.')
       return
     }
     if (!isValidContentUrl(url.trim())) {
-      toast.error('Paste a full content link starting with https:// (e.g. TikTok or Facebook).')
       return
     }
     if (!campaign.platforms.includes(platform)) {
-      toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
       return
     }
     const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, false)
@@ -295,7 +289,6 @@ export default function CreatorCampaignDetailPage() {
       submittedAt: new Date().toISOString(),
       thumbnailColor: campaign.coverColor,
     })
-    toast.success('Content submitted! Brand review comes next.')
     setSubmitting(false)
     setOpen(false)
     resetSubmitModal()
@@ -332,10 +325,7 @@ export default function CreatorCampaignDetailPage() {
           </div>
           <div className="shrink-0 lg:pt-1">
             <div className="flex flex-wrap items-center gap-2">
-              <Dialog
-                open={open}
-                onOpenChange={setOpen}
-              >
+              <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <Button
                     size="lg"

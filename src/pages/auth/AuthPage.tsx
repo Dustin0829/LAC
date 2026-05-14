@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
+import { MarketingAuthShell } from '@/components/layout/MarketingAuthShell'
+import { isProfileOnboardingComplete } from '@/lib/profileOnboarding'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,14 +33,18 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export default function AuthPage() {
   const navigate = useNavigate()
   const signIn = useAuthStore((s) => s.signIn)
-  const role = useAuthStore((s) => s.role)
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
   function afterAuth() {
-    if (role === 'creator' || role === 'brand') {
-      navigate(role === 'brand' ? '/brand/dashboard' : '/dashboard', { replace: true })
+    const { role: r, user: u } = useAuthStore.getState()
+    if (r === 'creator' || r === 'brand') {
+      if (!isProfileOnboardingComplete(u?.id, r)) {
+        navigate('/onboarding/profile', { replace: true })
+        return
+      }
+      navigate(r === 'brand' ? '/brand/dashboard' : '/dashboard', { replace: true })
     } else {
       navigate('/onboarding/role', { replace: true })
     }
@@ -82,31 +88,23 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
-      <div className="absolute inset-0 bg-grid-soft pointer-events-none" />
-      <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-zinc-900/8 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-zinc-500/10 blur-3xl pointer-events-none" />
-
+    <MarketingAuthShell>
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
           <div className="w-full max-w-md">
-            <Link to="/" className="mb-8 flex flex-col items-center text-center transition-opacity hover:opacity-80">
-              <span className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">Arpify</span>
-              <span className="mt-1 text-xs font-medium uppercase tracking-widest text-muted-foreground md:text-sm">
-                Verified views marketplace
+            <div className="mb-8 flex flex-col items-center text-center">
+              <span className="mt-4 font-display text-3xl font-extrabold tracking-tight md:text-4xl">
+                Vid<span className="text-primary">U</span>
               </span>
-            </Link>
+              <span className="mt-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground md:text-sm">
+                Verified Marketplace
+              </span>
+            </div>
 
-            <div className="rounded-3xl border border-border bg-card/90 backdrop-blur p-8 shadow-xl shadow-zinc-950/5">
-              <h2 className="font-display text-center text-3xl font-extrabold tracking-tight">
-                Continue to Arpify
-              </h2>
-              <p className="mt-2 text-center text-sm text-muted-foreground">
-                One path for new and returning users. Enter your email and we’ll send a code.
-              </p>
-              <form onSubmit={handleEmailContinue} className="mt-6 space-y-4">
+            <div className="rounded-3xl border border-border bg-card/90 p-8 shadow-xl shadow-zinc-950/5 backdrop-blur">
+              <form onSubmit={handleEmailContinue} className="space-y-4">
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
@@ -145,7 +143,7 @@ export default function AuthPage() {
               <Button
                 type="button"
                 size="lg"
-                className="h-12 w-full gap-3 bg-card text-foreground border border-border hover:bg-muted"
+                className="h-12 w-full gap-3 border border-border bg-card text-foreground hover:bg-muted"
                 onClick={() => void handleGoogle()}
                 disabled={googleLoading || submitting}
               >
@@ -157,8 +155,8 @@ export default function AuthPage() {
                 Continue with Google
               </Button>
 
-              <p className="mt-6 text-center text-xs text-muted-foreground leading-relaxed">
-                By continuing, you confirm that you have reviewed and agree to Arpify&apos;s{' '}
+              <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
+                By continuing, you confirm that you have reviewed and agree to VidU&apos;s{' '}
                 <span className="underline underline-offset-2">Terms of Service</span>
                 {' and '}
                 <span className="underline underline-offset-2">Privacy Policy</span>.
@@ -168,9 +166,9 @@ export default function AuthPage() {
         </div>
 
         <footer className="shrink-0 px-6 pb-8 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Arpify
+          © {new Date().getFullYear()} VidU
         </footer>
       </div>
-    </div>
+    </MarketingAuthShell>
   )
 }

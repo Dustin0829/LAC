@@ -1,5 +1,5 @@
 /**
- * Arpify mock data — UI-only MVP prototype.
+ * VidU mock data — UI-only MVP prototype.
  * - Brands set gross ₱/1k (`brandRatePer1k`); sample mocks use ~₱54–70/1k gross (≤₱75); brand UI shows that headline rate.
  * - Creator UI shows net ₱/1k after the 20% platform fee (`ratePer1k` / `creatorHeadlineRatePer1k`).
  * - Creators submit `contents` (URLs); earnings use the net rate × verified views / 1,000.
@@ -113,7 +113,7 @@ export interface Campaign {
    * This is the net amount in the campaign after intake fee at funding time.
    */
   budget: number
-  /** Arpify intake fee from confirmed campaign funding. */
+  /** VidU intake fee from confirmed campaign funding. */
   platformFeePercent?: number
   /** Maximum refundable portion of the total campaign budget. */
   refundablePercent?: number

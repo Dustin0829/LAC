@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Sparkles, Building2, Check, Loader2, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { MarketingAuthShell } from '@/components/layout/MarketingAuthShell'
 import { useAuthStore, type UserRole } from '@/lib/stores/authStore'
 import { Button } from '@/components/ui/button'
 
@@ -50,13 +51,12 @@ export default function RoleSelectionPage() {
   const navigate = useNavigate()
   const setRole = useAuthStore((s) => s.setRole)
   const user = useAuthStore((s) => s.user)
-  const signOut = useAuthStore((s) => s.signOut)
   const [selected, setSelected] = useState<UserRole | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   async function handleContinue() {
     if (!selected) {
-      toast.error('Pick what you want to do on Arpify.')
+      toast.error('Pick what you want to do on VidU.')
       return
     }
     setSubmitting(true)
@@ -67,61 +67,34 @@ export default function RoleSelectionPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
-      <div className="absolute inset-0 bg-grid-soft pointer-events-none" />
-      <div className="absolute -top-40 left-1/3 h-96 w-96 rounded-full bg-zinc-900/8 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 right-1/4 h-96 w-96 rounded-full blur-3xl pointer-events-none bg-zinc-500/10" />
-
-      <div className="relative z-10 flex w-full flex-1 flex-col">
-        <header className="mx-auto flex w-full max-w-6xl shrink-0 items-center justify-between gap-6 px-6 pt-10 pb-6 md:px-8 md:pt-12 md:pb-8">
-          <div className="flex min-w-0 flex-1 items-center justify-start">
-            <div>
-              <div className="font-display text-2xl font-extrabold leading-none tracking-tight md:text-3xl lg:text-4xl">
-                Arpify
-              </div>
-              <div className="mt-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground md:text-sm md:tracking-widest">
-                Verified views marketplace
-              </div>
-            </div>
-          </div>
-          <div className="flex shrink-0 justify-end">
-            <button
-              onClick={() => {
-                signOut()
-                navigate('/auth', { replace: true })
-              }}
-              className="text-base font-medium text-muted-foreground transition-colors hover:text-foreground md:text-lg"
-            >
-              Sign out
-            </button>
-          </div>
-        </header>
-
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-12 pt-4">
+    <MarketingAuthShell>
+      <div className="flex w-full flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-12 pt-10 md:px-8 md:pt-12">
           <div className="flex w-full max-w-5xl flex-col items-center gap-8 md:gap-10">
-            <div className="w-full max-w-2xl text-center px-2">
+            <div className="w-full max-w-2xl px-2 text-center">
               <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-phc-gradient" />
                 Hi {user?.name || user?.email?.split('@')[0]}
               </p>
-              <h1 className="mt-4 font-display text-4xl md:text-5xl font-extrabold tracking-tight">
-                How will you use <span className="text-phc-gradient">Arpify</span>?
+              <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">
+                How will you use <span className="text-phc-gradient">VidU</span>?
               </h1>
-              <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
+              <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
                 Choose brand or creator to get started. Support can update your role if needed.
               </p>
             </div>
 
-            <div className="mx-auto w-full max-w-5xl grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
+            <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 md:grid-cols-2 md:gap-5">
               {ROLES.map(({ role, title, subtitle, description, bullets, Icon, tone }) => {
                 const isSelected = selected === role
                 return (
                   <button
                     key={role}
+                    type="button"
                     onClick={() => setSelected(role)}
-                    className={`group text-left rounded-3xl border p-6 transition-all bg-card ${
+                    className={`group rounded-3xl border bg-card p-6 text-left transition-all ${
                       isSelected
-                        ? 'border-blue-500 shadow-xl shadow-blue-500/20 ring-2 ring-blue-500/20 ring-offset-2 ring-offset-background'
+                        ? 'border-blue-500 shadow-xl shadow-blue-500/20 ring-2 ring-blue-500/20 ring-offset-2 ring-offset-page'
                         : 'border-border hover:border-foreground/20'
                     }`}
                     style={
@@ -167,7 +140,7 @@ export default function RoleSelectionPage() {
                 size="lg"
                 disabled={!selected || submitting}
                 onClick={() => void handleContinue()}
-                className="bg-phc-gradient text-white hover:opacity-90 px-8"
+                className="bg-phc-gradient px-8 text-white hover:opacity-90"
               >
                 {submitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -181,6 +154,6 @@ export default function RoleSelectionPage() {
           </div>
         </div>
       </div>
-    </div>
+    </MarketingAuthShell>
   )
 }
