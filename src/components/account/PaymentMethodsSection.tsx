@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Building2, Plus, Trash2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import { AddPaymentMethodDialog } from '@/components/account/AddPaymentMethodDialog'
@@ -21,36 +21,48 @@ function rowDetail(m: PaymentMethod): string {
 
 interface PaymentMethodsSectionProps {
   mode: 'creator' | 'brand'
+  /** Hide success/error toasts (e.g. during onboarding). */
+  suppressToasts?: boolean
 }
 
-export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
+export function PaymentMethodsSection({ mode, suppressToasts = false }: PaymentMethodsSectionProps) {
   const methods = usePaymentMethodsStore((s) => s.methods)
   const removeMethod = usePaymentMethodsStore((s) => s.removeMethod)
   const setDefault = usePaymentMethodsStore((s) => s.setDefault)
 
   const [addOpen, setAddOpen] = useState(false)
+  const [dialogPreset, setDialogPreset] = useState<'e-wallet' | 'local-bank' | null>(null)
   const [showAll, setShowAll] = useState(false)
+
+  const chooseCardClass =
+    'flex w-full cursor-pointer flex-col items-center gap-2 rounded-2xl border border-border bg-card p-5 text-left transition-colors hover:border-primary/50'
 
   const creator = mode === 'creator'
 
   function handleSetDefault(id: string) {
     setDefault(id)
-    toast.success(
-      creator
-        ? 'Default payment method updated.'
-        : 'Default refund account updated — refunds will be sent here.'
-    )
+    if (!suppressToasts) {
+      toast.success(
+        creator
+          ? 'Default payment method updated.'
+          : 'Default refund account updated — refunds will be sent here.'
+      )
+    }
   }
 
   function handleRemove(id: string, e: React.MouseEvent) {
     e.stopPropagation()
     const target = methods.find((m) => m.id === id)
     if (target?.isDefault) {
-      toast.error('Set another account as default before removing this one.')
+      if (!suppressToasts) {
+        toast.error('Set another account as default before removing this one.')
+      }
       return
     }
     removeMethod(id)
-    toast.success(creator ? 'Payment method removed.' : 'Refund receiving account removed.')
+    if (!suppressToasts) {
+      toast.success(creator ? 'Payment method removed.' : 'Refund receiving account removed.')
+    }
   }
 
   const overflowing = methods.length > VISIBLE_BEFORE_OVERFLOW && !showAll
@@ -60,19 +72,19 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-3">
       <div className="lg:col-span-1">
-        <h2 className="mb-2 font-display text-xl font-semibold ">
+        <h2 className="font-display text-xl font-semibold">
           {creator ? 'Payment methods' : 'Refund receiving account'}
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           {creator ? (
             <>
-              Add an e-wallet or bank account. Payouts are sent to your default method when a
-              campaign releases funds.
+              Add an e-wallet or bank account. Payouts go to your default method when a campaign
+              releases funds.
             </>
           ) : (
             <>
-              Add where we should send money when you refund available balance from a campaign —
-              bank or e-wallet.
+              Add a bank or e-wallet where we should send money when you refund available balance
+              from a campaign.
             </>
           )}
         </p>
@@ -80,15 +92,6 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
 
       <div className="space-y-4 lg:col-span-2">
         <div className="space-y-4">
-          <h3 className="hidden md:block text-base font-semibold text-foreground">
-            {creator ? 'Your payment methods' : 'Your accounts for refunds'}
-          </h3>
-          <p className="hidden md:block -mt-2 text-sm text-muted-foreground">
-            {creator
-              ? 'Tap a non-default method to make it the default for payouts. You can remove extra methods with the trash icon; the default cannot be deleted until another is default.'
-              : 'Tap a non-default row to make it the default for refunds. You can remove extra accounts with the trash icon; the default cannot be deleted until another is default.'}
-          </p>
-
           {methods.length > 0 ? (
             <>
               <ul className="space-y-2">
@@ -159,41 +162,53 @@ export function PaymentMethodsSection({ mode }: PaymentMethodsSectionProps) {
               <Button
                 type="button"
                 className="w-full bg-phc-gradient text-white"
-                onClick={() => setAddOpen(true)}
+                onClick={() => {
+                  setDialogPreset(null)
+                  setAddOpen(true)
+                }}
               >
                 <Plus className="h-4 w-4" />
                 {creator ? 'Add Another Payment Method' : 'Add Another Refund Account'}
               </Button>
             </>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => setAddOpen(true)}
-                className="mt-1 w-full cursor-pointer rounded-2xl border-2 border-dashed border-border bg-muted/30 p-8 text-center transition-colors hover:border-primary/40 hover:bg-muted/50"
+                onClick={() => {
+                  setDialogPreset('e-wallet')
+                  setAddOpen(true)
+                }}
+                className={chooseCardClass}
               >
-                <p className="text-sm font-semibold text-foreground">
-                  {creator ? 'No payment methods yet' : 'No refund receiving account yet'}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {creator
-                    ? 'Add a GCash, Maya, or bank account so we can send you payouts.'
-                    : 'Add a bank or e-wallet so we can send refunded campaign balance.'}
-                </p>
+                <Wallet className="h-10 w-10 text-primary" aria-hidden />
+                <span className="font-semibold">E-wallets</span>
               </button>
-              <Button
+              <button
                 type="button"
-                className="w-full bg-phc-gradient text-white"
-                onClick={() => setAddOpen(true)}
+                onClick={() => {
+                  setDialogPreset('local-bank')
+                  setAddOpen(true)
+                }}
+                className={chooseCardClass}
               >
-                <Plus className="h-4 w-4" />
-                {creator ? 'Choose Payment Method' : 'Add Receiving Account'}
-              </Button>
+                <Building2 className="h-10 w-10 text-primary" aria-hidden />
+                <span className="font-semibold">Bank</span>
+              </button>
             </div>
           )}
         </div>
 
-        <AddPaymentMethodDialog mode={mode} open={addOpen} onOpenChange={setAddOpen} />
+        <AddPaymentMethodDialog
+          mode={mode}
+          open={addOpen}
+          onOpenChange={(open) => {
+            setAddOpen(open)
+            if (!open) setDialogPreset(null)
+          }}
+          presetType={dialogPreset}
+          suppressToasts={suppressToasts}
+        />
       </div>
     </div>
   )

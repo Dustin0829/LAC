@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BadgeCheck, Facebook, Globe, Instagram } from 'lucide-react'
-import { toast } from 'sonner'
+import { ArrowRight, Facebook, Globe, Instagram } from 'lucide-react'
 import {
   OnboardingWizardShell,
 } from '@/components/onboarding/OnboardingWizardShell'
@@ -16,19 +15,12 @@ import { markProfileOnboardingComplete } from '@/lib/profileOnboarding'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useBrandProfileStore } from '@/lib/stores/brandProfileStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
+import { authFlowOutlineButtonClass, authFlowPrimaryButtonClass } from '@/lib/authFlowButtonClasses'
+import { cn } from '@/lib/utils'
 import type { Platform } from '@/lib/mockData'
 
-const CREATOR_STEP_TOTAL = 3
-const BRAND_STEP_TOTAL = 3
-
-function OnboardingPageWatermark({ light, accent }: { light: string; accent: string }) {
-  return (
-    <p className="max-w-full select-none whitespace-nowrap text-left font-display text-[clamp(3rem,9.5vw+0.75rem,8rem)] font-extrabold leading-tight tracking-tight">
-      <span className="text-foreground/9 dark:text-foreground/12">{light}</span>
-      <span className="text-primary/18 dark:text-primary/28">{accent}</span>
-    </p>
-  )
-}
+const CREATOR_STEP_TOTAL = 2
+const BRAND_STEP_TOTAL = 2
 
 function CreatorProfileOnboarding() {
   const navigate = useNavigate()
@@ -42,11 +34,9 @@ function CreatorProfileOnboarding() {
 
   function finish() {
     if (!userId) {
-      toast.error('Missing account id. Sign in again.')
       return
     }
     markProfileOnboardingComplete(userId, 'creator')
-    toast.success('Welcome to VidU.')
     navigate('/creator/dashboard', { replace: true })
   }
 
@@ -59,24 +49,51 @@ function CreatorProfileOnboarding() {
     setStep((s) => Math.max(1, s - 1))
   }
 
+  function goToNextStep() {
+    setStep((s) => Math.min(total, s + 1))
+  }
+
   const footer = (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <Button type="button" variant="outline" onClick={handleBack}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="lg"
+        className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
+        onClick={handleBack}
+      >
         Back
       </Button>
-      {step < total ? (
-        <Button
-          type="button"
-          className="bg-phc-gradient text-white"
-          onClick={() => setStep((s) => Math.min(total, s + 1))}
-        >
-          Next
-        </Button>
-      ) : (
-        <Button type="button" className="bg-phc-gradient text-white" onClick={finish}>
-          Save
-        </Button>
-      )}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {step < total ? (
+          <>
+            <Button type="button" variant="ghost" className="text-muted-foreground" onClick={goToNextStep}>
+              Skip
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              className={cn('h-[46px] min-w-[7.5rem] justify-between gap-2 px-5', authFlowPrimaryButtonClass)}
+              onClick={goToNextStep}
+            >
+              <span />
+              Next
+              <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className={cn('h-[46px] min-w-[7.5rem] px-6', authFlowPrimaryButtonClass)}
+            onClick={finish}
+          >
+            Save
+          </Button>
+        )}
+      </div>
     </div>
   )
 
@@ -89,38 +106,10 @@ function CreatorProfileOnboarding() {
         </>
       }
       footer={footer}
-      pageWatermark={
-        step === 1 ? (
-          <OnboardingPageWatermark light="Your " accent="Account" />
-        ) : step === 2 ? (
-          <OnboardingPageWatermark light="Connected " accent="Platforms" />
-        ) : (
-          <OnboardingPageWatermark light="Payout " accent="Methods" />
-        )
-      }
     >
       {step === 1 && (
         <div className="space-y-4">
-          <h2 className="font-display text-xl font-extrabold">Your account</h2>
-          <p className="text-sm text-muted-foreground">
-            We use this identity across payouts and campaigns. Update details later in Account.
-          </p>
-          <div className="rounded-2xl border border-border bg-muted/40 p-4">
-            <p className="font-semibold">{user?.name ?? 'Your name'}</p>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-blue-500 px-3 py-1 text-xs font-semibold text-white">
-              <BadgeCheck className="h-3 w-3" /> Creator
-            </p>
-          </div>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className="space-y-4">
           <h2 className="font-display text-xl font-extrabold">Connected platforms</h2>
-          <p className="text-sm text-muted-foreground">
-            TikTok and Meta/Facebook are connected once and reused for future content submissions.
-          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {platformLinks.map((link) => (
               <div key={link.platform} className="rounded-2xl border border-border bg-muted/40 p-4">
@@ -151,7 +140,7 @@ function CreatorProfileOnboarding() {
         </div>
       )}
 
-      {step === 3 && <PaymentMethodsSection mode="creator" />}
+      {step === 2 && <PaymentMethodsSection mode="creator" suppressToasts />}
     </OnboardingWizardShell>
   )
 }
@@ -176,7 +165,6 @@ function BrandProfileOnboarding() {
   function onLogoFile(files: FileList | null) {
     const file = files?.[0]
     if (!file || !file.type.startsWith('image/')) {
-      if (file) toast.error('Choose an image file for your logo.')
       return
     }
     const reader = new FileReader()
@@ -195,12 +183,10 @@ function BrandProfileOnboarding() {
 
   function finish() {
     if (!userId) {
-      toast.error('Missing account id. Sign in again.')
       return
     }
     persistProfile()
     markProfileOnboardingComplete(userId, 'brand')
-    toast.success('Brand profile saved.')
     navigate('/brand/dashboard', { replace: true })
   }
 
@@ -213,24 +199,51 @@ function BrandProfileOnboarding() {
     setStep((s) => Math.max(1, s - 1))
   }
 
+  function goToNextStep() {
+    setStep((s) => Math.min(total, s + 1))
+  }
+
   const footer = (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <Button type="button" variant="outline" onClick={handleBack}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="lg"
+        className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
+        onClick={handleBack}
+      >
         Back
       </Button>
-      {step < total ? (
-        <Button
-          type="button"
-          className="bg-phc-gradient text-white"
-          onClick={() => setStep((s) => Math.min(total, s + 1))}
-        >
-          Next
-        </Button>
-      ) : (
-        <Button type="button" className="bg-phc-gradient text-white" onClick={finish}>
-          Save
-        </Button>
-      )}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {step < total ? (
+          <>
+            <Button type="button" variant="ghost" className="text-muted-foreground" onClick={goToNextStep}>
+              Skip
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              className={cn('h-[46px] min-w-[7.5rem] justify-between gap-2 px-5', authFlowPrimaryButtonClass)}
+              onClick={goToNextStep}
+            >
+              <span />
+              Next
+              <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+            </Button>
+          </>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className={cn('h-[46px] min-w-[7.5rem] px-6', authFlowPrimaryButtonClass)}
+            onClick={finish}
+          >
+            Save
+          </Button>
+        )}
+      </div>
     </div>
   )
 
@@ -243,22 +256,10 @@ function BrandProfileOnboarding() {
         </>
       }
       footer={footer}
-      pageWatermark={
-        step === 1 ? (
-          <OnboardingPageWatermark light="Brand " accent="Basics" />
-        ) : step === 2 ? (
-          <OnboardingPageWatermark light="Social " accent="Links" />
-        ) : (
-          <OnboardingPageWatermark light="Profile " accent="Review" />
-        )
-      }
     >
       {step === 1 && (
         <div className="space-y-4">
           <h2 className="font-display text-xl font-extrabold">Brand basics</h2>
-          <p className="text-sm text-muted-foreground">
-            Optional — you can add or change this anytime in Account.
-          </p>
           <div className="space-y-2">
             <Label>Brand logo</Label>
             <div className="flex flex-wrap items-center gap-3">
@@ -289,7 +290,6 @@ function BrandProfileOnboarding() {
                 ) : null}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">PNG or JPG. Shown on your brand profile and in the app.</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="onb-brand-name">Brand name</Label>
@@ -307,7 +307,6 @@ function BrandProfileOnboarding() {
       {step === 2 && (
         <div className="space-y-4">
           <h2 className="font-display text-xl font-extrabold">Social links</h2>
-          <p className="text-sm text-muted-foreground">Optional — add what creators and partners should know.</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="onb-web" className="inline-flex items-center gap-2">
@@ -366,42 +365,6 @@ function BrandProfileOnboarding() {
               />
             </div>
           </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="space-y-4">
-          <h2 className="font-display text-xl font-extrabold">Review</h2>
-          <p className="text-sm text-muted-foreground">
-            Save stores this brand profile on your device for the MVP prototype.
-          </p>
-          <dl className="space-y-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
-            <div>
-              <dt className="text-muted-foreground">Logo</dt>
-              <dd className="mt-1">
-                {profile.logoDataUrl ? (
-                  <img
-                    src={profile.logoDataUrl}
-                    alt=""
-                    className="h-12 w-12 rounded-xl border border-border object-cover"
-                  />
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Brand</dt>
-              <dd className="font-semibold">{profile.brandName.trim() || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Links</dt>
-              <dd className="text-muted-foreground">
-                {[profile.website, profile.instagram, profile.facebook, profile.tiktok].filter(Boolean).length}{' '}
-                provided
-              </dd>
-            </div>
-          </dl>
         </div>
       )}
     </OnboardingWizardShell>

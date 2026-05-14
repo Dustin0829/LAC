@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { Building2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
@@ -36,6 +36,10 @@ export interface AddPaymentMethodDialogProps {
   onOpenChange: (open: boolean) => void
   /** Called after a method is saved (after the dialog begins closing). */
   onSuccess?: () => void
+  /** Hide success/error toasts (e.g. during onboarding). */
+  suppressToasts?: boolean
+  /** When set while opening, skip the type chooser and go straight to that flow. */
+  presetType?: 'e-wallet' | 'local-bank' | null
 }
 
 export function AddPaymentMethodDialog({
@@ -43,6 +47,8 @@ export function AddPaymentMethodDialog({
   open,
   onOpenChange,
   onSuccess,
+  suppressToasts = false,
+  presetType = null,
 }: AddPaymentMethodDialogProps) {
   const methods = usePaymentMethodsStore((s) => s.methods)
   const addMethod = usePaymentMethodsStore((s) => s.addMethod)
@@ -64,6 +70,15 @@ export function AddPaymentMethodDialog({
       setProvider('')
     }
   }, [methodType])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    if (presetType === 'e-wallet' || presetType === 'local-bank') {
+      setMethodType(presetType)
+    } else {
+      setMethodType(null)
+    }
+  }, [open, presetType])
 
   function resetModal() {
     setMethodType(null)
@@ -101,7 +116,9 @@ export function AddPaymentMethodDialog({
     if (methodType === 'e-wallet') {
       const mapped = EWL_LABEL_TO_TYPE[provider]
       if (!mapped) {
-        toast.error('Invalid e-wallet selection.')
+        if (!suppressToasts) {
+          toast.error('Invalid e-wallet selection.')
+        }
         return
       }
       const title = provider === 'PayMaya (Maya)' ? 'Maya' : provider
@@ -125,7 +142,9 @@ export function AddPaymentMethodDialog({
       })
     }
 
-    toast.success(creator ? 'Payment method added.' : 'Refund receiving account saved.')
+    if (!suppressToasts) {
+      toast.success(creator ? 'Payment method added.' : 'Refund receiving account saved.')
+    }
     closeModal()
     onSuccess?.()
   }

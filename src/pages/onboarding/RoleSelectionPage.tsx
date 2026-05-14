@@ -1,10 +1,19 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Sparkles, Building2, Check, Loader2, type LucideIcon } from 'lucide-react'
-import { toast } from 'sonner'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Sparkles,
+  Building2,
+  Check,
+  Loader2,
+  type LucideIcon,
+} from 'lucide-react'
 import { MarketingAuthShell } from '@/components/layout/MarketingAuthShell'
+import { authFlowOutlineButtonClass, authFlowPrimaryButtonClass } from '@/lib/authFlowButtonClasses'
 import { useAuthStore, type UserRole } from '@/lib/stores/authStore'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface RoleOption {
   role: UserRole
@@ -20,13 +29,13 @@ const ROLES: RoleOption[] = [
   {
     role: 'creator',
     title: 'Creator',
-    subtitle: 'I join campaigns, post content, and earn.',
+    subtitle: 'I join brand campaigns and get paid for my posts.',
     description:
-      'Browse active brand campaigns, connect TikTok or Facebook once, submit owned links, and track verified view earnings.',
+      'Find campaigns, hook up TikTok or Facebook once, add your posts, and watch your earnings add up.',
     bullets: [
-      'Browse campaigns before linking socials',
-      'Submit owned TikTok or Facebook content',
-      'Get paid after weekly brand release',
+      'Sign in with email or Google, then a quick profile',
+      'Browse campaigns and submit your own videos',
+      'Get paid when the brand sends your payout',
     ],
     Icon: Sparkles,
     tone: 'bg-primary text-white',
@@ -34,13 +43,13 @@ const ROLES: RoleOption[] = [
   {
     role: 'brand',
     title: 'Brand',
-    subtitle: 'I create campaigns and pay for views.',
+    subtitle: 'I run campaigns and pay creators for real views.',
     description:
-      'Draft campaigns, add funds, review submissions, and release weekly payouts after checking the summary.',
+      'Set up campaigns, add money, see who posted, and send payouts when the numbers look good—all from one place.',
     bullets: [
-      'Create, save, fund, and publish campaigns',
-      'Review content before they accrue',
-      'Release weekly payouts manually',
+      'Sign in with email or Google, then a quick profile',
+      'Create campaigns and set your budget',
+      'Review posts and send payouts when you are ready',
     ],
     Icon: Building2,
     tone: 'bg-zinc-100 text-zinc-950',
@@ -50,19 +59,18 @@ const ROLES: RoleOption[] = [
 export default function RoleSelectionPage() {
   const navigate = useNavigate()
   const setRole = useAuthStore((s) => s.setRole)
+  const signOut = useAuthStore((s) => s.signOut)
   const user = useAuthStore((s) => s.user)
   const [selected, setSelected] = useState<UserRole | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   async function handleContinue() {
     if (!selected) {
-      toast.error('Pick what you want to do on VidU.')
       return
     }
     setSubmitting(true)
     await new Promise((r) => setTimeout(r, 400))
     setRole(selected)
-    toast.success(selected === 'brand' ? 'Welcome, Brand!' : 'Welcome, Creator!')
     navigate(selected === 'brand' ? '/brand/dashboard' : '/dashboard', { replace: true })
   }
 
@@ -80,7 +88,8 @@ export default function RoleSelectionPage() {
                 How will you use <span className="text-phc-gradient">VidU</span>?
               </h1>
               <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-                Choose brand or creator to get started. Support can update your role if needed.
+                Pick how you&apos;ll use VidU. Next you&apos;ll fill out a short profile. Support can
+                change your role later if you need it.
               </p>
             </div>
 
@@ -94,7 +103,7 @@ export default function RoleSelectionPage() {
                     onClick={() => setSelected(role)}
                     className={`group rounded-3xl border bg-card p-6 text-left transition-all ${
                       isSelected
-                        ? 'border-blue-500 shadow-xl shadow-blue-500/20 ring-2 ring-blue-500/20 ring-offset-2 ring-offset-page'
+                        ? 'border-blue-500 shadow-xl shadow-blue-500/20 ring-2 ring-blue-500/20 ring-offset-2 ring-offset-[#f4f8fd]'
                         : 'border-border hover:border-foreground/20'
                     }`}
                     style={
@@ -135,18 +144,40 @@ export default function RoleSelectionPage() {
               })}
             </div>
 
-            <div className="flex w-full max-w-5xl justify-center px-1">
+            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
               <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
+                onClick={() => {
+                  signOut()
+                  navigate('/auth', { replace: true })
+                }}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
                 size="lg"
                 disabled={!selected || submitting}
                 onClick={() => void handleContinue()}
-                className="bg-phc-gradient px-8 text-white hover:opacity-90"
+                className={cn(
+                  'h-[46px] min-w-[180px] justify-between px-5',
+                  authFlowPrimaryButtonClass
+                )}
               >
                 {submitting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span className="mx-auto inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </span>
                 ) : (
                   <>
-                    Continue <ArrowRight className="ml-1 h-4 w-4" />
+                    <span />
+                    Continue
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
                   </>
                 )}
               </Button>
