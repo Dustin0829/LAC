@@ -6,87 +6,95 @@ alwaysApply: false
 
 Use this flow whenever you add or change REST endpoints consumed by the web app.
 
-## Folder layout (shared vs clipper vs brand)
+## Folder layout (`src/api/`)
 
-Split **by audience** so routes for the same role stay together. **Shared** = used by more than one role or auth/infrastructure.
+Default layout is **flat under each subtree** (types, services, queries at the **root** of that subtree). Add **subfolders by audience or product surface** only when the backend splits routes that way (e.g. `admin/` vs `app/`, public vs authenticated modules). **Cross-cutting** = auth, shared DTOs, infra, or anything consumed from more than one surface.
 
-| Location                    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/api/client.ts`         | Shared Axios instance (base URL, JSON, auth header, error unwrap). **Do not** add per-request `Authorization` — the client reads the JWT from the auth store.                                                                                                                                                                                                                                                                 |
-| `src/api/config.ts`         | Env-based URLs (`getAPIBaseURL`, Solana RPC, etc.).                                                                                                                                                                                                                                                                                                                                                                           |
-| `src/api/supabaseClient.ts` | Supabase browser client **only** for auth/session — not for general CRUD over app tables.                                                                                                                                                                                                                                                                                                                                     |
-| **`src/api/types/`**        | See [Types](#types-srcapitypes) below — `global.types.ts`, `auth.types.ts` at the **root** of `types/` = shared; role subfolders for clipper/brand-only DTOs.                                                                                                                                                                                                                                                                 |
-| **`src/api/schema/`**       | Shared **Zod** schemas for request bodies and wizard forms (e.g. `campaigns.schema.ts`). Keep validators next to related types under `types/` conceptually, but colocate Zod in **`schema/`** so pages import `@/api/schema/...` instead of defining schemas under `pages/`.                                                                                                                                                  |
-| **`src/api/services/`**     | HTTP service functions (no React). **Root files** (`auth.ts`, `campaigns.ts`, …) = shared; **`services/clipper/`**, **`services/brand/`** = role-specific modules (e.g. `clipper/dashboard.ts`).                                                                                                                                                                                                                              |
-| **`src/api/queries/`**      | TanStack Query hooks (queries **and** mutations). **`use-auth.ts`**, **`use-authenticated-query.ts`** at the **root** = shared; **`queries/clipper/`**, **`queries/brand/`** = role-specific hooks.                                                                                                                                                                                                                           |
-| **`src/lib/campaigns/`**    | Campaign-specific **pure** helpers (wizard **payload** → API body, **draft** localStorage parse/merge, **share** meta, payout/download-link helpers, mock/UI mappers from API payloads). Import types/schemas from `@/api/...`; do not put Zod definitions here. When adding helpers, **extend an existing file** in this folder when it fits (same domain: payload, form helpers, tiers, etc.) before creating a new module. |
+| Location                    | Purpose                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/api/client.ts`         | Shared HTTP client (Axios/fetch wrapper: base URL, JSON, auth header, error unwrap). **Do not** add per-request `Authorization` in random call sites if the client already reads the token from your auth layer.                                                                                                                                             |
+| `src/api/config.ts`         | Env-based URLs (API base, optional third-party endpoints).                                                                                                                                                                                                                                                                                                    |
+| `src/api/supabaseClient.ts` | **Optional** — only if this template uses Supabase for auth/session. Not for general CRUD over app tables unless you deliberately centralize there.                                                                                                                                                                                                          |
+| **`src/api/types/`**        | Request/response payload types. **Root** = shared (`global.types.ts`, `auth.types.ts`, cross-domain DTOs). **Subfolders** (e.g. `types/admin/`) = surface-specific types when routes are split that way.                                                                                                                                                       |
+| **`src/api/schema/`**       | Shared **Zod** schemas for request bodies and forms. Keep validators colocated with the API conceptually, but put Zod in **`schema/`** so pages import `@/api/schema/...` instead of defining schemas under `pages/`.                                                                                                                                          |
+| **`src/api/services/`**     | HTTP service functions (no React). **Root** = cross-cutting modules (`auth.ts`, `users.ts`, …). **Subfolders** = optional, match how the API is namespaced (`services/admin/dashboard.ts`, etc.).                                                                                                                                                            |
+| **`src/api/queries/`**      | TanStack Query hooks (queries **and** mutations). **Root** = shared utilities (`use-auth.ts`, `use-authenticated-query.ts`, …). **Subfolders** = optional, same split as services when surfaces differ.                                                                                                                                                      |
+| **`src/lib/<domain>/`**     | **Pure** domain helpers for that feature (payload mappers, draft/localStorage merge, share/meta helpers, UI mappers from API shapes). Import types/schemas from `@/api/...`; **do not** put Zod definitions here — keep those in `src/api/schema/`. Prefer **extending an existing file** in the same domain before adding a new module.                       |
 
 General UI, stores, and guards stay under `src/lib/`, `src/providers/`, `src/components/` — see `naming-conventions.mdc`.
 
 ## Standard pipeline (new backend feature)
 
-1. **Types** — Add payload/request types under `src/api/types/` (shared at root or under `types/clipper/` / `types/brand/`). Reuse `ApiSuccess<T>` from `src/api/types/global.types.ts` when the backend wraps responses as `{ success, message, data }`.
-2. **Service** — Add a thin function: `api.get` / `api.post` / …, return unwrapped `data` (or the agreed shape). Place the file under **`services/`** root if cross-role, or **`services/clipper/`** / **`services/brand/`** if the route is role-specific.
-3. **Queries** — Add `useQuery` / `useInfiniteQuery` / `useMutation` hooks under **`queries/`** root (shared) or **`queries/clipper/`** / **`queries/brand/`**. Export **stable query keys** for cache invalidation.
-4. **UI** — Import hooks from `@/api/queries/...` only. Prefer queries over calling services from components.
+1. **Types** — Add payload/request types under `src/api/types/` (root, or under a segment subfolder if that matches the API).
+2. **Service** — Add a thin function on the shared client; return unwrapped `data` (or the agreed shape). File lives under **`services/`** root or a segment subfolder if you use one.
+3. **Queries** — Add `useQuery` / `useInfiniteQuery` / `useMutation` under **`queries/`** (same root vs segment rule as services). Export **stable query keys** for cache invalidation.
+4. **UI** — Import hooks from `@/api/queries/...`. Prefer queries over calling services directly from components.
 
 ## Services (`src/api/services/`)
 
 - **Naming:** `camelCase` functions: `getX`, `postX`, `patchX`, `deleteX`.
-- **Imports:** `import api from '@/api/client'` or a relative path to `../client` / `../../client` depending on depth.
-- **No React** — services must stay framework-agnostic for tests and reuse.
-- **Paths:** Match the backend (e.g. `'/campaigns/:id'` — interpolate `id` in the function).
-- **Errors:** Rely on the Axios response interceptor in `client.ts` (rejects with `Error(message)`).
+- **Imports:** `import api from '@/api/client'` (or relative paths to `client` by depth).
+- **No React** — services stay framework-agnostic for tests and reuse.
+- **Paths:** Match the backend (e.g. `'/resources/:id'` — interpolate `id` in the function).
+- **Errors:** Rely on the client’s response handling (interceptor or wrapper) so call sites get consistent failures.
 
 ### Where to put a new service file
 
-| Backend route scope                                  | Service path example                                        |
-| ---------------------------------------------------- | ----------------------------------------------------------- |
-| Shared (e.g. `/auth/sync`, public `/campaigns` list) | `src/api/services/auth.ts`, `src/api/services/campaigns.ts` |
-| Clipper-only (e.g. `GET /clipper/dashboard`)         | `src/api/services/clipper/dashboard.ts`                     |
-| Brand-only (e.g. `GET /brand/dashboard`)             | `src/api/services/brand/dashboard.ts`                       |
+| Backend route scope                         | Service path example                          |
+| ------------------------------------------- | --------------------------------------------- |
+| Cross-cutting (e.g. `/auth/sync`, `/me`)    | `src/api/services/auth.ts`                    |
+| Namespaced by surface (e.g. `GET /admin/…`) | `src/api/services/admin/dashboard.ts`         |
+| Single-surface app                          | `src/api/services/<domain>.ts` at root        |
+
+## Async I/O and waterfalls
+
+Applies to **`src/api/services/`**, TanStack **`queryFn`** / mutation functions, and any async code that composes network or disk I/O.
+
+- **Parallelize independent work** — When one result does not depend on another, run calls concurrently with `Promise.all([...])` (or `Promise.allSettled` when partial failure is acceptable). A chain of sequential `await`s stacks full round-trip latency for each step.
+- **Defer `await` to the branch that needs it** — On early returns (validation, not found, feature off), avoid awaiting work those paths never use.
+- **Start independent promises before blocking** — Kick off work that can begin immediately; only `await` when you need the value to choose the next step. If `auth()` is required for `fetchData(userId)` but `fetchConfig()` does not need the session, start `auth()` and `fetchConfig()` without awaiting `auth()` first, then await the session and parallelize what still depends only on known inputs.
 
 ## Schemas (`src/api/schema/`)
 
-- **Zod** — Form and API validation schemas, `z.infer` types, and `superRefine` / resolvers only. **Defaults**, **placeholders**, **field-id mapping**, **submit helpers**, **draft merge**, **payload builders**, and **OG/share** helpers live under **`src/lib/campaigns/`**.
-- **Imports** — Pages and components may import from `@/api/schema/...`; do not re-export schema from `pages/` as the source of truth.
+- **Zod** — Form and API validation schemas, `z.infer` types, and `superRefine` / resolvers. **Defaults**, **placeholders**, **field-id mapping**, **submit helpers**, **draft merge**, **payload builders**, and **share/OG helpers** live under **`src/lib/<domain>/`** (not in `schema/`).
+- **Imports** — Pages and components import from `@/api/schema/...`; do not re-export schema from `pages/` as the source of truth.
 
 ## Types (`src/api/types/`)
 
-- **Shared** — Files at **`types/` root**: `global.types.ts`, `auth.types.ts`, and cross-cutting domain types (e.g. `campaign.types.ts`) until split intentionally.
-- **Clipper** — `src/api/types/clipper/<feature>.types.ts` (e.g. `dashboard.types.ts`).
-- **Brand** — `src/api/types/brand/<feature>.types.ts`.
-- Export request bodies and response **payload** types (what lives inside `data`).
-- Shared wrappers: `ApiSuccess<T>`, `ApiErrorBody` in `global.types.ts`.
+- **Root** — `global.types.ts`, `auth.types.ts`, and shared domain types until you split intentionally.
+- **Segment subfolders** — e.g. `src/api/types/admin/<feature>.types.ts` when the API and types are surface-specific.
+- Export request bodies and response **payload** types (what lives inside `data` when wrapped).
+- Shared wrappers: `ApiSuccess<T>`, `ApiErrorBody` in `global.types.ts` (or equivalent names your template uses).
 
 ## Queries (`src/api/queries/`)
 
-- **Shared** — Root files: `use-auth.ts`, `use-authenticated-query.ts` (no role in the filename; used by all roles).
-- **Clipper** — `src/api/queries/clipper/use-<feature>.ts` (e.g. `use-dashboard.ts` → exports `useClipperDashboard`).
-- **Brand** — `src/api/queries/brand/use-<feature>.ts` (e.g. `use-dashboard.ts` → exports `useBrandDashboard`). **Brand campaign** list + all related mutations (`useCreateBrandCampaignMutation`, `usePatchBrandCampaignMutation`, fund/list/top-up, etc.) live in **`use-campaigns.ts` only** — do not add split files like `use-create-brand-campaign.ts`.
-- **Exports:** Hooks use camelCase with a `use` prefix; for role-specific hooks, include the role in the **hook name** (`useClipperDashboard`, `useBrandDashboard`).
-- **Query keys:** Colocate key factories with the hook file; use them in `queryKey` and inside the same module for `queryClient.invalidateQueries` / optimistic updates after mutations.
-- **Auth-gated queries:** Use **`useAuthenticatedQuery`** from `src/api/queries/use-authenticated-query.ts` (requires JWT + optional `enabled`). If the query key must include the token (e.g. `authMeKey(token)`), call **`useAuthAccessToken()`** in that hook alongside `useAuthenticatedQuery`.
-- **Mutations:** Define **`useMutation`** in **`src/api/queries/**`** (not in pages or generic components). Use `mutationKey`where helpful;`retry: false` for auth or non-idempotent actions unless product says otherwise. **`useQueryClient`**, **`cancelQueries`**, **`setQueryData`**, and **`invalidateQueries`** belong **inside** those query hooks — not in **`src/pages/`** or **`src/components/`**. If the UI needs a side effect (e.g. open a modal on a specific error), expose it via **hook options\*\* (callbacks) or return values from the hook, and keep the page thin.
+- **Root** — Shared hooks: auth, `use-authenticated-query`, any hook used across surfaces.
+- **Segment subfolders** — Same naming as services; exported hook names should stay **clear at call sites** (prefix or suffix the surface in the hook name when ambiguity would hurt, e.g. `useAdminDashboard` vs `useAppDashboard`).
+- **Related mutations** — Keep mutations for the same resource/domain in **one module** when they share keys and invalidation (avoid unnecessary file splits).
+- **Exports:** camelCase, `use` prefix; name by **intent**, not `useFooMutation` unless your team standard says otherwise.
+- **Query keys:** Colocate key factories with the hook file; use them in `queryKey` and for `invalidateQueries` / optimistic updates.
+- **Auth-gated queries:** Use your template’s **`useAuthenticatedQuery`** (or equivalent). If the query key must include the token, read the token from the same auth hook you use for the client.
+- **Mutations:** Define **`useMutation`** in **`src/api/queries/**`** (not in pages or generic components). Use `mutationKey` where helpful; `retry: false` for auth or non-idempotent actions unless product says otherwise. **`useQueryClient`**, **`cancelQueries`**, **`setQueryData`**, and **`invalidateQueries`** belong **inside** those query hooks — not in **`src/pages/`** or **`src/components/`**. For UI side effects (e.g. modal on error), use **hook options** (callbacks) or return values; keep pages thin.
 
 ## Pages & components
 
 - Prefer **`const { data, isPending, error } = useX()`** from `@/api/queries/...` for server state.
-- **Do not** call **`useQueryClient()`** in **`src/pages/`** or **`src/components/`** — all cache reads/writes for TanStack Query live in **`src/api/queries/**`** (inside `useQuery`, `useMutation`, or small helpers used only from those hooks).
-- Use **`useMutation`** from **`@/api/queries/...`** for server actions; toasts and query invalidation live in the hook unless product asks for page-local behavior (then use optional callbacks passed into the hook).
+- **Do not** call **`useQueryClient()`** in **`src/pages/`** or **`src/components/`** — cache reads/writes for TanStack Query live in **`src/api/queries/**`**.
+- Use **`useMutation`** from **`@/api/queries/...`** for server actions; toasts and invalidation live in the hook unless you need page-local behavior (optional callbacks on the hook).
 - Local UI state stays in component state or `src/lib/hooks/` — not in services.
-- **Page-only pure helpers** — If a helper stays in a page file, put it **below** the exported page component (see `naming-conventions.mdc`). Reusable campaign logic goes to **`src/lib/campaigns/`**, preferring existing files over new ones.
+- **Page-only pure helpers** — If a helper stays in a page file, put it **below** the exported page component (see `naming-conventions.mdc`). Reusable domain logic goes under **`src/lib/<domain>/`**, preferring existing files.
 
 ## Exceptions & legacy
 
-- **`src/api/services/campaigns.ts`** — mock/store blend for the hackathon UI; treat as **shared** service. When replacing with real HTTP, keep exports stable or migrate incrementally.
-- **Zustand** — Browser/app-side state that is not server cache (auth mirror, UI flags). Do not mirror server lists when TanStack Query can own them.
+- Mock or stub services during early UI work should live under **`src/api/services/`** with a clear name; when switching to real HTTP, keep exports stable or migrate incrementally.
+- **Zustand** — Browser/app state that is not server cache (auth mirror, UI flags). Do not mirror server lists when TanStack Query can own them — see `react-state-zustand.mdc`.
 
 ## Checklist before opening a PR
 
-- [ ] New endpoints have types under `src/api/types/` (correct **shared** root vs **`clipper/`** / **`brand/`** subfolder); shared Zod schemas live under **`src/api/schema/`** when the UI or services need validation beyond TypeScript; campaign wizard mappers and share meta live under **`src/lib/{feature}/`**.
-- [ ] Service functions live under `src/api/services/` (shared root or **`clipper/`** / **`brand/`**) and use `api` from `client.ts`.
-- [ ] TanStack Query hooks live under `src/api/queries/` (shared root or **`clipper/`** / **`brand/`**) and are what pages/components import.
-- [ ] Pages and **`src/components/`** do not use **`useQueryClient`**; mutations that touch the cache are defined in **`src/api/queries/**`\*\*.
+- [ ] New endpoints have types under `src/api/types/` (root vs segment subfolder matches the API); Zod lives under **`src/api/schema/`** when the UI needs runtime validation; mappers and non-schema helpers live under **`src/lib/<domain>/`**.
+- [ ] Service functions live under `src/api/services/` and use the shared **`client`**.
+- [ ] TanStack Query hooks live under `src/api/queries/` and are what pages/components import.
+- [ ] Pages and **`src/components/`** do not use **`useQueryClient`** for domain cache logic; mutations that touch the cache are defined in **`src/api/queries/**`**.
 - [ ] Query keys are exported and reusable for invalidation.
-- [ ] No secrets in the frontend; only `VITE_*` env vars as documented in `.env.example`.
+- [ ] Independent async work in services or `queryFn` is not serialized into avoidable waterfalls; early-return paths do not await unused I/O.
+- [ ] No secrets in the frontend; only `VITE_*` (or your bundler’s) env vars as documented in `.env.example`.

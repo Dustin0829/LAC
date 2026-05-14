@@ -9,111 +9,108 @@ Follow these conventions for all new and renamed files and constants.
 ## Pages, Layouts & Components (`.tsx`)
 
 - **Convention:** PascalCase
-- **Examples:** `LoginPage.tsx`, `BrandLayout.tsx`, `AppSidebar.tsx`, `RejectApplicationModal.tsx`, `RootLayout.tsx`
+- **Examples:** `LoginPage.tsx`, `DashboardLayout.tsx`, `AppSidebar.tsx`, `RootLayout.tsx`
 - **Exception:** Do not rename files under `src/components/ui/` — they follow shadcn’s default (e.g. `button.tsx`, `dropdown-menu.tsx`). New components outside `components/ui` use PascalCase.
+- **Imports (bundle size)** — Prefer **direct imports** from the implementing module over heavy **barrel** entry points (`export *` / large `index` re-exports) when a package pulls in a huge dependency graph (common with icon packs, some UI kits, `lodash`, `date-fns` barrel entries). Keeps dev cold start and production chunks leaner; use your bundler’s import optimization if it offers one.
+- **No nested component definitions** — Do not declare React components inside another component’s function body. That creates a new component type every render, so React **remounts** children (lost input focus, repeated effects, broken animations). Hoist child components to module scope and pass data via props (or `useCallback` + stable children only when appropriate).
 
 ## Hooks (custom hooks & TanStack Query hooks)
 
 ### App / UI hooks
 
 - **File name:** kebab-case after the `use-` prefix: `use-<name>.ts`
-- **Examples:** `use-mock-data.ts`, `use-auth.ts`
+- **Examples:** `use-debounce.ts`, `use-auth.ts`
 - **Location:** `src/lib/hooks/`
 
 ### API query hooks (`src/api/queries/`)
 
-| Scope                        | Folder             | File name          | Exported hook (examples)                        |
-| ---------------------------- | ------------------ | ------------------ | ----------------------------------------------- |
-| **Shared** (auth, utilities) | `queries/` root    | `use-<feature>.ts` | `useAuthSync`, `useAuthMe`                      |
-| **Clipper**                  | `queries/clipper/` | `use-<feature>.ts` | `useClipperDashboard` (from `use-dashboard.ts`) |
-| **Brand**                    | `queries/brand/`   | `use-<feature>.ts` | `useBrandDashboard` (from `use-dashboard.ts`)   |
+| Scope                              | Folder                          | File name          | Exported hook (examples)                    |
+| ---------------------------------- | ------------------------------- | ------------------ | ------------------------------------------- |
+| **Cross-cutting** (auth, utils)    | `queries/` root                 | `use-<feature>.ts` | `useAuthSync`, `useAuthMe`                  |
+| **Surface-specific** (if you use segments) | `queries/<segment>/`     | `use-<feature>.ts` | `useAdminDashboard` (from `use-dashboard.ts`) |
 
 Rules:
 
-- **File name:** always `use-<kebab-case-feature>.ts` (e.g. `use-dashboard.ts`, `use-auth.ts`). Do **not** repeat the role in the file name when the file already lives under `clipper/` or `brand/`.
-- **Exported hook:** camelCase, `use` prefix. Include **role** in the hook name when it is role-specific (`useClipperDashboard`, `useBrandCampaigns`) so call sites stay explicit.
+- **File name:** always `use-<kebab-case-feature>.ts` (e.g. `use-dashboard.ts`, `use-auth.ts`). Do **not** repeat the segment name in the file name when the file already lives under that segment folder.
+- **Exported hook:** camelCase, `use` prefix. Include **surface or domain** in the hook name when ambiguity would hurt (`useAdminOrders` vs `useStorefrontOrders`).
 - Do **not** suffix with the underlying TanStack API (`Mutation`, `Query`) — name by intent (`useAuthSync`, not `useAuthSyncMutation`).
 
 ## API services (`src/api/services/`)
 
-| Scope   | Example path                                | File name                                                    |
-| ------- | ------------------------------------------- | ------------------------------------------------------------ |
-| Shared  | `services/auth.ts`, `services/campaigns.ts` | `<domain>.ts` or existing name                               |
-| Clipper | `services/clipper/dashboard.ts`             | kebab-case or short domain: `dashboard.ts`, `submissions.ts` |
-| Brand   | `services/brand/dashboard.ts`               | same as clipper                                              |
+| Scope              | Example path                                | File name                          |
+| ------------------ | ------------------------------------------- | ---------------------------------- |
+| Cross-cutting      | `services/auth.ts`, `services/users.ts`     | `<domain>.ts` or existing name     |
+| Segment (optional) | `services/admin/reports.ts`                 | kebab-case or short domain name    |
 
-- **Functions:** `camelCase` — `getClipperDashboard`, `postAuthSync`.
-- Do **not** prefix the filename with `clipper-` or `brand-` when it already sits under `clipper/` or `brand/`.
+- **Functions:** `camelCase` — `getDashboard`, `postAuthSync`.
+- Do **not** prefix the filename with the segment when it already sits under `services/<segment>/`.
 
 ## API types (`src/api/types/`)
 
-| Scope   | Example path                                                              |
-| ------- | ------------------------------------------------------------------------- |
-| Shared  | `types/global.types.ts`, `types/auth.types.ts`, `types/campaign.types.ts` |
-| Clipper | `types/clipper/dashboard.types.ts`                                        |
-| Brand   | `types/brand/profile.types.ts`                                            |
+| Scope              | Example path                                           |
+| ------------------ | ------------------------------------------------------ |
+| Cross-cutting      | `types/global.types.ts`, `types/auth.types.ts`       |
+| Segment (optional) | `types/admin/reports.types.ts`                         |
 
-- **File name:** `<feature>.types.ts` (kebab-case or camelCase **feature** segment; be consistent with existing files in the same folder).
-- **Type names:** PascalCase — `ClipperDashboardData`, `AuthMeData`.
+- **File name:** `<feature>.types.ts` (kebab-case or camelCase **feature** segment; stay consistent within the folder).
+- **Type names:** PascalCase — `DashboardData`, `AuthMeData`.
 
 ## Type-only modules (non-API)
 
 - **File name:** `<name>.types.ts`
-- **Location:** e.g. colocated types elsewhere — follow the same `*.types.ts` pattern.
+- **Location:** colocated types elsewhere — follow the same `*.types.ts` pattern.
 
 ## Utility & Logic Files (`.ts`)
 
 - **Convention:** camelCase
-- **Examples:** `mockData.ts`, `walletAddress.ts`, `paymentMethodIcons.ts`, `authStore.ts`
-- **Applies to:** utils (under `src/lib/utils/`: e.g. `cn.ts`, `currency.ts`, `date.ts`, `displayName.ts`, `isLikelyHttpUrl.ts`), stores, validations (under `src/lib/validations/`), constants (under `src/lib/constants/`: e.g. `paymentMethodIcons.ts`), domain helper folders (e.g. **`src/lib/campaigns/`** — camelCase filenames like `createCampaignPayload.ts`), and other non-component modules (excluding hooks and `*.types.ts` files above)
+- **Examples:** `mockData.ts`, `authStore.ts`, `formatCurrency.ts`
+- **Applies to:** utils (`src/lib/utils/`: e.g. `cn.ts`, `date.ts`), stores, validations (`src/lib/validations/`), constants (`src/lib/constants/`), **domain helper folders** (`src/lib/<domain>/` — camelCase filenames like `buildCheckoutPayload.ts`), and other non-component modules (excluding hooks and `*.types.ts` files above)
 
 ## Providers (React context / app wrappers)
 
-- **Location:** `src/providers/` (e.g. auth, wallet) or `src/lib/providers/` (e.g. TanStack Query)
+- **Location:** `src/providers/` or `src/lib/providers/` (e.g. TanStack Query)
 - **Convention:** PascalCase for component files (e.g. `AuthProvider.tsx`, `QueryProvider.tsx`)
 
 ## Constants
 
 - **In code:** UPPER_SNAKE_CASE (e.g. `MAX_RETRIES`, `DEFAULT_PAGE_SIZE`)
-- **Location:** Constant data and config live under `src/lib/constants/` (e.g. `paymentMethodIcons.ts`); file names stay camelCase
+- **Location:** `src/lib/constants/`; file names stay camelCase
 
 ## Route guards / layout-level components
 
-- **Location:** `src/components/guards/` (e.g. `ProtectedRoute.tsx` — use `index`, `guestOnly`, or `requiredRole` props).
+- **Location:** `src/components/guards/` (e.g. `ProtectedRoute.tsx` — props like `guestOnly` or `requiredRole` as your app needs)
 
 ## Page structure (colocate page-specific components)
 
-- Prefer **page folder + index**: `pages/<role>/<PageName>/index.tsx` plus any page-specific components in the same folder (e.g. `ApplicationStatusBadge.tsx`, `RejectApplicationModal.tsx` inside `pages/brand/ApplicationsPage/`). This avoids putting page-only components in `src/components/`.
-- **One folder per URL area** when routes share a base path — do not split list vs detail vs modals into sibling folders (`campaign-details/`, `create-campaign/`, …) for the same feature.
-  - **Brand** — **`pages/brand/campaigns/`**: `CampaignsPage.tsx`, `CreateCampaignPage.tsx`, `CampaignDetailPage.tsx`, page-specific pieces colocated in the same folder where practical.
-  - **Clipper** — **`pages/clipper/campaigns/`**: `CampaignsPage.tsx`, `CampaignDetailPage.tsx`, colocated pieces (`SubmitReportModal.tsx`, `ShareCampaignModal.tsx`, …). Same pattern: one folder per `/campaigns` route tree.
-- **Page-only helpers** — Pure functions that are **not** reused elsewhere (and are unlikely to be) may stay in the page file. Put them **below** the default-exported page component, using `function helperName() { ... }` so hoisting stays safe. Types used only by that page usually sit **above** the component. Logic that is **reusable** across routes or roles belongs under **`src/lib/campaigns/`** (or another domain folder under `src/lib/`); **prefer extending an existing related file** (e.g. `createCampaignPayload.ts`, `createCampaignFormHelpers.ts`, `createCampaignPayoutTiers.ts`) before adding a new `lib/campaigns/*.ts` module.
+- Prefer **page folder + index**: `pages/<area>/<PageName>/index.tsx` plus page-specific components in the same folder. That keeps page-only UI out of `src/components/`.
+- **One folder per URL area** when routes share a base path — do not split list vs detail vs modals into many sibling folders for the same feature (e.g. one `pages/app/orders/` tree with `OrdersPage.tsx`, `OrderDetailPage.tsx`, colocated modals).
+- **Page-only helpers** — Pure functions unlikely to be reused may stay in the page file **below** the default export, using `function helperName() { ... }`. Types used only by that page usually sit **above** the component. **Reusable** logic belongs under **`src/lib/<domain>/`**; **prefer extending an existing related file** before adding a new `lib/<domain>/*.ts` module.
 
 ## Folders
 
-- Use **lowercase** for single words: `brand`, `clipper`, `utils`, `hooks`
-- Use **kebab-case** for multi-word folders: `payment-methods`, `mock-data` (optional; lowercase is also acceptable)
-- Under `src/api/`, use fixed segments **`clipper`** and **`brand`** (not `clippers` / `brands`).
+- Use **lowercase** for single words: `admin`, `app`, `utils`, `hooks`
+- Use **kebab-case** for multi-word folders when helpful (`payment-methods`, `mock-data`)
+- Under `src/api/`, **segment folder names** should match your API and stay **consistent** (singular vs plural — pick one convention per project).
 
 ## Assets (images, icons, SVGs)
 
 - **Convention:** kebab-case
-- **Examples:** `security-bank.svg`, `bdo.svg`, `maribank.png`
-- **Applies to:** Files under `assets/` (e.g. `assets/banks/`, `assets/crypto/`, `assets/devices/`, `assets/e-wallets/`)
+- **Examples:** `logo-dark.svg`, `hero-placeholder.png`
+- **Applies to:** Files under `assets/` (group by topic: `assets/icons/`, etc.)
 
 ## Quick Reference
 
-| Type                                                       | Convention                                                | Example                      |
-| ---------------------------------------------------------- | --------------------------------------------------------- | ---------------------------- |
-| Page / layout / component (`.tsx`, except `components/ui`) | PascalCase                                                | `CampaignsPage.tsx`          |
-| API query file (shared)                                    | `use-<kebab>.ts` at `api/queries/`                        | `use-auth.ts`                |
-| API query file (clipper/brand)                             | `use-<kebab>.ts` under `api/queries/clipper/` or `brand/` | `clipper/use-dashboard.ts`   |
-| API service (clipper/brand)                                | `<domain>.ts` under `api/services/clipper/`               | `clipper/dashboard.ts`       |
-| API types (clipper/brand)                                  | `<feature>.types.ts` under `api/types/clipper/`           | `clipper/dashboard.types.ts` |
-| Hook files (app, `lib/hooks`)                              | `use-<kebab>.ts`                                          | `use-auth.ts`                |
-| Type modules                                               | `<name>.types.ts`                                         | `auth.types.ts`              |
-| Utility / logic (`.ts`)                                    | camelCase                                                 | `mockData.ts`                |
-| Domain helpers (`lib/campaigns/`, etc.)                    | camelCase                                                 | `createCampaignPayload.ts`   |
-| Constants                                                  | UPPER_SNAKE_CASE                                          | `MAX_RETRIES`                |
-| Folders                                                    | lowercase / kebab-case                                    | `brand`, `clipper`           |
-| Assets (images, icons)                                     | kebab-case                                                | `security-bank.svg`          |
+| Type                                                       | Convention                                      | Example                    |
+| ---------------------------------------------------------- | ----------------------------------------------- | -------------------------- |
+| Page / layout / component (`.tsx`, except `components/ui`) | PascalCase                                      | `OrdersPage.tsx`           |
+| API query file (cross-cutting)                             | `use-<kebab>.ts` at `api/queries/`               | `use-auth.ts`              |
+| API query file (segment)                                   | `use-<kebab>.ts` under `api/queries/<segment>/` | `admin/use-dashboard.ts`   |
+| API service (segment)                                      | `<domain>.ts` under `api/services/<segment>/`   | `admin/reports.ts`         |
+| API types (segment)                                        | `<feature>.types.ts` under `api/types/<segment>/` | `admin/reports.types.ts` |
+| Hook files (app, `lib/hooks`)                              | `use-<kebab>.ts`                                | `use-auth.ts`              |
+| Type modules                                               | `<name>.types.ts`                               | `auth.types.ts`            |
+| Utility / logic (`.ts`)                                    | camelCase                                       | `mockData.ts`              |
+| Domain helpers (`lib/<domain>/`)                           | camelCase                                       | `buildCheckoutPayload.ts`  |
+| Constants                                                  | UPPER_SNAKE_CASE                                | `MAX_RETRIES`              |
+| Folders                                                    | lowercase / kebab-case                          | `admin`, `payment-methods` |
+| Assets (images, icons)                                     | kebab-case                                      | `logo-dark.svg`            |

@@ -22,10 +22,24 @@ Use Zustand when:
 
 - **Multiple components or hooks** need the same state and prop-drilling would be brittle (sidebars, headers, guards, cross-route consumers).
 - You need **coordinated updates** across modules (auth session, role-gated UI, cross-feature toggles).
-- **Page- or entity-specific UI should persist across navigation** within the same session—for example returning to a campaign detail screen and restoring filters, draft edits, or panel state keyed by `campaignId`. Prefer **namespaced keys** (`record[id]`) instead of one flat blob when multiple entities exist.
-- **Draft / optimistic overlays** that must merge with server data and survive until save or invalidate (see `campaignEditsStore`).
+- **Page- or entity-specific UI should persist across navigation** within the same session—for example returning to a detail screen and restoring filters, draft edits, or panel state keyed by `entityId`. Prefer **namespaced keys** (`record[id]`) instead of one flat blob when multiple entities exist.
+- **Draft / optimistic overlays** that must merge with server data and survive until save or invalidate (e.g. `entityDraftStore` or a namespaced slice per resource).
 
-Avoid growing a single god-store; split domains (`authStore`, `campaignEditsStore`, `submissionOverridesStore`, etc.) with focused actions.
+Avoid growing a single god-store; split domains (`authStore`, `uiLayoutStore`, etc.) with focused actions.
+
+## Derived state (prefer render, not effects)
+
+- If a value can be computed from current props or state, **derive it during render** instead of storing it in state and syncing with `useEffect`. That avoids extra renders and state drifting out of sync with sources of truth.
+- Do not set state in an effect **only** because props changed when a derived expression, `key` reset, or lifting state fixes the model. See [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect).
+
+## `useState` patterns
+
+- **Lazy initialization** — For expensive or I/O-heavy initial values (`JSON.parse(localStorage.getItem(...))`, building an index), use `useState(() => initialValue)` so the initializer runs once, not every render. Omit the function form for cheap primitives and literals.
+- **Functional updates** — When the next state depends on the previous value, use `setCount(c => c + 1)` / `setItems(curr => [...curr, item])`. That avoids stale closures and keeps `useCallback` dependency lists minimal where updates are batched from async code or child callbacks.
+
+## Effects vs event handlers
+
+- If a side effect is **directly triggered by a user action** (submit, click), run it in that **event handler**. Avoid modeling it as “set a flag → `useEffect` runs the work,” which re-runs on unrelated dependency changes and can duplicate work. See [Removing effect dependencies](https://react.dev/learn/removing-effect-dependencies#should-this-code-move-to-an-event-handler).
 
 ## Do not use Zustand for
 
