@@ -6,6 +6,7 @@ import BrandLayout from './layouts/BrandLayout'
 
 import AuthPage from './pages/auth/AuthPage'
 import RoleSelectionPage from './pages/onboarding/RoleSelectionPage'
+import ProfileOnboardingPage from './pages/onboarding/ProfileOnboardingPage'
 
 import CreatorDashboardPage from './pages/creator/dashboard/DashboardPage'
 import CreatorCampaignsPage from './pages/creator/campaigns/CampaignsPage'
@@ -40,6 +41,15 @@ function App() {
           element={
             <ProtectedRoute requireAuth>
               <RoleSelectionPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="onboarding/profile"
+          element={
+            <ProtectedRoute profileSetup>
+              <ProfileOnboardingPage />
             </ProtectedRoute>
           }
         />

@@ -19,8 +19,22 @@ interface AuthState {
   hydrate: () => void
 }
 
-const USER_KEY = 'arpify.user'
-const ROLE_KEY = 'arpify.role'
+const USER_KEY = 'vidu.user'
+const ROLE_KEY = 'vidu.role'
+const LEGACY_USER_KEY = 'arpify.user'
+const LEGACY_ROLE_KEY = 'arpify.role'
+
+function migrateLegacyAuthKeys(): void {
+  if (typeof window === 'undefined') return
+  if (!localStorage.getItem(USER_KEY) && localStorage.getItem(LEGACY_USER_KEY)) {
+    localStorage.setItem(USER_KEY, localStorage.getItem(LEGACY_USER_KEY)!)
+    localStorage.removeItem(LEGACY_USER_KEY)
+  }
+  if (!localStorage.getItem(ROLE_KEY) && localStorage.getItem(LEGACY_ROLE_KEY)) {
+    localStorage.setItem(ROLE_KEY, localStorage.getItem(LEGACY_ROLE_KEY)!)
+    localStorage.removeItem(LEGACY_ROLE_KEY)
+  }
+}
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
@@ -42,6 +56,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (typeof window !== 'undefined') {
       localStorage.removeItem(USER_KEY)
       localStorage.removeItem(ROLE_KEY)
+      localStorage.removeItem(LEGACY_USER_KEY)
+      localStorage.removeItem(LEGACY_ROLE_KEY)
     }
     set({ user: null, role: null })
   },
@@ -51,6 +67,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       return
     }
     try {
+      migrateLegacyAuthKeys()
       const userRaw = localStorage.getItem(USER_KEY)
       const role = localStorage.getItem(ROLE_KEY) as UserRole | null
       const user = userRaw ? (JSON.parse(userRaw) as AuthUser) : null

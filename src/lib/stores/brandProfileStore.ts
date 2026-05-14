@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
-const STORAGE_KEY = 'arpify.brandProfile'
+const STORAGE_KEY = 'vidu.brandProfile'
+const LEGACY_STORAGE_KEY = 'arpify.brandProfile'
 
 export type BrandProfile = {
   brandName: string
@@ -25,7 +26,14 @@ function emptyProfile(): BrandProfile {
 function readStored(): BrandProfile | null {
   if (typeof window === 'undefined') return null
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    let raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw && localStorage.getItem(LEGACY_STORAGE_KEY)) {
+      raw = localStorage.getItem(LEGACY_STORAGE_KEY)
+      if (raw) {
+        localStorage.setItem(STORAGE_KEY, raw)
+        localStorage.removeItem(LEGACY_STORAGE_KEY)
+      }
+    }
     if (!raw) return null
     const p = JSON.parse(raw) as Partial<BrandProfile>
     return {

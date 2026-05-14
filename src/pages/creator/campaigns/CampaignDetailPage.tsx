@@ -17,7 +17,6 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react'
-import { toast } from 'sonner'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { useContentStore } from '@/lib/stores/contentStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
@@ -168,10 +167,7 @@ export default function CreatorCampaignDetailPage() {
 
   function handleConnectOnly() {
     connectPlatform(platform)
-    toast.success(`${PLATFORM_LABEL[platform]} connected`, {
-      description: 'Paste your content link below.',
-    })
-  }
+      }
 
   /** Debounced validation only while the modal is open (avoid background churn on the detail page). */
   useEffect(() => {
@@ -205,8 +201,7 @@ export default function CreatorCampaignDetailPage() {
           if (gen !== validationGenRef.current) return
           setLinkPhase('idle')
           setSnapshot(null)
-          toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
-          return
+                    return
         }
 
         setLinkPhase('validating')
@@ -234,24 +229,19 @@ export default function CreatorCampaignDetailPage() {
     e.preventDefault()
     if (!url.trim() || !campaign) return
     if (!hasPayoutMethod) {
-      toast.error('Add a payout method in Account before submitting.')
-      return
+            return
     }
     if (!platformConnected) {
-      toast.error(`Connect ${PLATFORM_LABEL[platform]} first.`)
-      return
+            return
     }
     if (linkPhase !== 'ready' || !snapshot || snapshot.views <= 1_000) {
-      toast.error('Wait until stats load and the post is above 1,000 views.')
-      return
+            return
     }
     if (!isValidContentUrl(url.trim())) {
-      toast.error('Paste a full content link starting with https:// (e.g. TikTok or Facebook).')
-      return
+            return
     }
     if (!campaign.platforms.includes(platform)) {
-      toast.error(`This campaign does not accept ${PLATFORM_LABEL[platform]} content.`)
-      return
+            return
     }
     const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, false)
     // v1 (post-MVP): const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, tikTokYellowBasket)
@@ -274,8 +264,7 @@ export default function CreatorCampaignDetailPage() {
       submittedAt: new Date().toISOString(),
       thumbnailColor: campaign.coverColor,
     })
-    toast.success('Content submitted! Brand review comes next.')
-    setSubmitting(false)
+        setSubmitting(false)
     setOpen(false)
     resetSubmitModal()
     navigate('/creator/content')

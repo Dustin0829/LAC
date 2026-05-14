@@ -10,7 +10,8 @@
 }
 
 :root {
-  /* Vyro-inspired Arpify UI tokens */
+  /* VidU webapp UI tokens (aligned with marketing where noted) */
+  --page: #f5f7fa;
   --primary: #00ABF4;
   --primary-foreground: #FFFFFF;
 
@@ -125,6 +126,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-page: var(--page);
   --radius-sm: calc(var(--radius) - 6px);
   --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
@@ -152,6 +154,18 @@
 }
 
 @layer utilities {
+  .bg-page {
+    background-color: var(--page);
+  }
+
+  .bg-hero-page-radial {
+    background-image: radial-gradient(
+      ellipse 110% 85% at 72% -8%,
+      rgb(216 231 242 / 0.35),
+      transparent 62%
+    );
+  }
+
   .bg-phc-gradient {
     background-color: #00ABF4;
     background-image: linear-gradient(135deg, #00ABF4 0%, #0EA5E9 100%);
@@ -170,10 +184,11 @@
   .bg-phc-gradient-soft {
     background-image: linear-gradient(135deg, rgba(0, 171, 244, 0.14) 0%, rgba(216, 231, 242, 0.65) 100%);
   }
+  /* Matches vid-u-marketing-site subtle grid */
   .bg-grid-soft {
     background-image:
-      linear-gradient(to right, rgba(9, 9, 11, 0.045) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(9, 9, 11, 0.045) 1px, transparent 1px);
+      linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
     background-size: 32px 32px;
   }
   .scrollbar-thin {
