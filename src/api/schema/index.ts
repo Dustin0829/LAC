@@ -3,4 +3,11 @@
  * Pages import from `@/api/schema/...` per api-layer rules.
  */
 
-export {}
+export {
+  brandProfileFormSchema,
+  brandProfileSaveSchema,
+  brandProfileLinkKeys,
+  emptyBrandProfileForm,
+  type BrandProfileFormValues,
+  type BrandProfileLinkKey,
+} from './brandProfile.schema'

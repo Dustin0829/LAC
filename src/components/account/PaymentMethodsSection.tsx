@@ -1,6 +1,12 @@
 import { useState } from 'react'
-import { Building2, Plus, Trash2, Wallet } from 'lucide-react'
+import { Building2, Loader2, Plus, Trash2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  useDeletePaymentMethod,
+  usePatchPaymentMethod,
+  usePaymentMethods,
+} from '@/api/queries/use-payment-methods'
+import { buildPatchPaymentMethodBody } from '@/lib/paymentMethods/paymentMethodApi'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import { AddPaymentMethodDialog } from '@/components/account/AddPaymentMethodDialog'
 import { PaymentBrandLogo } from '@/components/account/PaymentBrandLogo'
@@ -21,17 +27,24 @@ function rowDetail(m: PaymentMethod): string {
 
 interface PaymentMethodsSectionProps {
   mode: 'creator' | 'brand'
+  /** Load and mutate via `/me/payment-methods` (default on account pages). */
+  useApi?: boolean
   /** Hide success/error toasts (e.g. during onboarding). */
   suppressToasts?: boolean
 }
 
 export function PaymentMethodsSection({
   mode,
+  useApi = true,
   suppressToasts = false,
 }: PaymentMethodsSectionProps) {
-  const methods = usePaymentMethodsStore((s) => s.methods)
-  const removeMethod = usePaymentMethodsStore((s) => s.removeMethod)
-  const setDefault = usePaymentMethodsStore((s) => s.setDefault)
+  const storeMethods = usePaymentMethodsStore((s) => s.methods)
+  const removeMethodLocal = usePaymentMethodsStore((s) => s.removeMethod)
+  const setDefaultLocal = usePaymentMethodsStore((s) => s.setDefault)
+  const { data: apiMethods = [], isLoading, isError } = usePaymentMethods(useApi)
+  const patchPaymentMethod = usePatchPaymentMethod()
+  const deletePaymentMethod = useDeletePaymentMethod()
+  const methods = useApi ? apiMethods : storeMethods
 
   const [addOpen, setAddOpen] = useState(false)
   const [dialogPreset, setDialogPreset] = useState<'e-wallet' | 'local-bank' | null>(null)
@@ -43,7 +56,29 @@ export function PaymentMethodsSection({
   const creator = mode === 'creator'
 
   function handleSetDefault(id: string) {
-    setDefault(id)
+    if (useApi) {
+      patchPaymentMethod.mutate(
+        { paymentMethodId: id, body: buildPatchPaymentMethodBody({ isDefault: true }) },
+        {
+          onSuccess: () => {
+            if (!suppressToasts) {
+              toast.success(
+                creator
+                  ? 'Default payment method updated.'
+                  : 'Default refund account updated — refunds will be sent here.'
+              )
+            }
+          },
+          onError: (err) => {
+            if (!suppressToasts) {
+              toast.error(err instanceof Error ? err.message : 'Could not update default account.')
+            }
+          },
+        }
+      )
+      return
+    }
+    setDefaultLocal(id)
     if (!suppressToasts) {
       toast.success(
         creator
@@ -62,7 +97,22 @@ export function PaymentMethodsSection({
       }
       return
     }
-    removeMethod(id)
+    if (useApi) {
+      deletePaymentMethod.mutate(id, {
+        onSuccess: () => {
+          if (!suppressToasts) {
+            toast.success(creator ? 'Payment method removed.' : 'Refund receiving account removed.')
+          }
+        },
+        onError: (err) => {
+          if (!suppressToasts) {
+            toast.error(err instanceof Error ? err.message : 'Could not remove account.')
+          }
+        },
+      })
+      return
+    }
+    removeMethodLocal(id)
     if (!suppressToasts) {
       toast.success(creator ? 'Payment method removed.' : 'Refund receiving account removed.')
     }
@@ -94,6 +144,15 @@ export function PaymentMethodsSection({
       </div>
 
       <div className="space-y-4 lg:col-span-2">
+        {useApi && isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Loading accounts…
+          </div>
+        ) : null}
+        {useApi && isError ? (
+          <p className="text-sm text-destructive">Could not load payment methods. Try again later.</p>
+        ) : null}
         <div className="space-y-4">
           {methods.length > 0 ? (
             <>
@@ -204,6 +263,7 @@ export function PaymentMethodsSection({
 
         <AddPaymentMethodDialog
           mode={mode}
+          useApi={useApi}
           open={addOpen}
           onOpenChange={(open) => {
             setAddOpen(open)

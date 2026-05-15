@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { Building2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
+import { usePostPaymentMethod } from '@/api/queries/use-payment-methods'
+import { buildPostPaymentMethodBody } from '@/lib/paymentMethods/paymentMethodApi'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import {
   E_WALLET_OPTIONS,
@@ -32,6 +34,7 @@ const EWL_LABEL_TO_TYPE: Record<string, Exclude<PaymentMethod['type'], 'bank'>> 
 
 export interface AddPaymentMethodDialogProps {
   mode: 'creator' | 'brand'
+  useApi?: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Called after a method is saved (after the dialog begins closing). */
@@ -44,6 +47,7 @@ export interface AddPaymentMethodDialogProps {
 
 export function AddPaymentMethodDialog({
   mode,
+  useApi = true,
   open,
   onOpenChange,
   onSuccess,
@@ -51,7 +55,8 @@ export function AddPaymentMethodDialog({
   presetType = null,
 }: AddPaymentMethodDialogProps) {
   const methods = usePaymentMethodsStore((s) => s.methods)
-  const addMethod = usePaymentMethodsStore((s) => s.addMethod)
+  const addMethodLocal = usePaymentMethodsStore((s) => s.addMethod)
+  const postPaymentMethod = usePostPaymentMethod()
 
   const [methodType, setMethodType] = useState<AddMethodType>(null)
   const [provider, setProvider] = useState('')
@@ -113,6 +118,39 @@ export function AddPaymentMethodDialog({
     e.preventDefault()
     if (!methodType || !validate()) return
 
+    if (useApi) {
+      let body
+      try {
+        body = buildPostPaymentMethodBody({
+          methodType,
+          providerLabel: provider,
+          accountNumber: accountNumber.trim(),
+          accountName: accountName.trim(),
+          isDefault: methods.length === 0,
+        })
+      } catch (err) {
+        if (!suppressToasts) {
+          toast.error(err instanceof Error ? err.message : 'Invalid payment method.')
+        }
+        return
+      }
+      postPaymentMethod.mutate(body, {
+        onSuccess: () => {
+          if (!suppressToasts) {
+            toast.success(creator ? 'Payment method added.' : 'Refund receiving account saved.')
+          }
+          closeModal()
+          onSuccess?.()
+        },
+        onError: (err) => {
+          if (!suppressToasts) {
+            toast.error(err instanceof Error ? err.message : 'Could not save payment method.')
+          }
+        },
+      })
+      return
+    }
+
     if (methodType === 'e-wallet') {
       const mapped = EWL_LABEL_TO_TYPE[provider]
       if (!mapped) {
@@ -122,7 +160,7 @@ export function AddPaymentMethodDialog({
         return
       }
       const title = provider === 'PayMaya (Maya)' ? 'Maya' : provider
-      addMethod({
+      addMethodLocal({
         id: `pm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         type: mapped,
         label: title,
@@ -131,7 +169,7 @@ export function AddPaymentMethodDialog({
         isDefault: methods.length === 0,
       })
     } else {
-      addMethod({
+      addMethodLocal({
         id: `pm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         type: 'bank',
         label: provider,

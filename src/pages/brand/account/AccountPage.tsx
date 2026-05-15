@@ -1,65 +1,115 @@
-import { useEffect, useRef } from 'react'
-import { Facebook, Globe, Instagram, LogOut, Save } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, LogOut, Save } from 'lucide-react'
 import { toast } from 'sonner'
+import { brandProfileSaveSchema } from '@/api/schema/brandProfile.schema'
+import { useMeProfile, usePutMeBrandProfile } from '@/api/queries/use-me'
+import { buildPutMeBrandProfileBody } from '@/lib/auth/mapMeProfile'
+import {
+  brandProfileFormKey,
+  resolveBrandProfileInitial,
+} from '@/lib/brandProfile/brandProfileForm'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useSignOut } from '@/lib/hooks/use-sign-out'
-import { useBrandProfileStore } from '@/lib/stores/brandProfileStore'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import type { BrandProfile } from '@/lib/stores/brandProfileStore'
+import { BrandSocialLinkFields } from '@/components/account/BrandSocialLinkFields'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSection'
-import { PlatformIcon } from '@/components/PlatformIcon'
+
+function BrandProfileFields({
+  initial,
+  saving,
+  onSave,
+}: {
+  initial: BrandProfile
+  saving: boolean
+  onSave: (profile: BrandProfile) => Promise<void>
+}) {
+  const [profile, setProfile] = useState(initial)
+
+  return (
+    <>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="brand-name">Brand name</Label>
+          <Input
+            id="brand-name"
+            value={profile.brandName}
+            onChange={(e) => setProfile((p) => ({ ...p, brandName: e.target.value }))}
+            placeholder="Your brand or company name"
+            autoComplete="organization"
+            disabled={saving}
+          />
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-foreground">Links</p>
+          <BrandSocialLinkFields
+            values={profile}
+            onChange={(key, value) => setProfile((p) => ({ ...p, [key]: value }))}
+            disabled={saving}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-6">
+        <Button
+          type="button"
+          size="lg"
+          className="w-full bg-phc-gradient font-semibold text-white hover:opacity-90 sm:w-auto min-w-36"
+          onClick={() => void onSave(profile)}
+          disabled={saving}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Saving…
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              Save
+            </>
+          )}
+        </Button>
+      </div>
+    </>
+  )
+}
 
 export default function BrandAccountPage() {
   const { user } = useAuth()
   const signOut = useSignOut()
-  const fileRef = useRef<HTMLInputElement>(null)
-  const profile = useBrandProfileStore((s) => s.profile)
-  const setProfile = useBrandProfileStore((s) => s.setProfile)
-  const persistProfile = useBrandProfileStore((s) => s.persistProfile)
-  const seedBrandNameIfEmpty = useBrandProfileStore((s) => s.seedBrandNameIfEmpty)
 
-  useEffect(() => {
-    if (user?.name) seedBrandNameIfEmpty(user.name)
-  }, [user?.name, seedBrandNameIfEmpty])
+  const { data: profileData, isSuccess: profileLoaded, isLoading: profileLoading } = useMeProfile()
+  const putBrandProfile = usePutMeBrandProfile()
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (window.location.hash !== '#brand-refund-receiving') return
-    const t = window.setTimeout(() => {
-      document.getElementById('brand-refund-receiving')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
-    }, 100)
-    return () => window.clearTimeout(t)
-  }, [])
+  const initialProfile = resolveBrandProfileInitial(
+    profileData,
+    profileLoaded,
+    profileLoading,
+    user?.name
+  )
 
-  function onLogoFile(files: FileList | null) {
-    const file = files?.[0]
-    if (!file || !file.type.startsWith('image/')) {
-      if (file) toast.error('Choose an image file for your logo.')
+  async function onSave(profile: BrandProfile) {
+    const parsed = brandProfileSaveSchema.safeParse(profile)
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? 'Brand name is required.')
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === 'string' ? reader.result : null
-      setProfile({ logoDataUrl: dataUrl })
+    try {
+      await putBrandProfile.mutateAsync({
+        ...buildPutMeBrandProfileBody(parsed.data),
+        brandName: parsed.data.brandName,
+      })
+      toast.success('Brand profile saved.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save brand profile.')
     }
-    reader.readAsDataURL(file)
   }
 
-  function onSave() {
-    persistProfile()
-    toast.success('Brand profile saved.')
-  }
-
-  const fallbackLetter =
-    profile.brandName.trim().charAt(0)?.toUpperCase() ??
-    user?.name?.charAt(0)?.toUpperCase() ??
-    user?.email?.charAt(0)?.toUpperCase() ??
-    'B'
+  const saving = putBrandProfile.isPending
 
   return (
     <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
@@ -70,140 +120,26 @@ export default function BrandAccountPage() {
       </div>
 
       <section className="rounded-3xl border border-border bg-card p-6 shadow-none">
-        <div className="space-y-8">
-          <div className="flex flex-col items-center sm:items-start">
-            <Avatar className="h-24 w-24 shrink-0 rounded-2xl outline-1 outline-border mb-4">
-              <AvatarImage
-                src={profile.logoDataUrl ?? undefined}
-                className="rounded-2xl object-cover"
-              />
-              <AvatarFallback className="rounded-2xl bg-phc-gradient font-display text-2xl font-bold text-white">
-                {fallbackLetter}
-              </AvatarFallback>
-            </Avatar>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => onLogoFile(e.target.files)}
-            />
-            <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileRef.current?.click()}
-              >
-                Upload logo
-              </Button>
-              {profile.logoDataUrl ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setProfile({ logoDataUrl: null })}
-                >
-                  Remove
-                </Button>
-              ) : null}
-            </div>
+        {initialProfile === null ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Loading profile…
           </div>
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-            <div className="min-w-0 flex-1 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="brand-name">Brand name</Label>
-                <Input
-                  id="brand-name"
-                  value={profile.brandName}
-                  onChange={(e) => setProfile({ brandName: e.target.value })}
-                  placeholder="Your brand or company name"
-                  autoComplete="organization"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">Links</p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="link-website" className="inline-flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-muted-foreground" aria-hidden />
-                      Website
-                    </Label>
-                    <Input
-                      id="link-website"
-                      type="url"
-                      inputMode="url"
-                      value={profile.website}
-                      onChange={(e) => setProfile({ website: e.target.value })}
-                      placeholder="https://yourbrand.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="link-instagram" className="inline-flex items-center gap-2">
-                      <Instagram className="h-4 w-4 text-muted-foreground" aria-hidden />
-                      Instagram
-                    </Label>
-                    <Input
-                      id="link-instagram"
-                      type="url"
-                      inputMode="url"
-                      value={profile.instagram}
-                      onChange={(e) => setProfile({ instagram: e.target.value })}
-                      placeholder="https://instagram.com/yourbrand"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="link-facebook" className="inline-flex items-center gap-2">
-                      <Facebook className="h-4 w-4 text-muted-foreground" aria-hidden />
-                      Facebook
-                    </Label>
-                    <Input
-                      id="link-facebook"
-                      type="url"
-                      inputMode="url"
-                      value={profile.facebook}
-                      onChange={(e) => setProfile({ facebook: e.target.value })}
-                      placeholder="https://facebook.com/yourbrand"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="link-tiktok" className="inline-flex items-center gap-2">
-                      <PlatformIcon platform="tiktok" className="h-3 w-3 opacity-70" />
-                      TikTok
-                    </Label>
-                    <Input
-                      id="link-tiktok"
-                      type="url"
-                      inputMode="url"
-                      value={profile.tiktok}
-                      onChange={(e) => setProfile({ tiktok: e.target.value })}
-                      placeholder="https://tiktok.com/@yourbrand"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end mt-6">
-          <Button
-            type="button"
-            size="lg"
-            className="w-full bg-phc-gradient font-semibold text-white hover:opacity-90 sm:w-auto min-w-36"
-            onClick={onSave}
-          >
-            <Save className="h-4 w-4" />
-            Save
-          </Button>
-        </div>
+        ) : (
+          <BrandProfileFields
+            key={brandProfileFormKey(initialProfile)}
+            initial={initialProfile}
+            saving={saving}
+            onSave={onSave}
+          />
+        )}
       </section>
 
       <section
         id="brand-refund-receiving"
-        className="rounded-3xl border border-border bg-card p-6 md:p-8 shadow-none"
+        className="scroll-mt-24 rounded-3xl border border-border bg-card p-6 md:p-8 shadow-none"
       >
-        <PaymentMethodsSection mode="brand" />
+        <PaymentMethodsSection mode="brand" useApi />
       </section>
 
       <section className="rounded-3xl border border-border bg-card p-6 md:hidden">

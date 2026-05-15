@@ -2,6 +2,10 @@ import type { BrandMeProfileData, CreatorMeProfileData, PutMeBrandProfileBody } 
 import type { BrandProfile } from '@/lib/stores/brandProfileStore'
 import { mockCreatorPlatformLinks, type CreatorPlatformLink, type Platform } from '@/lib/mockData'
 
+export function isBrandMeProfile(data: unknown): data is BrandMeProfileData {
+  return typeof data === 'object' && data !== null && 'brandName' in data
+}
+
 const PLATFORM_LABELS: Record<Platform, string> = {
   tiktok: 'TikTok',
   facebook: 'Facebook',

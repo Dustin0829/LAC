@@ -1,6 +1,6 @@
 /**
  * Payment method icons from `src/assets` (e-wallets, banks).
- * Mirrors option lists / lookups from BugHyve `paymentMethodIcons.ts`.
+ * Option lists are driven by `paymentChannels.ts` (official channel name + code).
  */
 import gcashIcon from '@/assets/e-wallets/gcash.svg'
 import mayaIcon from '@/assets/e-wallets/maya.svg'
@@ -18,38 +18,39 @@ import cimbIcon from '@/assets/banks/cimb.svg'
 import tonikIcon from '@/assets/banks/tonik.svg'
 import gotymeIcon from '@/assets/banks/gotyme.svg'
 import maribankIcon from '@/assets/banks/maribank.png'
+import {
+  BANK_CHANNELS,
+  E_WALLET_CHANNELS,
+  type PaymentChannelOption,
+} from '@/lib/constants/paymentChannels'
 
+/** Icons keyed by picker `displayName` (see paymentChannels.ts). */
 export const eWalletIcons: Record<string, string> = {
   GCash: gcashIcon,
   Maya: mayaIcon,
-  'PayMaya (Maya)': mayaIcon,
   GrabPay: grabPayIcon,
   ShopeePay: shopeePayIcon,
 }
 
 export const bankIcons: Record<string, string> = {
-  'Banco De Oro Unibank, Inc. (BDO)': bdoIcon,
-  'Bank of the Philippine Islands (BPI)': bpiIcon,
-  'Metropolitan Bank and Trust Company (Metrobank)': metrobankIcon,
-  'Land Bank of the Philippines (Landbank)': landbankIcon,
-  'Philippine National Bank (PNB)': pnbIcon,
-  'Rizal Commercial Banking Corporation (RCBC)': rcbcIcon,
-  'Security Bank Corporation': securityBankIcon,
-  'Union Bank of the Philippines (UBP)': unionbankIcon,
-  'CIMB Bank Philippines': cimbIcon,
-  'Tonik Digital Bank, Inc.': tonikIcon,
-  'GoTyme Bank': gotymeIcon,
+  BDO: bdoIcon,
+  BPI: bpiIcon,
+  Metrobank: metrobankIcon,
+  Landbank: landbankIcon,
+  PNB: pnbIcon,
+  RCBC: rcbcIcon,
+  'Security Bank': securityBankIcon,
+  UnionBank: unionbankIcon,
+  CIMB: cimbIcon,
+  Tonik: tonikIcon,
+  GoTyme: gotymeIcon,
   MariBank: maribankIcon,
   'Union Digital Bank': unionbankIcon,
 }
 
-/** E-wallet options for dropdowns (excludes backward-compat key). */
-export const E_WALLET_OPTIONS = Object.keys(eWalletIcons).filter(
-  (k) => k !== 'PayMaya (Maya)'
-) as readonly string[]
+export const E_WALLET_OPTIONS = E_WALLET_CHANNELS.map((ch) => ch.displayName)
 
-/** Local bank options for dropdowns (order matches `bankIcons`). */
-export const LOCAL_BANK_OPTIONS = Object.keys(bankIcons) as readonly string[]
+export const LOCAL_BANK_OPTIONS = BANK_CHANNELS.map((ch) => ch.displayName)
 
 /** Cryptocurrency network labels (UI only; no bundled icons yet). */
 export const CRYPTO_OPTIONS = ['Solana', 'Base'] as const
@@ -61,4 +62,12 @@ export function getPaymentMethodIcon(
   if (type === 'e-wallet') return eWalletIcons[label]
   if (type === 'local-bank') return bankIcons[label]
   return undefined
+}
+
+export function getPaymentChannelForPicker(
+  type: 'e-wallet' | 'local-bank',
+  displayName: string
+): PaymentChannelOption | undefined {
+  const list = type === 'e-wallet' ? E_WALLET_CHANNELS : BANK_CHANNELS
+  return list.find((ch) => ch.displayName === displayName)
 }
