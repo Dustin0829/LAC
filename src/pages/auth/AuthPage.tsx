@@ -65,11 +65,14 @@ export default function AuthPage() {
       return
     }
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 600))
-    setPendingEmail(trimmed)
-    setCode('')
-    setStep('verify')
-    setSubmitting(false)
+    try {
+      await new Promise((r) => setTimeout(r, 600))
+      setPendingEmail(trimmed)
+      setCode('')
+      setStep('verify')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function handleVerifyCode(e: React.FormEvent) {
@@ -79,14 +82,17 @@ export default function AuthPage() {
       return
     }
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 500))
-    signIn({
-      id: `user-${Date.now()}`,
-      email: pendingEmail,
-      name: pendingEmail.split('@')[0],
-    })
-    setSubmitting(false)
-    afterAuth()
+    try {
+      await new Promise((r) => setTimeout(r, 500))
+      signIn({
+        id: `user-${Date.now()}`,
+        email: pendingEmail,
+        name: pendingEmail.split('@')[0],
+      })
+      afterAuth()
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleBackToEmail() {
@@ -97,15 +103,18 @@ export default function AuthPage() {
 
   async function handleGoogle() {
     setGoogleLoading(true)
-    await new Promise((r) => setTimeout(r, 700))
-    signIn({
-      id: `gmail-${Date.now()}`,
-      email: 'alex.martin@gmail.com',
-      name: 'Alex Martin',
-      avatarUrl: undefined,
-    })
-    setGoogleLoading(false)
-    afterAuth()
+    try {
+      await new Promise((r) => setTimeout(r, 700))
+      signIn({
+        id: `gmail-${Date.now()}`,
+        email: 'alex.martin@gmail.com',
+        name: 'Alex Martin',
+        avatarUrl: undefined,
+      })
+      afterAuth()
+    } finally {
+      setGoogleLoading(false)
+    }
   }
 
   return (

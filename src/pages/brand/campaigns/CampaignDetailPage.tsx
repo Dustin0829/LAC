@@ -67,7 +67,6 @@ import {
   estimatedReachViewsFromNetPool,
   getAvailableBalance,
   getCampaignReachViewGoal,
-  getCreatorRatePer1k,
   getPlatformFeePercent,
   getPlannedGrossBudgetForFunding,
   MIN_GROSS_CAMPAIGN_BUDGET,
@@ -553,8 +552,7 @@ export default function BrandCampaignDetailPage() {
     const nextReach =
       gross > 0 ? estimatedReachViewsFromNetPool(campaign.budget, gross) : campaign.estimatedReach
     updateCampaign(campaignId, {
-      brandRatePer1k: gross,
-      ratePer1k: getCreatorRatePer1k(gross),
+      ratePer1k: gross,
       estimatedReach: nextReach,
     })
     toast.success('Gross rate updated.')

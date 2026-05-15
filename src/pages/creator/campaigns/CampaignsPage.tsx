@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType } from 'react'
+import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import {
   Select,
   SelectContent,
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Filter, Clock, CircleDollarSign } from 'lucide-react'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { RefreshButton } from '@/components/RefreshButton'
 import { CampaignCard } from '@/components/CampaignCard'
@@ -145,13 +146,30 @@ function FilterControls({
 }
 
 export default function CreatorCampaignsPage() {
+  const { accessToken } = useAuth()
   const campaigns = useCampaignsStore((s) => s.campaigns)
+  const loadForCreator = useCampaignsStore((s) => s.loadForCreator)
   const [query] = useState('')
   const [platform, setPlatform] = useState<Platform | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sort, setSort] = useState<SortId>('newest')
   const [filterOpen, setFilterOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+
+  useEffect(() => {
+    if (!accessToken) return
+    void loadForCreator(accessToken)
+  }, [accessToken, loadForCreator])
+
+  const runRefresh = async () => {
+    setRefreshing(true)
+    try {
+      if (accessToken) await loadForCreator(accessToken)
+      else await new Promise((r) => setTimeout(r, 500))
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const filtered = useMemo(() => {
     let list = campaigns.filter((c) => {
@@ -199,14 +217,7 @@ export default function CreatorCampaignsPage() {
               variant="outline"
               size="icon"
               isRefreshing={refreshing}
-              onRefresh={async () => {
-                setRefreshing(true)
-                try {
-                  await new Promise((r) => setTimeout(r, 500))
-                } finally {
-                  setRefreshing(false)
-                }
-              }}
+              onRefresh={runRefresh}
               successMessage="Campaigns updated"
               aria-label="Refresh campaigns"
             />

@@ -16,7 +16,6 @@ import {
   PLATFORM_LABEL,
   DEFAULT_REFUNDABLE_PERCENT,
   estimatedReachViewsFromNetPool,
-  getCreatorRatePer1k,
   getPlatformFeePercent,
   MIN_GROSS_CAMPAIGN_BUDGET,
   type Platform,
@@ -234,7 +233,6 @@ export default function CreateCampaignPage() {
 
   function persistCampaign(status: 'draft' | 'active', totalBudget: number, brandRate: number) {
     const id = `cmp-${Date.now()}`
-    const creatorRate = getCreatorRatePer1k(brandRate)
     const platformFeePercent = getPlatformFeePercent()
     const netPool = Math.max(0, Math.round(totalBudget * (1 - platformFeePercent)))
     const platformFee = totalBudget * platformFeePercent
@@ -247,8 +245,7 @@ export default function CreateCampaignPage() {
       brandLogoColor: 'from-zinc-950 to-zinc-700',
       title: title.trim(),
       description: description.trim(),
-      brandRatePer1k: brandRate,
-      ratePer1k: creatorRate,
+      ratePer1k: brandRate,
       plannedGrossBudget: totalBudget,
       budget: netPool,
       platformFeePercent,

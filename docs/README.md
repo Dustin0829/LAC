@@ -53,7 +53,7 @@ isProject: false
 | File | What it contains |
 |------|------------------|
 | [00-launch-phase.md](00-launch-phase.md) | Launch order: interest → marketing site → closed beta (incl. case studies) → post-beta fixes → wider release → scale |
-| [01-business-model.md](01-business-model.md) | **Revenue streams** (complete list + key %), default money-flow diagram, short stubs linking out to creator/brand/policies for submission lock-in, monthly payout, refunds |
+| [01-business-model.md](01-business-model.md) | **Revenue streams** (complete list + key %), default money-flow diagram, **Xendit xenPlatform Owned sub-account per brand** (provision on first fund; no cross-brand payouts; campaign tagging), stubs for submission lock-in, monthly payout, refunds |
 | [02-auth-and-signin.md](02-auth-and-signin.md) | **Email** (verification) or **Google** (OAuth), same screen; Brand vs Creator; route rules; flowchart |
 | [03-creator-flow.md](03-creator-flow.md) | Creator: sign-in pointer, OAuth, submit modal (**incl. TikTok yellow basket**), states, earnings UI, retention |
 | [04-brand-flow.md](04-brand-flow.md) | Brand: sign-in pointer, campaign fields, **Payout** minimums (rate / total budget), draft → fund → publish, inbox, monthly payout view |

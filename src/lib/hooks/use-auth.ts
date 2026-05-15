@@ -4,6 +4,7 @@ export function useAuth() {
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const loading = useAuthStore((s) => s.loading)
+  const accessToken = useAuthStore((s) => s.accessToken)
 
   const isAuthenticated = Boolean(user)
   const hasRole = role === 'creator' || role === 'brand'
@@ -12,6 +13,7 @@ export function useAuth() {
     user,
     role,
     loading,
+    accessToken,
     isAuthenticated,
     hasRole,
     isCreator: role === 'creator',

@@ -5,7 +5,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hydrate = useAuthStore((s) => s.hydrate)
 
   useEffect(() => {
-    hydrate()
+    void hydrate()
   }, [hydrate])
 
   return <>{children}</>

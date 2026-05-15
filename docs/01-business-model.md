@@ -59,6 +59,21 @@ Same list as [Revenue streams (complete)](#revenue-streams-complete): **15%** on
 
 ---
 
+## Xendit xenPlatform (per brand)
+
+**Decision:** Use Xendit **xenPlatform** with **one Owned sub-account per brand** — **not** one sub-account per campaign.
+
+| Topic | Rule |
+|-------|------|
+| **Account type** | **Owned** — we operate sub-accounts end-to-end; public business details and fee handling follow Xendit’s **Owned** model (partner does **not** automatically get a separate Xendit merchant experience unless we later choose to invite them). |
+| **When we create it** | **First successful campaign fund** for that brand: create the sub-account via xenPlatform **Account API** if none exists yet, then persist Xendit’s sub-account / **`for-user-id`** identifier on the **brand** record. |
+| **Money in** | Brand deposits and top-ups are created **for that sub-account** (standard Xendit APIs with **`for-user-id`** / xenPlatform scoping) so **balances and transactions** show **per brand** in the Xendit dashboard. |
+| **Money out** | Creator **Disbursements** for submissions tied to a brand **debit only that brand’s** sub-account balance — **never cross-brand** (no paying a creator from another brand’s pooled cash). |
+| **Campaigns** | **Spendable / reserved / per-campaign** splits stay in our **Postgres ledger**. For Xendit reconciliation and ops, tag each payment and payout with **campaign id** (and related references) in **metadata / reference** fields supported by the APIs we use. |
+| **Confirm with Xendit** | After registration, validate **Owned** sub-account **onboarding** (e.g. account holder rules), **PHP** product mix, and **transfer / split** patterns for the **15%** platform fee vs brand pool — implement to match what they approve. |
+
+---
+
 ## 2. Submission and lock-in
 
 Stats (**views, engagement**, etc.) are **frozen at submit**. Brands **reject** to exclude a line from pay. **TikTok yellow basket** at submit locks **50/50** vs **80/20** on gross for that line. Detail: [Creator flow](03-creator-flow.md), [Policies — launch defaults](06-policies-and-trust.md#launch-policies) (caps vs snapshots).

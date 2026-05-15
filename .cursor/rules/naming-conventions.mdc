@@ -1,5 +1,5 @@
 ---
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Naming Conventions
@@ -24,10 +24,10 @@ Follow these conventions for all new and renamed files and constants.
 
 ### API query hooks (`src/api/queries/`)
 
-| Scope                              | Folder                          | File name          | Exported hook (examples)                    |
-| ---------------------------------- | ------------------------------- | ------------------ | ------------------------------------------- |
-| **Cross-cutting** (auth, utils)    | `queries/` root                 | `use-<feature>.ts` | `useAuthSync`, `useAuthMe`                  |
-| **Surface-specific** (if you use segments) | `queries/<segment>/`     | `use-<feature>.ts` | `useAdminDashboard` (from `use-dashboard.ts`) |
+| Scope                                      | Folder               | File name          | Exported hook (examples)                      |
+| ------------------------------------------ | -------------------- | ------------------ | --------------------------------------------- |
+| **Cross-cutting** (auth, utils)            | `queries/` root      | `use-<feature>.ts` | `useAuthSync`, `useAuthMe`                    |
+| **Surface-specific** (if you use segments) | `queries/<segment>/` | `use-<feature>.ts` | `useAdminDashboard` (from `use-dashboard.ts`) |
 
 Rules:
 
@@ -37,20 +37,20 @@ Rules:
 
 ## API services (`src/api/services/`)
 
-| Scope              | Example path                                | File name                          |
-| ------------------ | ------------------------------------------- | ---------------------------------- |
-| Cross-cutting      | `services/auth.ts`, `services/users.ts`     | `<domain>.ts` or existing name     |
-| Segment (optional) | `services/admin/reports.ts`                 | kebab-case or short domain name    |
+| Scope              | Example path                            | File name                       |
+| ------------------ | --------------------------------------- | ------------------------------- |
+| Cross-cutting      | `services/auth.ts`, `services/users.ts` | `<domain>.ts` or existing name  |
+| Segment (optional) | `services/admin/reports.ts`             | kebab-case or short domain name |
 
 - **Functions:** `camelCase` — `getDashboard`, `postAuthSync`.
 - Do **not** prefix the filename with the segment when it already sits under `services/<segment>/`.
 
 ## API types (`src/api/types/`)
 
-| Scope              | Example path                                           |
-| ------------------ | ------------------------------------------------------ |
-| Cross-cutting      | `types/global.types.ts`, `types/auth.types.ts`       |
-| Segment (optional) | `types/admin/reports.types.ts`                         |
+| Scope              | Example path                                   |
+| ------------------ | ---------------------------------------------- |
+| Cross-cutting      | `types/global.types.ts`, `types/auth.types.ts` |
+| Segment (optional) | `types/admin/reports.types.ts`                 |
 
 - **File name:** `<feature>.types.ts` (kebab-case or camelCase **feature** segment; stay consistent within the folder).
 - **Type names:** PascalCase — `DashboardData`, `AuthMeData`.
@@ -100,17 +100,17 @@ Rules:
 
 ## Quick Reference
 
-| Type                                                       | Convention                                      | Example                    |
-| ---------------------------------------------------------- | ----------------------------------------------- | -------------------------- |
-| Page / layout / component (`.tsx`, except `components/ui`) | PascalCase                                      | `OrdersPage.tsx`           |
-| API query file (cross-cutting)                             | `use-<kebab>.ts` at `api/queries/`               | `use-auth.ts`              |
-| API query file (segment)                                   | `use-<kebab>.ts` under `api/queries/<segment>/` | `admin/use-dashboard.ts`   |
-| API service (segment)                                      | `<domain>.ts` under `api/services/<segment>/`   | `admin/reports.ts`         |
-| API types (segment)                                        | `<feature>.types.ts` under `api/types/<segment>/` | `admin/reports.types.ts` |
-| Hook files (app, `lib/hooks`)                              | `use-<kebab>.ts`                                | `use-auth.ts`              |
-| Type modules                                               | `<name>.types.ts`                               | `auth.types.ts`            |
-| Utility / logic (`.ts`)                                    | camelCase                                       | `mockData.ts`              |
-| Domain helpers (`lib/<domain>/`)                           | camelCase                                       | `buildCheckoutPayload.ts`  |
-| Constants                                                  | UPPER_SNAKE_CASE                                | `MAX_RETRIES`              |
-| Folders                                                    | lowercase / kebab-case                          | `admin`, `payment-methods` |
-| Assets (images, icons)                                     | kebab-case                                      | `logo-dark.svg`            |
+| Type                                                       | Convention                                        | Example                    |
+| ---------------------------------------------------------- | ------------------------------------------------- | -------------------------- |
+| Page / layout / component (`.tsx`, except `components/ui`) | PascalCase                                        | `OrdersPage.tsx`           |
+| API query file (cross-cutting)                             | `use-<kebab>.ts` at `api/queries/`                | `use-auth.ts`              |
+| API query file (segment)                                   | `use-<kebab>.ts` under `api/queries/<segment>/`   | `admin/use-dashboard.ts`   |
+| API service (segment)                                      | `<domain>.ts` under `api/services/<segment>/`     | `admin/reports.ts`         |
+| API types (segment)                                        | `<feature>.types.ts` under `api/types/<segment>/` | `admin/reports.types.ts`   |
+| Hook files (app, `lib/hooks`)                              | `use-<kebab>.ts`                                  | `use-auth.ts`              |
+| Type modules                                               | `<name>.types.ts`                                 | `auth.types.ts`            |
+| Utility / logic (`.ts`)                                    | camelCase                                         | `mockData.ts`              |
+| Domain helpers (`lib/<domain>/`)                           | camelCase                                         | `buildCheckoutPayload.ts`  |
+| Constants                                                  | UPPER_SNAKE_CASE                                  | `MAX_RETRIES`              |
+| Folders                                                    | lowercase / kebab-case                            | `admin`, `payment-methods` |
+| Assets (images, icons)                                     | kebab-case                                        | `logo-dark.svg`            |

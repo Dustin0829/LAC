@@ -69,9 +69,13 @@ export default function RoleSelectionPage() {
       return
     }
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 400))
-    setRole(selected)
-    navigate(selected === 'brand' ? '/brand/dashboard' : '/dashboard', { replace: true })
+    try {
+      await new Promise((r) => setTimeout(r, 400))
+      setRole(selected)
+      navigate(selected === 'brand' ? '/brand/dashboard' : '/dashboard', { replace: true })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (

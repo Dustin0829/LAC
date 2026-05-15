@@ -65,7 +65,8 @@ function isDemoAuthUserId(id: string): boolean {
 }
 
 export default function BrandDashboardPage() {
-  const { user } = useAuth()
+  const { user, accessToken } = useAuth()
+  const loadForBrand = useCampaignsStore((s) => s.loadForBrand)
   const [performanceRange, setPerformanceRange] = useState<PerformanceRange>('monthly')
   const [recentPage, setRecentPage] = useState(1)
   const [refreshing, setRefreshing] = useState(false)
@@ -75,6 +76,11 @@ export default function BrandDashboardPage() {
   )
   const campaigns = useCampaignsStore((s) => s.campaigns)
   const contents = useContentStore((s) => s.contents)
+
+  useEffect(() => {
+    if (!user?.id || !accessToken) return
+    void loadForBrand(accessToken, user)
+  }, [user, accessToken, loadForBrand])
   const brandCampaigns = useMemo(() => {
     if (!user?.id) return campaigns
     const forUser = campaigns.filter((c) => c.brandId === user.id)

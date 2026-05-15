@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/badge'
-import { Clock, XCircle, BadgeCheck } from 'lucide-react'
+import { Clock, XCircle, BadgeCheck, Loader2, AlertTriangle } from 'lucide-react'
 import type { ContentStatus } from '@/lib/mockData'
 
 const STYLES: Record<ContentStatus, { className: string; label: string; Icon: typeof Clock }> = {
@@ -17,6 +17,16 @@ const STYLES: Record<ContentStatus, { className: string; label: string; Icon: ty
     className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     label: 'Paid',
     Icon: BadgeCheck,
+  },
+  paying: {
+    className: 'bg-sky-50 text-sky-800 border-sky-200',
+    label: 'Paying',
+    Icon: Loader2,
+  },
+  payout_failed: {
+    className: 'bg-orange-50 text-orange-800 border-orange-200',
+    label: 'Payout failed',
+    Icon: AlertTriangle,
   },
 }
 

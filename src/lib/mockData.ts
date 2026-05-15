@@ -1,13 +1,18 @@
 /**
  * VidU mock data — UI-only MVP prototype.
- * - Brands set gross ₱/1k (`brandRatePer1k`); sample mocks use ~₱54–70/1k gross (≤₱75); brand UI shows that headline rate.
- * - Creator UI shows net ₱/1k after the 20% platform fee (`ratePer1k` / `creatorHeadlineRatePer1k`).
- * - Creators submit `contents` (URLs); earnings use the net rate × verified views / 1,000.
+ * - `Campaign.ratePer1k` = **brand gross** ₱/1k (single canonical rate; locked at publish in product).
+ * - Creator headline = 80% of gross via `getCreatorRatePer1k` / `creatorHeadlineRatePer1k`.
+ * - Submissions: `grossAmount` / `creatorNet` / `platformFee` optional until payout release; status `pending` | `rejected` | `paid`.
  */
 
 export type Platform = 'tiktok' | 'facebook'
 export type CampaignStatus = 'active' | 'paused' | 'ended' | 'draft'
-export type ContentStatus = 'pending' | 'rejected' | 'paid'
+export type ContentStatus =
+  | 'pending'
+  | 'paying'
+  | 'paid'
+  | 'payout_failed'
+  | 'rejected'
 export type MonthlyPackageStatus = 'ready' | 'released' | 'paying' | 'done'
 
 export const CREATOR_PAYOUT_PERCENT = 0.8
@@ -43,29 +48,18 @@ export function getPlannedGrossBudgetForFunding(
   return Math.max(MIN_GROSS_CAMPAIGN_BUDGET, inferred || MIN_GROSS_CAMPAIGN_BUDGET)
 }
 
-export function getCreatorRatePer1k(brandRatePer1k: number): number {
-  return Math.round(brandRatePer1k * CREATOR_PAYOUT_PERCENT * 100) / 100
+export function getCreatorRatePer1k(brandGrossPer1k: number): number {
+  return Math.round(brandGrossPer1k * CREATOR_PAYOUT_PERCENT * 100) / 100
 }
 
-/** Brand-facing ₱/1k on cards/detail: gross rate the brand configured at creation (before creator net split). */
-export function brandHeadlineRatePer1k(
-  campaign: Pick<Campaign, 'brandRatePer1k' | 'ratePer1k'>
-): number {
-  return campaign.brandRatePer1k ?? campaign.ratePer1k
-}
-
-/** Creator-facing ₱/1k on discover/detail: brand gross per 1k minus the 20% platform performance fee (when gross is set). */
-export function creatorHeadlineRatePer1k(
-  campaign: Pick<Campaign, 'brandRatePer1k' | 'ratePer1k'>
-): number {
-  if (
-    typeof campaign.brandRatePer1k === 'number' &&
-    Number.isFinite(campaign.brandRatePer1k) &&
-    campaign.brandRatePer1k > 0
-  ) {
-    return getCreatorRatePer1k(campaign.brandRatePer1k)
-  }
+/** Brand-facing ₱/1k on cards/detail — same as stored `campaign.ratePer1k` (gross). */
+export function brandHeadlineRatePer1k(campaign: Pick<Campaign, 'ratePer1k'>): number {
   return campaign.ratePer1k
+}
+
+/** Creator-facing ₱/1k on discover/detail — 80% of brand gross (default performance split; no yellow basket in MVP schema). */
+export function creatorHeadlineRatePer1k(campaign: Pick<Campaign, 'ratePer1k'>): number {
+  return getCreatorRatePer1k(campaign.ratePer1k)
 }
 
 export function getNetSpendable(grossFunding: number): number {
@@ -89,14 +83,6 @@ export function getCampaignReachViewGoal(
   return Math.max(0, campaign.estimatedReach)
 }
 
-export interface CampaignAsset {
-  id: string
-  name: string
-  size: number
-  type: string
-  url: string
-}
-
 export interface Campaign {
   id: string
   brandId: string
@@ -104,9 +90,7 @@ export interface Campaign {
   brandLogoColor: string
   title: string
   description: string
-  /** Gross ₱ per 1,000 views paid by the brand. */
-  brandRatePer1k?: number
-  /** Net ₱ per 1,000 views shown/paid to creators. */
+  /** Brand gross ₱ per 1,000 views (single stored rate; creator headline = 80% for default split). */
   ratePer1k: number
   /**
    * Total campaign fund pool (₱): available + spent + reserved.
@@ -155,10 +139,8 @@ export interface Campaign {
   sampleUrl?: string
   /** Asset/raw footage source URL */
   assetUrl?: string
-  /** Optional reference posts, product pages, or tracking URLs (show to creators when set). */
+  /** Reference URLs only (JSON in DB) — e.g. Drive folders, sample posts; no separate asset table. */
   referenceLinks?: string[]
-  /** Uploaded campaign files creators can use in their edits. */
-  assets?: CampaignAsset[]
   rules: string[]
   /** Cover image / thumbnail color seed */
   coverColor: string
@@ -189,6 +171,11 @@ export interface Content {
   hasTikTokYellowBasket?: boolean
   /** Views locked at submit (stats frozen at this moment per policy). */
   views: number
+  /** Views the campaign pool funded (may be less than `views` on partial allocation). */
+  fundedViews?: number
+  /** True when `fundedViews` is set and below `views`. */
+  partialAllocation?: boolean
+  partialReason?: 'pool_exhausted' | 'channel_max' | null
   /** Rule check result captured at submit. */
   ruleCheckResult?: RuleCheckResult
   /** Brand-visible note for soft-flag rule checks. */
@@ -356,8 +343,7 @@ export const mockCampaigns: Campaign[] = [
     title: 'Kitchen Glow-Up ',
     description:
       'We want to show our new kitchen products in real cooking videos so people see what they look like on a stove and in a normal kitchen. We want more shoppers to know the Wok Bang name, use our campaign hashtags, and find our site or stores from the post.',
-    brandRatePer1k: DEMO_CMP001_BRAND,
-    ratePer1k: DEMO_CMP001_CREATOR,
+    ratePer1k: DEMO_CMP001_BRAND,
     budget: 50_000,
     platformFeePercent: 0.15,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
@@ -374,15 +360,6 @@ export const mockCampaigns: Campaign[] = [
     sampleUrl: 'https://www.tiktok.com/@wokbangph/video/sample',
     referenceLinks: ['https://wokbang.com/products/kitchen-glow'],
     assetUrl: 'https://drive.google.com/folder/wokbang-assets',
-    assets: [
-      {
-        id: 'asset-wb-001',
-        name: 'wokbang-product-photos.zip',
-        size: 52_000_000,
-        type: 'application/zip',
-        url: 'https://drive.google.com/file/wokbang-product-photos',
-      },
-    ],
     rules: [
       'Content must be at least 15 seconds long',
       'Tag @wokbangph in the caption',
@@ -402,8 +379,7 @@ export const mockCampaigns: Campaign[] = [
     title: 'Cafe Vibes',
     description:
       'We want more people near our shops to know we are here, what we sell, and what a visit costs. We want short videos of the drinks and food we actually serve, filmed in or in front of our cafes, with the branch name or link so someone who watches can come in or order the same thing.',
-    brandRatePer1k: DEMO_CMP002_BRAND,
-    ratePer1k: DEMO_CMP002_CREATOR,
+    ratePer1k: DEMO_CMP002_BRAND,
     budget: 50_000,
     platformFeePercent: 0.15,
     refundablePercent: DEFAULT_REFUNDABLE_PERCENT,
@@ -418,15 +394,6 @@ export const mockCampaigns: Campaign[] = [
     endDate: daysFromNow(44),
     sampleUrl: 'https://www.tiktok.com/@brewtheoryph/video/sample',
     assetUrl: 'https://drive.google.com/folder/brewtheory-assets',
-    assets: [
-      {
-        id: 'asset-br-001',
-        name: 'brew-theory-menu-lifestyle.zip',
-        size: 44_800_000,
-        type: 'application/zip',
-        url: 'https://drive.google.com/file/brewtheory-menu-lifestyle',
-      },
-    ],
     rules: [
       'Content must be at least 15 seconds long',
       'Use #BrewTheoryCafe',

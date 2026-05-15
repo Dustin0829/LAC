@@ -13,7 +13,7 @@
 | **Database** | Supabase-hosted PostgreSQL; Prisma migrations from the **API** (Prisma ORM on same Postgres) |
 | **Files** | Cloudflare R2 (S3-compatible), **private** objects; **presigned** URLs from API |
 | **Backend** | Node.js, Express, Prisma, Zod, helmet, CORS, rate limiting, Winston, Jest, ESLint/Prettier — domain logic, webhooks (Xendit, etc.), scheduled/queued **jobs**, **TikTok** & **Meta** OAuth + submit fetch + liveness |
-| **Payments** | Xendit — brands pay in; **monthly** creator payouts **after** brand **confirms** batch ([Monthly payout](01-business-model.md#4-monthly-payout)) |
+| **Payments** | Xendit — **xenPlatform Owned sub-account per brand** (created on **first successful campaign fund**); **money-in** and **Disbursements** scoped with **`for-user-id`**; **no cross-brand** settlement; campaign splits + references in **app ledger + API metadata** ([Xendit xenPlatform](01-business-model.md#xendit-xenplatform-per-brand)); **monthly** creator payouts **after** brand **confirms** batch ([Monthly payout](01-business-model.md#4-monthly-payout)) |
 
 ---
 

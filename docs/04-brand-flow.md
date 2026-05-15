@@ -35,14 +35,14 @@ flowchart TD
   finalPayout --> refund[Refund available balance optional]
 ```
 
-| # | Step |
-|---|------|
-| 1 | **Draft** — name, description, rules, assets, rate, optional links, end/goal, platforms (Facebook / TikTok) |
-| 2 | **Fund** — 15% Arpify, 85% to spendable pool |
-| 3 | **Publish** when validation passes and spendable ≥ [publish floor](06-policies-and-trust.md#launch-policies); campaign visible to creators |
-| 4 | Submissions **count by default**; brand may **reject** to exclude **in real time** or when **reviewing the monthly breakdown** before payout; stats **locked at submit** |
-| 5 | **Monthly payout** — Arpify prepares batch; brand **reviews the breakdown and confirms** before send (can **reject** from that review). **No** weekly batches; **no** per-submission pay button for creators |
-| 6 | **Close** when goal hit, pool empty, or manual close; **refund** remaining **available** if any |
+| #   | Step                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Draft** — name, description, rules, assets, rate, optional links, end/goal, platforms (Facebook / TikTok)                                                                                                  |
+| 2   | **Fund** — 15% Arpify, 85% to spendable pool                                                                                                                                                                 |
+| 3   | **Publish** when validation passes and spendable ≥ [publish floor](06-policies-and-trust.md#launch-policies); campaign visible to creators                                                                   |
+| 4   | Submissions **count by default**; brand may **reject** to exclude **in real time** or when **reviewing the monthly breakdown** before payout; stats **locked at submit**                                     |
+| 5   | **Monthly payout** — Arpify prepares batch; brand **reviews the breakdown and confirms** before send (can **reject** from that review). **No** weekly batches; **no** per-submission pay button for creators |
+| 6   | **Close** when goal hit, pool empty, or manual close; **refund** remaining **available** if any                                                                                                              |
 
 ---
 
@@ -72,16 +72,16 @@ flowchart TD
 
 ## Campaign fields
 
-| Area | MVP |
-|------|-----|
-| **Campaign name** | Required before **Publish** |
-| **Description** | Required before **Publish** |
-| **Rules** | Required before **Publish**; **auto-check** at submit vs these rules ([Submit flow](03-creator-flow.md#the-submit-flow-detailed)) |
-| **Assets** | Required before **Publish** — files/links makers need |
-| **Funds** | **Gross** PHP per 1k + payments; **spendable** after 15% ([Revenue](01-business-model.md#where-arpify-makes-money-two-streams)). Creators see **default headline** = 80% of gross on campaign list/detail ([Copy](README.md#voice-positioning-and-naming-copywriting)); **TikTok yellow basket** rows settle at **50%** creator share of gross performance on that submission ([Creator flow](03-creator-flow.md#tiktok-yellow-basket-submit)). May fund in **Draft**. **Payout** step minimums: [Payout (create campaign)](#payout-create-campaign) |
-| **Links** | Optional — reference posts, product pages, tracking URLs |
-| **End / Goal** | **One** mode: run until **goal** or **spendable runs out** or brand closes. MVP default goal = spendable exhausted. Optional hard caps (views/spend) can be a later addition |
-| **Platforms** | **One or both** of Facebook and TikTok (**≥1** to publish). Submissions only from enabled platforms; creator must have a **working** OAuth for that platform ([Creator OAuth](03-creator-flow.md#connect-tiktok-and-meta)). **No** other platforms in MVP |
+| Area              | MVP                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Campaign name** | Required before **Publish**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Description**   | Required before **Publish**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Rules**         | Required before **Publish**; **auto-check** at submit vs these rules ([Submit flow](03-creator-flow.md#the-submit-flow-detailed))                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Assets**        | Required before **Publish** — files/links makers need                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Funds**         | **Gross** PHP per 1k + payments; **spendable** after 15% ([Revenue](01-business-model.md#where-arpify-makes-money-two-streams)). Creators see **default headline** = 80% of gross on campaign list/detail ([Copy](README.md#voice-positioning-and-naming-copywriting)); **TikTok yellow basket** rows settle at **50%** creator share of gross performance on that submission ([Creator flow](03-creator-flow.md#tiktok-yellow-basket-submit)). May fund in **Draft**. **Payout** step minimums: [Payout (create campaign)](#payout-create-campaign) |
+| **Links**         | Optional — reference posts, product pages, tracking URLs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **End / Goal**    | **One** mode: run until **goal** or **spendable runs out** or brand closes. MVP default goal = spendable exhausted. Optional hard caps (views/spend) can be a later addition                                                                                                                                                                                                                                                                                                                                                                         |
+| **Platforms**     | **One or both** of Facebook and TikTok (**≥1** to publish). Submissions only from enabled platforms; creator must have a **working** OAuth for that platform ([Creator OAuth](03-creator-flow.md#connect-tiktok-and-meta)). **No** other platforms in MVP                                                                                                                                                                                                                                                                                            |
 
 **Draft**
 
@@ -96,10 +96,10 @@ flowchart TD
 
 **Payout** section on **create / edit campaign** (the brand-facing **gross** fields):
 
-| Field | Minimum |
-|-------|---------|
-| **Brand rate per 1,000 views (₱)** | **PHP 50** |
-| **Total budget (₱)** | **PHP 10,000** |
+| Field                              | Minimum        |
+| ---------------------------------- | -------------- |
+| **Brand rate per 1,000 views (₱)** | **PHP 35**     |
+| **Total budget (₱)**               | **PHP 10,000** |
 
 Validation should block saving or publishing below these thresholds (product rules). **Publish** also requires **spendable** pool rules in [Launch policies](06-policies-and-trust.md#launch-policies) (after the **15%** platform fee on deposits).
 
@@ -108,6 +108,8 @@ Validation should block saving or publishing below these thresholds (product rul
 ## Funding a campaign
 
 Brand enters amount → payment clears → spendable updates. **15%** Arpify; **85%** pool. Console shows **gross** and **net credited**.
+
+**XenPlatform:** On the brand’s **first successful fund**, the backend **creates** an **Owned** xenPlatform **sub-account** for that brand (if one does not exist yet) and stores Xendit’s scoped user id. All **money-in** for that brand and **creator disbursements** for that brand’s campaigns run **scoped to that sub-account** only — see [Xendit xenPlatform (per brand)](01-business-model.md#xendit-xenplatform-per-brand).
 
 ```mermaid
 flowchart TD
@@ -132,10 +134,10 @@ Submissions arrive **one at a time** — **no** weekly review batch. **By defaul
 
 **Actions:** **Reject** (+ reason) **excludes** the submission from pay and notifies the creator. **No separate Approve** — lines that stay **not rejected** **accrue** toward the next monthly batch.
 
-| Situation | Money |
-|--------|--------|
+| Situation        | Money                                                                                                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Not rejected** | Gross slice is **included**: moves **available → reserved** per policy (e.g. when the line is finalized for the batch); creator line queued for **next monthly** payout |
-| **Rejected** | **Excluded** — no pay. If the line was already **reserved** (e.g. reject during pre-payout review): reserved returns to **available** |
+| **Rejected**     | **Excluded** — no pay. If the line was already **reserved** (e.g. reject during pre-payout review): reserved returns to **available**                                   |
 
 ```mermaid
 flowchart TD
@@ -164,13 +166,13 @@ Failed payout to a creator: line stays **reserved**; retry per policy ([Edge cas
 
 ## Brand decision points (summary)
 
-| # | Decision | Effect |
-|---|----------|--------|
-| 1 | **Fund** | Money in |
-| 2 | **Publish** | Campaign live for creators |
-| 3 | **Reject** (exclude) | Anytime before payout **confirm** — inbox or breakdown |
-| 4 | **Confirm monthly payout** | Required before disbursement |
-| 5 | **Refund** | Only **[available](01-business-model.md#brand-refunds-available-only)** |
-| 6 | **Pause / close** | Stop new submits as defined |
+| #   | Decision                   | Effect                                                                  |
+| --- | -------------------------- | ----------------------------------------------------------------------- |
+| 1   | **Fund**                   | Money in                                                                |
+| 2   | **Publish**                | Campaign live for creators                                              |
+| 3   | **Reject** (exclude)       | Anytime before payout **confirm** — inbox or breakdown                  |
+| 4   | **Confirm monthly payout** | Required before disbursement                                            |
+| 5   | **Refund**                 | Only **[available](01-business-model.md#brand-refunds-available-only)** |
+| 6   | **Pause / close**          | Stop new submits as defined                                             |
 
 Snapshot lock and monthly batch rules: [Monthly payout](01-business-model.md#4-monthly-payout).

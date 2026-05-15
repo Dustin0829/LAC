@@ -1,14 +1,35 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { useCampaignsStore } from '@/lib/stores/campaignsStore'
 import { Button } from '@/components/ui/button'
 import { CampaignCard } from '@/components/CampaignCard'
 import { RefreshButton } from '@/components/RefreshButton'
 
 export default function BrandCampaignsPage() {
+  const { user, accessToken } = useAuth()
   const campaigns = useCampaignsStore((s) => s.campaigns)
+  const loadForBrand = useCampaignsStore((s) => s.loadForBrand)
   const [refreshing, setRefreshing] = useState(false)
+
+  useEffect(() => {
+    if (!user?.id || !accessToken) return
+    void loadForBrand(accessToken, user)
+  }, [user, accessToken, loadForBrand])
+
+  const runRefresh = async () => {
+    setRefreshing(true)
+    try {
+      if (user?.id && accessToken) {
+        await loadForBrand(accessToken, user)
+      } else {
+        await new Promise((r) => setTimeout(r, 300))
+      }
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   return (
     <div className="px-2 py-4 md:p-8 space-y-6">
@@ -21,9 +42,7 @@ export default function BrandCampaignsPage() {
             variant="outline"
             isRefreshing={refreshing}
             size="icon"
-            onRefresh={async () => {
-              setRefreshing(true)
-            }}
+            onRefresh={runRefresh}
             successMessage="Campaigns updated"
             aria-label="Refresh campaigns"
             className="md:hidden"
@@ -33,14 +52,7 @@ export default function BrandCampaignsPage() {
           <RefreshButton
             variant="outline"
             isRefreshing={refreshing}
-            onRefresh={async () => {
-              setRefreshing(true)
-              try {
-                await new Promise((r) => setTimeout(r, 500))
-              } finally {
-                setRefreshing(false)
-              }
-            }}
+            onRefresh={runRefresh}
             successMessage="Campaigns updated"
             aria-label="Refresh campaigns"
             className="hidden md:block"
