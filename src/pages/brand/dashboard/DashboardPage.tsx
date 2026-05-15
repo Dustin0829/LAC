@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Eye, Wallet, Video, TrendingUp, ArrowUpRight, Plus, Scissors } from 'lucide-react'
 import {
@@ -10,15 +10,13 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts'
-import { useAuth } from '@/lib/hooks/use-auth'
-import { useCampaignsStore } from '@/lib/stores/campaignsStore'
-import { useContentStore } from '@/lib/stores/contentStore'
 import {
-  brandGrossAccrualForViews,
-  brandHeadlineRatePer1k,
-  mockBrandPerformanceMonthly,
-  mockBrandPerformanceYearly,
-} from '@/lib/mockData'
+  useBrandDashboardStats,
+  useBrandPerformanceChart,
+} from '@/api/queries/brands/use-dashboard'
+import { useBrandRecentSubmissions } from '@/api/queries/brands/use-submissions'
+import type { BrandPerformanceRange } from '@/api/types/brands/dashboard.types'
+import { useAuth } from '@/lib/hooks/use-auth'
 import {
   brandReviewStatusForBadge,
   creatorSocialHrefOrPost,
@@ -50,77 +48,40 @@ import {
 } from '@/components/ui/table'
 import { TablePagination } from '@/components/TablePagination'
 import { RefreshButton } from '@/components/RefreshButton'
-
-type PerformanceRange = 'monthly' | 'yearly'
-
-function chartRowsForRange(range: PerformanceRange) {
-  return range === 'monthly' ? mockBrandPerformanceMonthly : mockBrandPerformanceYearly
-}
-
-const RECENT_PAGE_SIZE = 10
-
-/** Ids produced by the mock `AuthPage` sign-in; they never match `campaign.brandId` in seed data. */
-function isDemoAuthUserId(id: string): boolean {
-  return /^gmail-\d+$/.test(id) || /^user-\d+$/.test(id)
-}
+import { RECENT_PAGE_SIZE } from '@/lib/constants'
 
 export default function BrandDashboardPage() {
-  const { user, accessToken } = useAuth()
-  const loadForBrand = useCampaignsStore((s) => s.loadForBrand)
-  const [performanceRange, setPerformanceRange] = useState<PerformanceRange>('monthly')
+  const { user } = useAuth()
+  const {
+    data: dashboardStats,
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useBrandDashboardStats()
+  const [performanceRange, setPerformanceRange] = useState<BrandPerformanceRange>('monthly')
+  const {
+    chartData: performanceChartData,
+    isLoading: analyticsLoading,
+    refetch: refetchAnalytics,
+  } = useBrandPerformanceChart(performanceRange)
   const [recentPage, setRecentPage] = useState(1)
   const [refreshing, setRefreshing] = useState(false)
-  const performanceChartData = useMemo(
-    () => chartRowsForRange(performanceRange),
-    [performanceRange]
+  const recentQueryParams = useMemo(
+    () => ({ page: recentPage, limit: RECENT_PAGE_SIZE }),
+    [recentPage]
   )
-  const campaigns = useCampaignsStore((s) => s.campaigns)
-  const contents = useContentStore((s) => s.contents)
+  const {
+    data: recentSubmissions,
+    isLoading: recentLoading,
+    isError: recentError,
+    refetch: refetchRecentSubmissions,
+  } = useBrandRecentSubmissions(recentQueryParams)
+  const recentPageRows = recentSubmissions?.rows ?? []
+  const recentTotalItems = recentSubmissions?.meta.total_items ?? 0
 
-  useEffect(() => {
-    if (!user?.id || !accessToken) return
-    void loadForBrand(accessToken, user)
-  }, [user, accessToken, loadForBrand])
-  const brandCampaigns = useMemo(() => {
-    if (!user?.id) return campaigns
-    const forUser = campaigns.filter((c) => c.brandId === user.id)
-    if (forUser.length > 0) return forUser
-    if (isDemoAuthUserId(user.id)) return campaigns
-    return []
-  }, [campaigns, user?.id])
-  const campaignById = useMemo(() => {
-    const m = new Map<string, (typeof campaigns)[number]>()
-    for (const c of campaigns) m.set(c.id, c)
-    return m
-  }, [campaigns])
-  /** Verified views across this brand’s campaigns (same field as reach bars on campaign cards). */
-  const totalReached = brandCampaigns.reduce((s, c) => s + (c.campaignViews ?? 0), 0)
-  /** Brand gross accrued for those views at each campaign’s headline ₱/1k (matches submission accrual math). */
-  const totalBrandGrossOnViews = brandCampaigns.reduce(
-    (s, c) => s + brandGrossAccrualForViews(c.campaignViews ?? 0, brandHeadlineRatePer1k(c)),
-    0
-  )
-  const avgCostPerView = totalReached > 0 ? totalBrandGrossOnViews / totalReached : null
-
-  const sortedRecentSubmissions = useMemo(
-    () =>
-      [...contents]
-        .filter((c) => c.creatorId !== 'me')
-        .filter((c) => c.status === 'pending' || c.status === 'rejected')
-        .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()),
-    [contents]
-  )
-
-  const recentTotalPages = Math.max(1, Math.ceil(sortedRecentSubmissions.length / RECENT_PAGE_SIZE))
-
-  useEffect(() => {
-    setRecentPage((p) => Math.min(p, recentTotalPages))
-  }, [recentTotalPages])
-
-  const recentPageRows = useMemo(() => {
-    const start = (recentPage - 1) * RECENT_PAGE_SIZE
-    return sortedRecentSubmissions.slice(start, start + RECENT_PAGE_SIZE)
-  }, [sortedRecentSubmissions, recentPage])
+  const totalCampaigns = dashboardStats?.totalCampaigns ?? 0
+  const totalReached = dashboardStats?.totalReached ?? 0
+  const totalSpent = dashboardStats?.totalSpent ?? 0
+  const avgCostPerView = dashboardStats?.avgCostPerView ?? null
 
   return (
     <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
@@ -138,7 +99,7 @@ export default function BrandDashboardPage() {
             onRefresh={async () => {
               setRefreshing(true)
               try {
-                await new Promise((r) => setTimeout(r, 500))
+                await Promise.all([refetchStats(), refetchAnalytics(), refetchRecentSubmissions()])
               } finally {
                 setRefreshing(false)
               }
@@ -161,25 +122,31 @@ export default function BrandDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 -mt-2 md:-mt-0">
         <StatCard
           label="Total Campaigns"
-          value={brandCampaigns.length}
+          value={statsLoading ? '—' : totalCampaigns}
           icon={Video}
           accent="violet"
         />
         <StatCard
           label="Total Spent"
-          value={formatPHP(totalBrandGrossOnViews, { decimals: false })}
+          value={statsLoading ? '—' : formatPHP(totalSpent, { decimals: false })}
           icon={Wallet}
           accent="emerald"
         />
         <StatCard
           label="Total Reached"
-          value={formatViews(totalReached)}
+          value={statsLoading ? '—' : formatViews(totalReached)}
           icon={Eye}
           accent="pink"
         />
         <StatCard
           label="Avg Cost per View"
-          value={avgCostPerView != null ? formatPHP(avgCostPerView) : '—'}
+          value={
+            statsLoading
+              ? '—'
+              : avgCostPerView != null && totalReached > 0
+                ? formatPHP(avgCostPerView)
+                : '—'
+          }
           icon={TrendingUp}
           accent="orange"
         />
@@ -192,7 +159,7 @@ export default function BrandDashboardPage() {
           </div>
           <Select
             value={performanceRange}
-            onValueChange={(v) => setPerformanceRange(v as PerformanceRange)}
+            onValueChange={(v) => setPerformanceRange(v as BrandPerformanceRange)}
           >
             <SelectTrigger className="w-full sm:w-44" aria-label="Date range">
               <SelectValue placeholder="Date range" />
@@ -204,61 +171,71 @@ export default function BrandDashboardPage() {
           </Select>
         </div>
         <div className="h-72 w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%" key={performanceRange}>
-            <AreaChart data={performanceChartData}>
-              <defs>
-                <linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.28} />
-                  <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="payoutFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563EB" stopOpacity={0.18} />
-                  <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-              <XAxis
-                dataKey="period"
-                stroke="currentColor"
-                className="text-xs"
-                tickMargin={6}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                stroke="currentColor"
-                className="text-xs"
-                tickFormatter={(v) => formatNumber(Number(v))}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'white',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 12,
-                }}
-                formatter={(v: number, name: string) =>
-                  name === 'Views'
-                    ? [formatViews(v), name]
-                    : [formatPHP(v, { decimals: false }), name]
-                }
-              />
-              <Area
-                type="monotone"
-                dataKey="views"
-                name="Views"
-                stroke="#3B82F6"
-                strokeWidth={3}
-                fill="url(#viewsFill)"
-              />
-              <Area
-                type="monotone"
-                dataKey="payout"
-                name="Payout"
-                stroke="#2563EB"
-                strokeWidth={3}
-                fill="url(#payoutFill)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {analyticsLoading ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Loading performance…
+            </div>
+          ) : performanceChartData.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              No performance data yet.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%" key={performanceRange}>
+              <AreaChart data={performanceChartData}>
+                <defs>
+                  <linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.28} />
+                    <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="payoutFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563EB" stopOpacity={0.18} />
+                    <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis
+                  dataKey="period"
+                  stroke="currentColor"
+                  className="text-xs"
+                  tickMargin={6}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  stroke="currentColor"
+                  className="text-xs"
+                  tickFormatter={(v) => formatNumber(Number(v))}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'white',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 12,
+                  }}
+                  formatter={(v: number, name: string) =>
+                    name === 'Views'
+                      ? [formatViews(v), name]
+                      : [formatPHP(v, { decimals: false }), name]
+                  }
+                />
+                <Area
+                  type="monotone"
+                  dataKey="views"
+                  name="Views"
+                  stroke="#3B82F6"
+                  strokeWidth={3}
+                  fill="url(#viewsFill)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="payout"
+                  name="Payout"
+                  stroke="#2563EB"
+                  strokeWidth={3}
+                  fill="url(#payoutFill)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -283,7 +260,22 @@ export default function BrandDashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedRecentSubmissions.length === 0 ? (
+              {recentLoading ? (
+                <TableRow className="cursor-default hover:bg-transparent">
+                  <TableCell
+                    colSpan={6}
+                    className="py-12 text-center text-sm text-muted-foreground"
+                  >
+                    Loading submissions…
+                  </TableCell>
+                </TableRow>
+              ) : recentError ? (
+                <TableRow className="cursor-default hover:bg-transparent">
+                  <TableCell colSpan={6} className="py-12 text-center text-sm text-destructive">
+                    Could not load submissions. Try refreshing the dashboard.
+                  </TableCell>
+                </TableRow>
+              ) : recentPageRows.length === 0 ? (
                 <TablePlaceholder
                   icon={<Scissors className="text-muted-foreground" />}
                   title="No recent submissions"
@@ -291,69 +283,53 @@ export default function BrandDashboardPage() {
                   colSpan={6}
                 />
               ) : (
-                recentPageRows.map((content) => {
-                  const postHref = content.url
-                  const rowCampaign = campaignById.get(content.campaignId)
-                  const brandPer1k = rowCampaign ? brandHeadlineRatePer1k(rowCampaign) : 0
-                  const payoutGross = brandGrossAccrualForViews(content.views, brandPer1k)
-                  return (
-                    <TableRow
-                      onClick={() => window.open(postHref, '_blank')}
-                      key={content.id}
-                      className="hover:bg-muted/40 cursor-pointer [&_a]:focus-visible:outline-none [&_a]:focus-visible:ring-2 [&_a]:focus-visible:ring-ring [&_a]:focus-visible:ring-offset-2"
-                    >
-                      <TableCell className="max-w-56" onClick={(e) => e.stopPropagation()}>
-                        <a
-                          href={creatorSocialHrefOrPost(content.url, content.platform)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex min-w-0 items-center gap-2 rounded-md font-medium text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        >
-                          <PersonAvatar
-                            name={content.creatorName}
-                            src={content.creatorAvatarUrl}
-                            size="xs"
-                          />
-                          <span className="min-w-0 leading-snug">{content.creatorName}</span>
-                        </a>
-                      </TableCell>
-                      <TableCell className="max-w-72 truncate" onClick={(e) => e.stopPropagation()}>
-                        <Link
-                          to={`/brand/campaigns/${content.campaignId}`}
-                          className="line-clamp-2 font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                        >
-                          {content.campaignTitle}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <PlatformCell
-                          platform={content.platform}
-                          iconClassName="h-5 w-5"
-                          // v1 (post-MVP): hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-display font-semibold tabular-nums">
-                        {formatViews(content.views)}
-                      </TableCell>
-                      <TableCell className="font-display font-semibold tabular-nums text-phc-gradient">
-                        {rowCampaign ? formatPHP(payoutGross, { decimals: false }) : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <ContentStatusBadge
-                          status={brandReviewStatusForBadge(content.status, false)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
+                recentPageRows.map((row) => (
+                  <TableRow
+                    onClick={() => window.open(row.url, '_blank')}
+                    key={row.id}
+                    className="hover:bg-muted/40 cursor-pointer [&_a]:focus-visible:outline-none [&_a]:focus-visible:ring-2 [&_a]:focus-visible:ring-ring [&_a]:focus-visible:ring-offset-2"
+                  >
+                    <TableCell className="max-w-56" onClick={(e) => e.stopPropagation()}>
+                      <a
+                        href={creatorSocialHrefOrPost(row.url, row.platform)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex min-w-0 items-center gap-2 rounded-md font-medium text-foreground underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <PersonAvatar name={row.creatorName} src={row.creatorAvatarUrl} size="xs" />
+                        <span className="min-w-0 leading-snug">{row.creatorName}</span>
+                      </a>
+                    </TableCell>
+                    <TableCell className="max-w-72 truncate" onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        to={`/brand/campaigns/${row.campaignId}`}
+                        className="line-clamp-2 font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                      >
+                        {row.campaignTitle}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <PlatformCell platform={row.platform} iconClassName="h-5 w-5" />
+                    </TableCell>
+                    <TableCell className="font-display font-semibold tabular-nums">
+                      {formatViews(row.views)}
+                    </TableCell>
+                    <TableCell className="font-display font-semibold tabular-nums text-phc-gradient">
+                      {formatPHP(row.payoutGross, { decimals: false })}
+                    </TableCell>
+                    <TableCell>
+                      <ContentStatusBadge status={brandReviewStatusForBadge(row.status, false)} />
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
-          {sortedRecentSubmissions.length === 0 ? null : (
+          {recentLoading || recentError || recentTotalItems === 0 ? null : (
             <TablePagination
               page={recentPage}
               pageSize={RECENT_PAGE_SIZE}
-              totalItems={sortedRecentSubmissions.length}
+              totalItems={recentTotalItems}
               onPageChange={setRecentPage}
               itemLabel="submissions"
             />

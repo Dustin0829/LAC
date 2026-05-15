@@ -10,4 +10,4 @@ export {
   emptyBrandProfileForm,
   type BrandProfileFormValues,
   type BrandProfileLinkKey,
-} from './brandProfile.schema'
+} from './brands/profile.schema'

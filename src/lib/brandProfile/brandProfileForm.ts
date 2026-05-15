@@ -3,7 +3,7 @@ import {
   emptyBrandProfileForm,
   type BrandProfileFormValues,
   type BrandProfileLinkKey,
-} from '@/api/schema/brandProfile.schema'
+} from '@/api/schema/brands/profile.schema'
 import { brandProfileFromApi, isBrandMeProfile } from '@/lib/auth/mapMeProfile'
 import type { BrandProfile } from '@/lib/stores/brandProfileStore'
 import type { LucideIcon } from 'lucide-react'

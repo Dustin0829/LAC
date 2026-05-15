@@ -4,7 +4,7 @@ import {
   isTiktokLinkIcon,
   type BrandSocialLinkFieldConfig,
 } from '@/lib/brandProfile/brandProfileForm'
-import type { BrandProfileLinkKey } from '@/api/schema/brandProfile.schema'
+import type { BrandProfileLinkKey } from '@/api/schema/brands/profile.schema'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PlatformIcon } from '@/components/PlatformIcon'

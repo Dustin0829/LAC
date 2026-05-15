@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Loader2, LogOut, Save } from 'lucide-react'
 import { toast } from 'sonner'
-import { brandProfileSaveSchema } from '@/api/schema/brandProfile.schema'
+import { brandProfileSaveSchema } from '@/api/schema/brands/profile.schema'
 import { useMeProfile, usePutMeBrandProfile } from '@/api/queries/use-me'
 import { buildPutMeBrandProfileBody } from '@/lib/auth/mapMeProfile'
 import {

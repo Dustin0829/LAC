@@ -40,7 +40,11 @@ api.interceptors.response.use(
       (body as { success?: boolean }).success === true &&
       'data' in body
     ) {
-      return { ...response, data: (body as { data: unknown }).data }
+      const next = { ...response, data: (body as { data: unknown }).data }
+      if ('meta' in body && body.meta != null) {
+        ;(next as { meta?: unknown }).meta = body.meta
+      }
+      return next
     }
     return response
   },

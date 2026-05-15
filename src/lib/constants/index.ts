@@ -3,6 +3,8 @@ import type { Platform } from '@/lib/mockData'
 export const TERMS_OF_SERVICE_URL = 'https://www.vid-u.com/terms'
 export const PRIVACY_POLICY_URL = 'https://www.vid-u.com/privacy'
 
+export const RECENT_PAGE_SIZE = 10
+
 /**
  * Profile wizard at `/onboarding/profile` (platforms, payouts, brand profile).
  * Set to `false` to skip and send users to the dashboard after role selection.
