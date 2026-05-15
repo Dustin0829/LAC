@@ -1,35 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
-import { useAuth } from '@/lib/hooks/use-auth'
-import { useCampaignsStore } from '@/lib/stores/campaignsStore'
+import { useBrandCampaigns } from '@/api/queries/brands/use-campaigns'
 import { Button } from '@/components/ui/button'
 import { CampaignCard } from '@/components/CampaignCard'
 import { RefreshButton } from '@/components/RefreshButton'
 
 export default function BrandCampaignsPage() {
-  const { user, accessToken } = useAuth()
-  const campaigns = useCampaignsStore((s) => s.campaigns)
-  const loadForBrand = useCampaignsStore((s) => s.loadForBrand)
+  const { data: campaigns = [], isLoading, isError, refetch, isFetching } = useBrandCampaigns()
   const [refreshing, setRefreshing] = useState(false)
-
-  useEffect(() => {
-    if (!user?.id || !accessToken) return
-    void loadForBrand(accessToken, user)
-  }, [user, accessToken, loadForBrand])
 
   const runRefresh = async () => {
     setRefreshing(true)
     try {
-      if (user?.id && accessToken) {
-        await loadForBrand(accessToken, user)
-      } else {
-        await new Promise((r) => setTimeout(r, 300))
-      }
+      await refetch()
     } finally {
       setRefreshing(false)
     }
   }
+
+  const showEmpty = !isLoading && !isError && campaigns.length === 0
 
   return (
     <div className="px-2 py-4 md:p-8 space-y-6">
@@ -40,7 +30,7 @@ export default function BrandCampaignsPage() {
           </h1>
           <RefreshButton
             variant="outline"
-            isRefreshing={refreshing}
+            isRefreshing={refreshing || isFetching}
             size="icon"
             onRefresh={runRefresh}
             successMessage="Campaigns updated"
@@ -51,7 +41,7 @@ export default function BrandCampaignsPage() {
         <div className="flex flex-wrap items-center justify-end gap-2">
           <RefreshButton
             variant="outline"
-            isRefreshing={refreshing}
+            isRefreshing={refreshing || isFetching}
             onRefresh={runRefresh}
             successMessage="Campaigns updated"
             aria-label="Refresh campaigns"
@@ -65,7 +55,19 @@ export default function BrandCampaignsPage() {
         </div>
       </div>
 
-      {campaigns.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-3xl border border-border bg-card p-16 text-center text-sm text-muted-foreground">
+          Loading campaigns…
+        </div>
+      ) : isError ? (
+        <div className="rounded-3xl border border-border bg-card p-16 text-center">
+          <p className="font-display text-lg font-bold">Could not load campaigns</p>
+          <p className="mt-1 text-sm text-muted-foreground">Check your connection and try again.</p>
+          <Button variant="outline" className="mt-4" onClick={() => void runRefresh()}>
+            Retry
+          </Button>
+        </div>
+      ) : showEmpty ? (
         <div className="rounded-3xl border border-dashed border-border bg-card p-16 text-center">
           <p className="font-display text-lg font-bold">No campaigns yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
