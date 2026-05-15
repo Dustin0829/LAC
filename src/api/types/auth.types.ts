@@ -3,4 +3,6 @@
  * Import shared envelopes from `@/api/types/global.types`.
  */
 
-export type {}
+export type AuthSignOutData = {
+  ok: true
+}

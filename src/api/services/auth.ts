@@ -1,6 +1,7 @@
-/**
- * Cross-cutting auth HTTP (e.g. `/auth/*`, session sync).
- * Implement with `import api from '@/api/client'` — no React in this folder.
- */
+import api from '@/api/client'
+import type { AuthSignOutData } from '@/api/types/auth.types'
 
-export {}
+export async function postAuthSignOut(): Promise<AuthSignOutData> {
+  const res = await api.post<AuthSignOutData>('/auth/sign-out')
+  return res.data
+}

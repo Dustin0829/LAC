@@ -1,23 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Facebook, Globe, Instagram } from 'lucide-react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { ArrowRight, Facebook, Globe, Instagram, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
-  OnboardingWizardShell,
-} from '@/components/onboarding/OnboardingWizardShell'
+  useCompleteMeOnboarding,
+  useMeProfile,
+  usePutMeBrandProfile,
+  usePutMeCreatorProfile,
+} from '@/api/queries/use-me'
+import type { BrandMeProfileData } from '@/api/types/me.types'
+import { OnboardingWizardShell } from '@/components/onboarding/OnboardingWizardShell'
+import { ConnectedPlatformsSection } from '@/components/account/ConnectedPlatformsSection'
 import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSection'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  brandProfileFromApi,
+  buildPutMeBrandProfileBody,
+  creatorLinksFromApi,
+} from '@/lib/auth/mapMeProfile'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useSignOut } from '@/lib/hooks/use-sign-out'
 import { markProfileOnboardingComplete } from '@/lib/profileOnboarding'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useBrandProfileStore } from '@/lib/stores/brandProfileStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
 import { authFlowOutlineButtonClass, authFlowPrimaryButtonClass } from '@/lib/authFlowButtonClasses'
 import { cn } from '@/lib/utils'
-import type { Platform } from '@/lib/mockData'
+
+function isBrandMeProfile(data: unknown): data is BrandMeProfileData {
+  return typeof data === 'object' && data !== null && 'brandName' in data
+}
 
 const CREATOR_STEP_TOTAL = 2
 const BRAND_STEP_TOTAL = 2
@@ -25,25 +41,40 @@ const BRAND_STEP_TOTAL = 2
 function CreatorProfileOnboarding() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const signOut = useAuthStore((s) => s.signOut)
+  const signOut = useSignOut()
   const userId = user?.id
-  const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
-  const connectPlatform = useCreatorProfileStore((s) => s.connectPlatform)
+  const setPlatformLinks = useCreatorProfileStore((s) => s.setPlatformLinks)
+  const { data: profileData, isSuccess: profileLoaded } = useMeProfile()
+  const putCreatorProfile = usePutMeCreatorProfile()
+  const completeOnboarding = useCompleteMeOnboarding()
+  const profileHydrated = useRef(false)
   const [step, setStep] = useState(1)
   const total = CREATOR_STEP_TOTAL
+  const saving = putCreatorProfile.isPending || completeOnboarding.isPending
 
-  function finish() {
-    if (!userId) {
-      return
+  useEffect(() => {
+    if (!profileLoaded || !profileData || profileHydrated.current) return
+    if ('platformLinks' in profileData) {
+      setPlatformLinks(creatorLinksFromApi(profileData))
+      profileHydrated.current = true
     }
-    markProfileOnboardingComplete(userId, 'creator')
-    navigate('/creator/dashboard', { replace: true })
+  }, [profileLoaded, profileData, setPlatformLinks])
+
+  async function finish() {
+    if (!userId) return
+    try {
+      await putCreatorProfile.mutateAsync()
+      await completeOnboarding.mutateAsync()
+      markProfileOnboardingComplete(userId, 'creator')
+      navigate('/dashboard', { replace: true })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save your profile.')
+    }
   }
 
-  function handleBack() {
+  async function handleBack() {
     if (step <= 1) {
-      signOut()
-      navigate('/auth', { replace: true })
+      await signOut()
       return
     }
     setStep((s) => Math.max(1, s - 1))
@@ -60,7 +91,8 @@ function CreatorProfileOnboarding() {
         variant="ghost"
         size="lg"
         className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
-        onClick={handleBack}
+        onClick={() => void handleBack()}
+        disabled={saving}
       >
         Back
       </Button>
@@ -88,9 +120,17 @@ function CreatorProfileOnboarding() {
             variant="ghost"
             size="lg"
             className={cn('h-[46px] min-w-[7.5rem] px-6', authFlowPrimaryButtonClass)}
-            onClick={finish}
+            onClick={() => void finish()}
+            disabled={saving}
           >
-            Save
+            {saving ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving…
+              </span>
+            ) : (
+              'Save'
+            )}
           </Button>
         )}
       </div>
@@ -107,38 +147,7 @@ function CreatorProfileOnboarding() {
       }
       footer={footer}
     >
-      {step === 1 && (
-        <div className="space-y-4">
-          <h2 className="font-display text-xl font-extrabold">Connected platforms</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {platformLinks.map((link) => (
-              <div key={link.platform} className="rounded-2xl border border-border bg-muted/40 p-4">
-                <div className="flex items-start gap-3">
-                  <PlatformIcon platform={link.platform as Platform} className="h-8 w-8 shrink-0" />
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <p className="font-semibold">{link.label}</p>
-                    <p className="break-all text-xs text-muted-foreground">{link.handle}</p>
-                    {link.status === 'connected' ? (
-                      <span className="inline-flex rounded-full bg-success px-3 py-1 text-xs font-semibold text-black">
-                        Connected
-                      </span>
-                    ) : (
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="bg-phc-gradient text-white"
-                        onClick={() => connectPlatform(link.platform)}
-                      >
-                        Connect
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {step === 1 && <ConnectedPlatformsSection embedded allowDisconnect={false} />}
 
       {step === 2 && <PaymentMethodsSection mode="creator" suppressToasts />}
     </OnboardingWizardShell>
@@ -149,18 +158,30 @@ function BrandProfileOnboarding() {
   const navigate = useNavigate()
   const logoFileRef = useRef<HTMLInputElement>(null)
   const { user } = useAuth()
-  const signOut = useAuthStore((s) => s.signOut)
+  const signOut = useSignOut()
   const userId = user?.id
   const profile = useBrandProfileStore((s) => s.profile)
   const setProfile = useBrandProfileStore((s) => s.setProfile)
-  const persistProfile = useBrandProfileStore((s) => s.persistProfile)
   const seedBrandNameIfEmpty = useBrandProfileStore((s) => s.seedBrandNameIfEmpty)
+  const { data: profileData, isSuccess: profileLoaded } = useMeProfile()
+  const putBrandProfile = usePutMeBrandProfile()
+  const completeOnboarding = useCompleteMeOnboarding()
+  const profileHydrated = useRef(false)
   const [step, setStep] = useState(1)
   const total = BRAND_STEP_TOTAL
+  const saving = putBrandProfile.isPending || completeOnboarding.isPending
 
   useEffect(() => {
     if (user?.name) seedBrandNameIfEmpty(user.name)
   }, [user?.name, seedBrandNameIfEmpty])
+
+  useEffect(() => {
+    if (!profileLoaded || !profileData || profileHydrated.current) return
+    if (isBrandMeProfile(profileData)) {
+      setProfile(brandProfileFromApi(profileData))
+      profileHydrated.current = true
+    }
+  }, [profileLoaded, profileData, setProfile])
 
   function onLogoFile(files: FileList | null) {
     const file = files?.[0]
@@ -181,25 +202,46 @@ function BrandProfileOnboarding() {
     user?.email?.charAt(0)?.toUpperCase() ??
     'B'
 
-  function finish() {
-    if (!userId) {
-      return
-    }
-    persistProfile()
-    markProfileOnboardingComplete(userId, 'brand')
-    navigate('/brand/dashboard', { replace: true })
+  async function saveBrandProfilePartial() {
+    const body = buildPutMeBrandProfileBody(profile)
+    if (!body.brandName && Object.keys(body).length === 0) return
+    await putBrandProfile.mutateAsync(body)
   }
 
-  function handleBack() {
+  async function finish() {
+    if (!userId) return
+    const body = buildPutMeBrandProfileBody(profile)
+    if (!body.brandName) {
+      toast.error('Brand name is required.')
+      return
+    }
+    try {
+      await putBrandProfile.mutateAsync(body)
+      await completeOnboarding.mutateAsync()
+      markProfileOnboardingComplete(userId, 'brand')
+      navigate('/brand/dashboard', { replace: true })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save your profile.')
+    }
+  }
+
+  async function handleBack() {
     if (step <= 1) {
-      signOut()
-      navigate('/auth', { replace: true })
+      await signOut()
       return
     }
     setStep((s) => Math.max(1, s - 1))
   }
 
-  function goToNextStep() {
+  async function goToNextStep() {
+    if (step === 1 && profile.brandName.trim()) {
+      try {
+        await saveBrandProfilePartial()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not save brand name.')
+        return
+      }
+    }
     setStep((s) => Math.min(total, s + 1))
   }
 
@@ -210,14 +252,21 @@ function BrandProfileOnboarding() {
         variant="ghost"
         size="lg"
         className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
-        onClick={handleBack}
+        onClick={() => void handleBack()}
+        disabled={saving}
       >
         Back
       </Button>
       <div className="flex flex-wrap items-center justify-end gap-2">
         {step < total ? (
           <>
-            <Button type="button" variant="ghost" className="text-muted-foreground" onClick={goToNextStep}>
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-muted-foreground"
+              onClick={() => void goToNextStep()}
+              disabled={saving}
+            >
               Skip
             </Button>
             <Button
@@ -225,7 +274,8 @@ function BrandProfileOnboarding() {
               variant="ghost"
               size="lg"
               className={cn('h-[46px] min-w-[7.5rem] justify-between gap-2 px-5', authFlowPrimaryButtonClass)}
-              onClick={goToNextStep}
+              onClick={() => void goToNextStep()}
+              disabled={saving}
             >
               <span />
               Next
@@ -238,9 +288,17 @@ function BrandProfileOnboarding() {
             variant="ghost"
             size="lg"
             className={cn('h-[46px] min-w-[7.5rem] px-6', authFlowPrimaryButtonClass)}
-            onClick={finish}
+            onClick={() => void finish()}
+            disabled={saving}
           >
-            Save
+            {saving ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving…
+              </span>
+            ) : (
+              'Save'
+            )}
           </Button>
         )}
       </div>
@@ -375,5 +433,5 @@ export default function ProfileOnboardingPage() {
   const role = useAuthStore((s) => s.role)
   if (role === 'creator') return <CreatorProfileOnboarding />
   if (role === 'brand') return <BrandProfileOnboarding />
-  return null
+  return <Navigate to="/onboarding/role" replace />
 }

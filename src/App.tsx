@@ -67,15 +67,6 @@ function App() {
         />
 
         <Route
-          path="onboarding/profile"
-          element={
-            <ProtectedRoute profileSetup>
-              <ProfileOnboardingPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
           element={
             <ProtectedRoute requiredRole="creator">
               <CreatorLayout />

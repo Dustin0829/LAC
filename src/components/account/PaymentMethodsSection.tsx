@@ -25,7 +25,10 @@ interface PaymentMethodsSectionProps {
   suppressToasts?: boolean
 }
 
-export function PaymentMethodsSection({ mode, suppressToasts = false }: PaymentMethodsSectionProps) {
+export function PaymentMethodsSection({
+  mode,
+  suppressToasts = false,
+}: PaymentMethodsSectionProps) {
   const methods = usePaymentMethodsStore((s) => s.methods)
   const removeMethod = usePaymentMethodsStore((s) => s.removeMethod)
   const setDefault = usePaymentMethodsStore((s) => s.setDefault)
@@ -181,7 +184,7 @@ export function PaymentMethodsSection({ mode, suppressToasts = false }: PaymentM
                 }}
                 className={chooseCardClass}
               >
-                <Wallet className="h-10 w-10 text-primary" aria-hidden />
+                <Wallet className="h-8 w-8 text-primary" aria-hidden />
                 <span className="font-semibold">E-wallets</span>
               </button>
               <button
@@ -192,7 +195,7 @@ export function PaymentMethodsSection({ mode, suppressToasts = false }: PaymentM
                 }}
                 className={chooseCardClass}
               >
-                <Building2 className="h-10 w-10 text-primary" aria-hidden />
+                <Building2 className="h-8 w-8 text-primary" aria-hidden />
                 <span className="font-semibold">Bank</span>
               </button>
             </div>

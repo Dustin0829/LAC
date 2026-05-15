@@ -1,6 +1,7 @@
-import type { UserRole } from '@/lib/stores/authStore'
+import { PROFILE_ONBOARDING_ENABLED } from '@/lib/constants'
+import { useAuthStore, type UserRole } from '@/lib/stores/authStore'
 
-/** Per-user + per-role completion (fixes global v1 flag skipping onboarding for new accounts). */
+/** Per-user + per-role completion (local fallback when server flag is not yet synced). */
 const STORAGE_KEY = 'vidu.profileOnboarding.v2'
 
 function entryKey(userId: string, role: UserRole): string {
@@ -21,9 +22,12 @@ function readCompleted(): Record<string, boolean> {
 
 export function isProfileOnboardingComplete(
   userId: string | undefined | null,
-  role: UserRole | null
+  role: UserRole | null,
 ): boolean {
+  if (!PROFILE_ONBOARDING_ENABLED) return Boolean(role && userId)
   if (!role || !userId) return false
+  const fromApi = useAuthStore.getState().profileOnboardingComplete[role]
+  if (fromApi === true) return true
   return readCompleted()[entryKey(userId, role)] === true
 }
 

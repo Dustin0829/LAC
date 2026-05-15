@@ -1,9 +1,9 @@
 /**
- * Auth, role selection, onboarding: soft page fill + seamless gradients (no distinct orbs).
+ * Shared full-page backdrop for auth, role selection, and onboarding flows.
  */
-export function MarketingAuthShell({ children }: { children: React.ReactNode }) {
+export function AuthPageLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-dvh w-full flex-col overflow-x-hidden bg-[#f4f8fd] text-foreground">
+    <div className="relative flex w-full flex-col overflow-x-hidden bg-[#f4f8fd] text-foreground">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#fafcff_0%,#f4f8fd_42%,#edf5ff_100%)]"
@@ -18,7 +18,7 @@ export function MarketingAuthShell({ children }: { children: React.ReactNode }) 
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(0deg,transparent,rgba(255,255,255,0.35))] opacity-80"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-white/30 to-transparent"
       />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">{children}</div>
     </div>

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { isCreatorPlatformConnectEnabled } from '@/lib/constants'
 import { mockCreatorPlatformLinks, type CreatorPlatformLink, type Platform } from '@/lib/mockData'
 
 const DEMO_HANDLE: Record<Platform, string> = {
@@ -8,6 +9,7 @@ const DEMO_HANDLE: Record<Platform, string> = {
 
 interface CreatorProfileState {
   platformLinks: CreatorPlatformLink[]
+  setPlatformLinks: (links: CreatorPlatformLink[]) => void
   connectPlatform: (platform: Platform) => void
   reconnectPlatform: (platform: Platform) => void
   disconnectPlatform: (platform: Platform) => void
@@ -15,7 +17,9 @@ interface CreatorProfileState {
 
 export const useCreatorProfileStore = create<CreatorProfileState>((set) => ({
   platformLinks: mockCreatorPlatformLinks,
-  connectPlatform: (platform) =>
+  setPlatformLinks: (links) => set({ platformLinks: links }),
+  connectPlatform: (platform) => {
+    if (!isCreatorPlatformConnectEnabled(platform)) return
     set((state) => ({
       platformLinks: state.platformLinks.map((link) =>
         link.platform === platform
@@ -27,8 +31,10 @@ export const useCreatorProfileStore = create<CreatorProfileState>((set) => ({
             }
           : link
       ),
-    })),
-  reconnectPlatform: (platform) =>
+    }))
+  },
+  reconnectPlatform: (platform) => {
+    if (!isCreatorPlatformConnectEnabled(platform)) return
     set((state) => ({
       platformLinks: state.platformLinks.map((link) =>
         link.platform === platform
@@ -40,8 +46,10 @@ export const useCreatorProfileStore = create<CreatorProfileState>((set) => ({
             }
           : link
       ),
-    })),
-  disconnectPlatform: (platform) =>
+    }))
+  },
+  disconnectPlatform: (platform) => {
+    if (!isCreatorPlatformConnectEnabled(platform)) return
     set((state) => ({
       platformLinks: state.platformLinks.map((link) =>
         link.platform === platform
@@ -53,5 +61,6 @@ export const useCreatorProfileStore = create<CreatorProfileState>((set) => ({
             }
           : link
       ),
-    })),
+    }))
+  },
 }))

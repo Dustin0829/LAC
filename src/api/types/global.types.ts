@@ -7,6 +7,19 @@ export type ApiSuccess<T> = {
   data: T
 }
 
+/** JSON body from `sendSuccess` on the VidU backend. */
+export type ApiEnvelopeSuccess<T> = {
+  success: true
+  message: string
+  data: T
+}
+
+export type ApiEnvelopeError = {
+  success: false
+  message: string
+  errors?: unknown
+}
+
 export type ApiErrorBody = {
   message?: string
   success?: false

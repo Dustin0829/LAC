@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { MarketingAuthShell } from '@/components/layout/MarketingAuthShell'
+import { AuthPageLayout } from '@/components/layout/AuthPageLayout'
 
 /**
  * Wizard shell: same soft background as login + card body + footer (no stepper UI).
@@ -19,7 +19,7 @@ export function OnboardingWizardShell({
   pageWatermark?: React.ReactNode
 }) {
   return (
-    <MarketingAuthShell>
+    <AuthPageLayout>
       <>
         {pageWatermark ? (
           <div
@@ -56,6 +56,6 @@ export function OnboardingWizardShell({
           </div>
         </div>
       </>
-    </MarketingAuthShell>
+    </AuthPageLayout>
   )
 }
