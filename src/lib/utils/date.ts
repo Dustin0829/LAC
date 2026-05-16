@@ -5,6 +5,13 @@ export function formatDateTime(dateString: string): string {
   return format(new Date(dateString), "MMMM d, yyyy 'at' h:mm a")
 }
 
+/** Transaction table: "Apr 13, 2026, 2:04:09 PM" */
+export function formatTransactionDateTime(dateString: string): string {
+  const d = new Date(dateString)
+  if (Number.isNaN(d.getTime())) return dateString
+  return format(d, 'MMM d, yyyy, h:mm:ss a')
+}
+
 /** Format a date for short display: "Dec 20, 2024" */
 export function formatDate(dateString: string): string {
   return format(new Date(dateString), 'MMM d, yyyy')

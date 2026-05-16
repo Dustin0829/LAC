@@ -3,7 +3,7 @@ import {
   brandLinkFieldId,
   isTiktokLinkIcon,
   type BrandSocialLinkFieldConfig,
-} from '@/lib/brandProfile/brandProfileForm'
+} from '@/lib/brands/profile/brandProfileForm'
 import type { BrandProfileLinkKey } from '@/api/schema/brands/profile.schema'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'

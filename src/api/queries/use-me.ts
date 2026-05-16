@@ -15,6 +15,7 @@ import { creatorLinksFromApi } from '@/lib/auth/mapMeProfile'
 import type { Platform } from '@/lib/mockData'
 import { syncAuthMe, useAuthStore } from '@/lib/stores/authStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
+import { toast } from 'sonner'
 
 export const meQueryKeys = {
   all: ['me'] as const,
@@ -35,17 +36,20 @@ export function usePutMeRole() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: meQueryKeys.profile() })
     },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Could not save your role.')
+    },
   })
 }
 
 /** Brand/creator profile DTO for onboarding (`GET /me/profile`). */
 export function useMeProfile() {
-  const accessToken = useAuthStore((s) => s.accessToken)
+  const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   return useQuery({
     queryKey: [...meQueryKeys.profile(), role] as const,
     queryFn: () => getMeProfile(),
-    enabled: Boolean(accessToken && role),
+    enabled: Boolean(user && role),
   })
 }
 
@@ -56,7 +60,11 @@ export function usePutMeBrandProfile() {
     mutationFn: (body: PutMeBrandProfileBody) => putMeBrandProfile(body),
     retry: false,
     onSuccess: () => {
+      toast.success('Brand profile saved.')
       void qc.invalidateQueries({ queryKey: meQueryKeys.profile() })
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Could not save brand profile.')
     },
   })
 }
@@ -69,6 +77,9 @@ export function usePutMeCreatorProfile() {
     retry: false,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: meQueryKeys.profile() })
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Could not save your profile.')
     },
   })
 }
@@ -103,6 +114,9 @@ export function useCompleteMeOnboarding() {
     retry: false,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: meQueryKeys.profile() })
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Could not finish onboarding.')
     },
   })
 }

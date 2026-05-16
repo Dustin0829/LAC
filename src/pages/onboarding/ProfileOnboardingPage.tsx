@@ -40,12 +40,12 @@ function CreatorProfileOnboarding() {
   const userId = user?.id
   const setPlatformLinks = useCreatorProfileStore((s) => s.setPlatformLinks)
   const { data: profileData, isSuccess: profileLoaded } = useMeProfile()
-  const putCreatorProfile = usePutMeCreatorProfile()
-  const completeOnboarding = useCompleteMeOnboarding()
+  const { mutate: putCreatorProfile, isPending: putCreatorPending } = usePutMeCreatorProfile()
+  const { mutate: completeOnboarding, isPending: completePending } = useCompleteMeOnboarding()
   const profileHydrated = useRef(false)
   const [step, setStep] = useState(1)
   const total = CREATOR_STEP_TOTAL
-  const saving = putCreatorProfile.isPending || completeOnboarding.isPending
+  const saving = putCreatorPending || completePending
 
   useEffect(() => {
     if (!profileLoaded || !profileData || profileHydrated.current) return
@@ -55,16 +55,18 @@ function CreatorProfileOnboarding() {
     }
   }, [profileLoaded, profileData, setPlatformLinks])
 
-  async function finish() {
+  function finish() {
     if (!userId) return
-    try {
-      await putCreatorProfile.mutateAsync()
-      await completeOnboarding.mutateAsync()
-      markProfileOnboardingComplete(userId, 'creator')
-      navigate('/dashboard', { replace: true })
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save your profile.')
-    }
+    putCreatorProfile(undefined, {
+      onSuccess: () => {
+        completeOnboarding(undefined, {
+          onSuccess: () => {
+            markProfileOnboardingComplete(userId, 'creator')
+            navigate('/dashboard', { replace: true })
+          },
+        })
+      },
+    })
   }
 
   async function handleBack() {
@@ -158,12 +160,12 @@ function BrandProfileOnboarding() {
   const setProfile = useBrandProfileStore((s) => s.setProfile)
   const seedBrandNameIfEmpty = useBrandProfileStore((s) => s.seedBrandNameIfEmpty)
   const { data: profileData, isSuccess: profileLoaded } = useMeProfile()
-  const putBrandProfile = usePutMeBrandProfile()
-  const completeOnboarding = useCompleteMeOnboarding()
+  const { mutate: putBrandProfile, isPending: putBrandPending } = usePutMeBrandProfile()
+  const { mutate: completeOnboarding, isPending: completePending } = useCompleteMeOnboarding()
   const profileHydrated = useRef(false)
   const [step, setStep] = useState(1)
   const total = BRAND_STEP_TOTAL
-  const saving = putBrandProfile.isPending || completeOnboarding.isPending
+  const saving = putBrandPending || completePending
 
   useEffect(() => {
     if (user?.name) seedBrandNameIfEmpty(user.name)
@@ -177,27 +179,29 @@ function BrandProfileOnboarding() {
     }
   }, [profileLoaded, profileData, setProfile])
 
-  async function saveBrandProfilePartial() {
+  function saveBrandProfilePartial() {
     const body = buildPutMeBrandProfileBody(profile)
     if (!body.brandName && Object.keys(body).length === 0) return
-    await putBrandProfile.mutateAsync(body)
+    putBrandProfile(body)
   }
 
-  async function finish() {
+  function finish() {
     if (!userId) return
     const body = buildPutMeBrandProfileBody(profile)
     if (!body.brandName) {
       toast.error('Brand name is required.')
       return
     }
-    try {
-      await putBrandProfile.mutateAsync(body)
-      await completeOnboarding.mutateAsync()
-      markProfileOnboardingComplete(userId, 'brand')
-      navigate('/brand/dashboard', { replace: true })
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save your profile.')
-    }
+    putBrandProfile(body, {
+      onSuccess: () => {
+        completeOnboarding(undefined, {
+          onSuccess: () => {
+            markProfileOnboardingComplete(userId, 'brand')
+            navigate('/brand/dashboard', { replace: true })
+          },
+        })
+      },
+    })
   }
 
   async function handleBack() {
@@ -208,14 +212,9 @@ function BrandProfileOnboarding() {
     setStep((s) => Math.max(1, s - 1))
   }
 
-  async function goToNextStep() {
+  function goToNextStep() {
     if (step === 1 && profile.brandName.trim()) {
-      try {
-        await saveBrandProfilePartial()
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not save brand name.')
-        return
-      }
+      saveBrandProfilePartial()
     }
     setStep((s) => Math.min(total, s + 1))
   }

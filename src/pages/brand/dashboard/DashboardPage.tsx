@@ -52,19 +52,22 @@ import { RECENT_PAGE_SIZE } from '@/lib/constants'
 
 export default function BrandDashboardPage() {
   const { user } = useAuth()
+
+  const [recentPage, setRecentPage] = useState(1)
+  const [refreshing, setRefreshing] = useState(false)
+  const [performanceRange, setPerformanceRange] = useState<BrandPerformanceRange>('monthly')
+
   const {
     data: dashboardStats,
     isLoading: statsLoading,
     refetch: refetchStats,
   } = useBrandDashboardStats()
-  const [performanceRange, setPerformanceRange] = useState<BrandPerformanceRange>('monthly')
   const {
     chartData: performanceChartData,
     isLoading: analyticsLoading,
     refetch: refetchAnalytics,
   } = useBrandPerformanceChart(performanceRange)
-  const [recentPage, setRecentPage] = useState(1)
-  const [refreshing, setRefreshing] = useState(false)
+
   const recentQueryParams = useMemo(
     () => ({ page: recentPage, limit: RECENT_PAGE_SIZE }),
     [recentPage]

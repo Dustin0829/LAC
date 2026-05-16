@@ -14,23 +14,6 @@ function formatThousands(digits: string): string {
   return n.toLocaleString('en-PH')
 }
 
-/** Clamp only when the user has typed enough digits that the value is clearly final (not a prefix of a valid number). */
-function applyMinMaxWhileTyping(next: string, min?: number, max?: number): string {
-  if (next === '') return ''
-  const n = Number(next)
-  if (!Number.isFinite(n)) return next
-
-  if (min !== undefined && n < min) {
-    const minDigits = String(min).length
-    if (next.length >= minDigits) return String(min)
-  }
-  if (max !== undefined && n > max) {
-    const maxDigits = String(max).length
-    if (next.length >= maxDigits) return String(max)
-  }
-  return next
-}
-
 function clampOnBlur(next: string, min?: number, max?: number): string {
   if (next === '') return ''
   const n = Number(next)
@@ -49,9 +32,9 @@ export interface IntegerInputProps extends Omit<
   onValueChange: (digits: string) => void
   /** Leading ₱ inside the field on the left; use for PHP whole-peso amounts. */
   pesoPrefix?: boolean
-  /** Minimum whole value; enforced while typing (when digit count reaches the minimum’s length) and on blur. */
+  /** Minimum whole value; enforced on blur (not while typing, so values like 250 stay editable when min is 35). */
   min?: number
-  /** Maximum whole value; same behavior as `min`. */
+  /** Maximum whole value; enforced on blur. */
   max?: number
 }
 
@@ -66,8 +49,7 @@ const IntegerInput = React.forwardRef<HTMLInputElement, IntegerInputProps>(
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = digitsOnly(e.target.value)
-      const next = applyMinMaxWhileTyping(raw, min, max)
-      onValueChange(next)
+      onValueChange(raw)
     }
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {

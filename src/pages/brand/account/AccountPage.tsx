@@ -1,89 +1,25 @@
-import { useState } from 'react'
-import { Loader2, LogOut, Save } from 'lucide-react'
+import { Loader2, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 import { brandProfileSaveSchema } from '@/api/schema/brands/profile.schema'
 import { useMeProfile, usePutMeBrandProfile } from '@/api/queries/use-me'
 import { buildPutMeBrandProfileBody } from '@/lib/auth/mapMeProfile'
+import { BrandProfileFields } from '@/lib/brands/profile/BrandProfileFields'
 import {
   brandProfileFormKey,
   resolveBrandProfileInitial,
-} from '@/lib/brandProfile/brandProfileForm'
+} from '@/lib/brands/profile/brandProfileForm'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useSignOut } from '@/lib/hooks/use-sign-out'
 import type { BrandProfile } from '@/lib/stores/brandProfileStore'
-import { BrandSocialLinkFields } from '@/components/account/BrandSocialLinkFields'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSection'
-
-function BrandProfileFields({
-  initial,
-  saving,
-  onSave,
-}: {
-  initial: BrandProfile
-  saving: boolean
-  onSave: (profile: BrandProfile) => Promise<void>
-}) {
-  const [profile, setProfile] = useState(initial)
-
-  return (
-    <>
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="brand-name">Brand name</Label>
-          <Input
-            id="brand-name"
-            value={profile.brandName}
-            onChange={(e) => setProfile((p) => ({ ...p, brandName: e.target.value }))}
-            placeholder="Your brand or company name"
-            autoComplete="organization"
-            disabled={saving}
-          />
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-foreground">Links</p>
-          <BrandSocialLinkFields
-            values={profile}
-            onChange={(key, value) => setProfile((p) => ({ ...p, [key]: value }))}
-            disabled={saving}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end mt-6">
-        <Button
-          type="button"
-          size="lg"
-          className="w-full bg-phc-gradient font-semibold text-white hover:opacity-90 sm:w-auto min-w-36"
-          onClick={() => void onSave(profile)}
-          disabled={saving}
-        >
-          {saving ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Saving…
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" />
-              Save
-            </>
-          )}
-        </Button>
-      </div>
-    </>
-  )
-}
 
 export default function BrandAccountPage() {
   const { user } = useAuth()
   const signOut = useSignOut()
 
   const { data: profileData, isSuccess: profileLoaded, isLoading: profileLoading } = useMeProfile()
-  const putBrandProfile = usePutMeBrandProfile()
+  const { mutate: putBrandProfile, isPending: saving } = usePutMeBrandProfile()
 
   const initialProfile = resolveBrandProfileInitial(
     profileData,
@@ -92,30 +28,23 @@ export default function BrandAccountPage() {
     user?.name
   )
 
-  async function onSave(profile: BrandProfile) {
+  function onSave(profile: BrandProfile) {
     const parsed = brandProfileSaveSchema.safeParse(profile)
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? 'Brand name is required.')
       return
     }
-    try {
-      await putBrandProfile.mutateAsync({
-        ...buildPutMeBrandProfileBody(parsed.data),
-        brandName: parsed.data.brandName,
-      })
-      toast.success('Brand profile saved.')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save brand profile.')
-    }
+    putBrandProfile({
+      ...buildPutMeBrandProfileBody(parsed.data),
+      brandName: parsed.data.brandName,
+    })
   }
-
-  const saving = putBrandProfile.isPending
 
   return (
     <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
-          Brand <span className="text-phc-gradient">profile</span>
+          Brand <span className="text-phc-gradient">Profile</span>
         </h1>
       </div>
 

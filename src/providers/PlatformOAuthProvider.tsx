@@ -12,12 +12,12 @@ import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
 export function PlatformOAuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const loading = useAuthStore((s) => s.loading)
-  const accessToken = useAuthStore((s) => s.accessToken)
+  const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const handledRef = useRef(false)
 
   useEffect(() => {
-    if (loading || !accessToken || handledRef.current) return
+    if (loading || !user || handledRef.current) return
 
     const result = consumeCreatorPlatformOAuthSearchParams()
     if (!result.handled) return
@@ -46,7 +46,7 @@ export function PlatformOAuthProvider({ children }: { children: ReactNode }) {
         toast.error('TikTok connected, but profile could not be refreshed. Reload the page.')
       }
     })()
-  }, [loading, accessToken, role, queryClient])
+  }, [loading, user, role, queryClient])
 
   return <>{children}</>
 }

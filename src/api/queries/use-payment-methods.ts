@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   deletePaymentMethod,
   getPaymentMethods,
@@ -9,6 +10,13 @@ import type {
   PatchPaymentMethodBody,
   PostPaymentMethodBody,
 } from '@/api/types/payment-methods.types'
+import {
+  paymentMethodAddedMessage,
+  paymentMethodDefaultUpdatedMessage,
+  paymentMethodErrorMessage,
+  paymentMethodRemovedMessage,
+  type PaymentMethodSurface,
+} from '@/lib/paymentMethods/paymentMethodMessages'
 import { paymentMethodFromApi } from '@/lib/paymentMethods/paymentMethodApi'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
@@ -18,13 +26,22 @@ export const paymentMethodsQueryKeys = {
   list: () => [...paymentMethodsQueryKeys.all, 'list'] as const,
 }
 
+export type PaymentMethodMutationOptions = {
+  surface: PaymentMethodSurface
+  suppressToasts?: boolean
+}
+
+function shouldToast(opts: PaymentMethodMutationOptions) {
+  return !opts.suppressToasts
+}
+
 function syncPaymentMethodsStore(items: ReturnType<typeof paymentMethodFromApi>[]) {
   usePaymentMethodsStore.setState({ methods: items })
 }
 
 /** `GET /me/payment-methods` — purpose from JWT role (creator vs brand). */
 export function usePaymentMethods(enabled = true) {
-  const accessToken = useAuthStore((s) => s.accessToken)
+  const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
 
   return useQuery({
@@ -35,11 +52,11 @@ export function usePaymentMethods(enabled = true) {
       syncPaymentMethodsStore(items)
       return items
     },
-    enabled: enabled && Boolean(accessToken && role),
+    enabled: enabled && Boolean(user && role),
   })
 }
 
-export function usePostPaymentMethod() {
+export function usePostPaymentMethod(options: PaymentMethodMutationOptions) {
   const qc = useQueryClient()
   return useMutation({
     mutationKey: [...paymentMethodsQueryKeys.all, 'create'] as const,
@@ -47,11 +64,19 @@ export function usePostPaymentMethod() {
     retry: false,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: paymentMethodsQueryKeys.list() })
+      if (shouldToast(options)) {
+        toast.success(paymentMethodAddedMessage(options.surface))
+      }
+    },
+    onError: (err) => {
+      if (shouldToast(options)) {
+        toast.error(paymentMethodErrorMessage(err))
+      }
     },
   })
 }
 
-export function usePatchPaymentMethod() {
+export function usePatchPaymentMethod(options: PaymentMethodMutationOptions) {
   const qc = useQueryClient()
   return useMutation({
     mutationKey: [...paymentMethodsQueryKeys.all, 'patch'] as const,
@@ -65,11 +90,19 @@ export function usePatchPaymentMethod() {
     retry: false,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: paymentMethodsQueryKeys.list() })
+      if (shouldToast(options)) {
+        toast.success(paymentMethodDefaultUpdatedMessage(options.surface))
+      }
+    },
+    onError: (err) => {
+      if (shouldToast(options)) {
+        toast.error(paymentMethodErrorMessage(err, 'Could not update default account.'))
+      }
     },
   })
 }
 
-export function useDeletePaymentMethod() {
+export function useDeletePaymentMethod(options: PaymentMethodMutationOptions) {
   const qc = useQueryClient()
   return useMutation({
     mutationKey: [...paymentMethodsQueryKeys.all, 'delete'] as const,
@@ -77,6 +110,14 @@ export function useDeletePaymentMethod() {
     retry: false,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: paymentMethodsQueryKeys.list() })
+      if (shouldToast(options)) {
+        toast.success(paymentMethodRemovedMessage(options.surface))
+      }
+    },
+    onError: (err) => {
+      if (shouldToast(options)) {
+        toast.error(paymentMethodErrorMessage(err, 'Could not remove account.'))
+      }
     },
   })
 }

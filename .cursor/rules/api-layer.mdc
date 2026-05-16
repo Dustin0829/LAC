@@ -19,7 +19,7 @@ Default layout is **flat under each subtree** (types, services, queries at the *
 | **`src/api/schema/`**       | Shared **Zod** schemas for request bodies and forms. Keep validators colocated with the API conceptually, but put Zod in **`schema/`** so pages import `@/api/schema/...` instead of defining schemas under `pages/`.                                                                                                                    |
 | **`src/api/services/`**     | HTTP service functions (no React). **Root** = cross-cutting modules (`auth.ts`, `users.ts`, …). **Subfolders** = optional, match how the API is namespaced (`services/admin/dashboard.ts`, etc.).                                                                                                                                        |
 | **`src/api/queries/`**      | TanStack Query hooks (queries **and** mutations). **Root** = shared utilities (`use-auth.ts`, `use-authenticated-query.ts`, …). **Subfolders** = optional, same split as services when surfaces differ.                                                                                                                                  |
-| **`src/lib/<domain>/`**     | **Pure** domain helpers for that feature (payload mappers, draft/localStorage merge, share/meta helpers, UI mappers from API shapes). Import types/schemas from `@/api/...`; **do not** put Zod definitions here — keep those in `src/api/schema/`. Prefer **extending an existing file** in the same domain before adding a new module. |
+| **`src/lib/<domain>/`**     | **Pure** domain helpers for that feature (payload mappers, draft/localStorage merge, share/meta helpers, UI mappers from API shapes). Import types/schemas from `@/api/...`; **do not** put Zod definitions here — keep those in `src/api/schema/`. Prefer **extending an existing file** in the same domain before adding a new module. Brand surface: **`src/lib/brands/`** with subfolders `campaigns/`, `dashboard/`, `profile/`, `submissions/` (not `brandCampaigns`, `brandProfile`, etc. at `lib/` root). |
 
 General UI, stores, and guards stay under `src/lib/`, `src/providers/`, `src/components/` — see `naming-conventions.mdc`.
 
@@ -74,13 +74,18 @@ Applies to **`src/api/services/`**, TanStack **`queryFn`** / mutation functions,
 - **Exports:** camelCase, `use` prefix; name by **intent**, not `useFooMutation` unless your team standard says otherwise.
 - **Query keys:** Colocate key factories with the hook file; use them in `queryKey` and for `invalidateQueries` / optimistic updates.
 - **Auth-gated queries:** Use your template’s **`useAuthenticatedQuery`** (or equivalent). If the query key must include the token, read the token from the same auth hook you use for the client.
-- **Mutations:** Define **`useMutation`** in **`src/api/queries/**`** (not in pages or generic components). Use `mutationKey`where helpful;`retry: false` for auth or non-idempotent actions unless product says otherwise. **`useQueryClient`**, **`cancelQueries`**, **`setQueryData`**, and **`invalidateQueries`** belong **inside** those query hooks — not in **`src/pages/`** or **`src/components/`**. For UI side effects (e.g. modal on error), use **hook options\*\* (callbacks) or return values; keep pages thin.
+- **Mutations:** Define **`useMutation`** in **`src/api/queries/**`** (not in pages or generic components). Use `mutationKey` where helpful; `retry: false` for auth or non-idempotent actions unless product says otherwise.
+  - **`useQueryClient`**, cache updates, **`onSuccess` / `onError` toasts**, and shared side effects (e.g. `window.open` for checkout) belong in query hooks — not in **`src/pages/`** or **`src/components/`**.
+  - Put user-facing copy in **`src/lib/<domain>/`** helpers when messages depend on payload shape (e.g. `patchBrandCampaignSuccessMessage`).
+  - **Orchestration hooks** (e.g. `useBrandSubmitCampaignCreate`, `usePutMeBrandProfile`) — validation, navigation, draft state, and derived flags (`isPublishing`) live in the query module. Pages **destructure** (`mutate`, `isPending`, `submitCreateCampaign`) and call **`mutate(body)`** with little or no inline callbacks.
+  - Pages may pass **`mutate(..., { onSuccess })`** only for **local UI** (close dialog, end edit section, navigate after role save) — not for toasts or API error strings.
+  - **Do not** wrap **`mutateAsync`** in try/catch solely for toasts.
 
 ## Pages & components
 
-- Prefer **`const { data, isPending, error } = useX()`** from `@/api/queries/...` for server state.
+- Prefer **`const { mutate, isPending } = useX()`** or **`const { submitCreateCampaign, isSubmitting } = useOrchestrationHook()`** from **`@/api/queries/...`**.
 - **Do not** call **`useQueryClient()`** in **`src/pages/`** or **`src/components/`** — cache reads/writes for TanStack Query live in **`src/api/queries/**`\*\*.
-- Use **`useMutation`** from **`@/api/queries/...`** for server actions; toasts and invalidation live in the hook unless you need page-local behavior (optional callbacks on the hook).
+- Client-side validation toasts (Zod, empty fields before submit) may stay in the page.
 - Local UI state stays in component state or `src/lib/hooks/` — not in services.
 - **Page-only pure helpers** — If a helper stays in a page file, put it **below** the exported page component (see `naming-conventions.mdc`). Reusable domain logic goes under **`src/lib/<domain>/`**, preferring existing files.
 
@@ -95,6 +100,7 @@ Applies to **`src/api/services/`**, TanStack **`queryFn`** / mutation functions,
 - [ ] Service functions live under `src/api/services/` and use the shared **`client`**.
 - [ ] TanStack Query hooks live under `src/api/queries/` and are what pages/components import.
 - [ ] Pages and **`src/components/`** do not use **`useQueryClient`** for domain cache logic; mutations that touch the cache are defined in **`src/api/queries/**`\*\*.
+- [ ] Mutation hooks own API success/error toasts; pages call **`mutate`** without try/catch for server feedback (optional **`onSuccess`** only for local UI).
 - [ ] Query keys are exported and reusable for invalidation.
 - [ ] Independent async work in services or `queryFn` is not serialized into avoidable waterfalls; early-return paths do not await unused I/O.
 - [ ] No secrets in the frontend; only `VITE_*` (or your bundler’s) env vars as documented in `.env.example`.

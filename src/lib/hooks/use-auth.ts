@@ -5,7 +5,6 @@ export function useAuth() {
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const loading = useAuthStore((s) => s.loading)
-  const accessToken = useAuthStore((s) => s.accessToken)
   const profileOnboardingComplete = useAuthStore((s) => s.profileOnboardingComplete)
 
   const isAuthenticated = Boolean(user)
@@ -17,7 +16,6 @@ export function useAuth() {
     user,
     role,
     loading,
-    accessToken,
     profileOnboardingComplete,
     isAuthenticated,
     hasRole,

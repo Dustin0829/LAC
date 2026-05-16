@@ -146,7 +146,7 @@ function FilterControls({
 }
 
 export default function CreatorCampaignsPage() {
-  const { accessToken } = useAuth()
+  const { isAuthenticated } = useAuth()
   const campaigns = useCampaignsStore((s) => s.campaigns)
   const loadForCreator = useCampaignsStore((s) => s.loadForCreator)
   const [query] = useState('')
@@ -157,14 +157,14 @@ export default function CreatorCampaignsPage() {
   const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
-    if (!accessToken) return
-    void loadForCreator(accessToken)
-  }, [accessToken, loadForCreator])
+    if (!isAuthenticated) return
+    void loadForCreator()
+  }, [isAuthenticated, loadForCreator])
 
   const runRefresh = async () => {
     setRefreshing(true)
     try {
-      if (accessToken) await loadForCreator(accessToken)
+      if (isAuthenticated) await loadForCreator()
       else await new Promise((r) => setTimeout(r, 500))
     } finally {
       setRefreshing(false)

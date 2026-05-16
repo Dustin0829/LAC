@@ -1,3 +1,4 @@
+import type { AddPaymentMethodFormValues } from '@/api/schema/paymentMethods.schema'
 import type {
   PatchPaymentMethodBody,
   PaymentMethodDto,
@@ -57,29 +58,18 @@ function maskLastFour(lastFour: string): string {
   return digits ? `•••• ${digits}` : '••••'
 }
 
-export function buildPostPaymentMethodBody(input: {
-  methodType: 'e-wallet' | 'local-bank'
-  providerLabel: string
-  accountNumber: string
-  accountName: string
+/** Maps a validated add-payment-method form to `POST /me/payment-methods` body. */
+export function buildPostPaymentMethodBody(
+  form: AddPaymentMethodFormValues,
   isDefault: boolean
-}): PostPaymentMethodBody {
-  const channel = paymentChannelByDisplayName(input.providerLabel)
-  if (!channel) {
-    throw new Error('Unsupported payment provider for payouts.')
-  }
-
-  const expectedKind = input.methodType === 'local-bank' ? 'bank' : 'e_wallet'
-  if (channel.kind !== expectedKind) {
-    throw new Error('Unsupported payment provider for payouts.')
-  }
-
+): PostPaymentMethodBody {
+  const channel = paymentChannelByDisplayName(form.provider)!
   const body: PostPaymentMethodBody = {
     xenditChannelCode: channel.channelCode,
     label: channel.displayName,
-    accountNumber: input.accountNumber.trim(),
-    accountName: input.accountName.trim(),
-    isDefault: input.isDefault,
+    accountNumber: form.accountNumber,
+    accountName: form.accountName,
+    isDefault,
   }
 
   if (channel.kind === 'bank') {

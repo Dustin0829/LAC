@@ -1,6 +1,7 @@
 export { cn } from './cn'
+export { formatBadgeLabel } from './formatBadgeLabel'
 export { isValidHttpOrHttpsUrl } from './isValidHttpUrl'
 export { brandReviewStatusForBadge } from './brandSubmissionStatus'
 export { formatPHP, formatNumber, formatViews, computeEarnings } from './currency'
-export { formatDate, formatDateTime, formatTimeAgo } from './date'
+export { formatDate, formatDateTime, formatTimeAgo, formatTransactionDateTime } from './date'
 export { creatorSocialHrefOrPost, socialProfileUrlFromSubmission } from './socialProfileUrl'

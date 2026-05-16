@@ -1,31 +1,50 @@
-import axios, { type AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import axios, {
+  type AxiosError,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios'
 import { getApiBaseUrl } from '@/api/config'
 import type { ApiErrorBody } from '@/api/types/global.types'
+import {
+  expireSession,
+  isAuthSessionUnauthorized,
+  SessionExpiredError,
+  useSessionExpiredStore,
+} from '@/lib/auth/sessionExpired'
 
-/** Registered from `authStore` so this module does not import the store (avoids circular deps). */
-let resolveAccessToken: () => string | null = () => null
+let hasAuthenticatedSession: () => boolean = () => false
 
-export function registerAuthAccessTokenGetter(fn: () => string | null): void {
-  resolveAccessToken = fn
+/** Registered from `authStore` — true after a successful `GET /me`. */
+export function registerHasAuthenticatedSession(fn: () => boolean): void {
+  hasAuthenticatedSession = fn
 }
 
-function getBearerAccessToken(): string | null {
-  return resolveAccessToken()
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode?: number,
+  ) {
+    super(message)
+    this.name = 'ApiRequestError'
+  }
 }
 
 const api = axios.create({
   baseURL: getApiBaseUrl(),
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
+function isAuthSignOutRequest(config: InternalAxiosRequestConfig): boolean {
+  const path = typeof config.url === 'string' ? config.url : ''
+  return path.includes('auth/sign-out')
+}
+
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = getBearerAccessToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  } else {
-    delete config.headers.Authorization
+  if (useSessionExpiredStore.getState().expired && !isAuthSignOutRequest(config)) {
+    return Promise.reject(new SessionExpiredError())
   }
   return config
 })
@@ -49,13 +68,20 @@ api.interceptors.response.use(
     return response
   },
   (error: AxiosError<ApiErrorBody>) => {
+    const status = error.response?.status
     const data = error.response?.data
     const message =
       data && typeof data === 'object' && typeof data.message === 'string'
         ? data.message
         : error.message
-    return Promise.reject(new Error(message))
-  }
+
+    if (hasAuthenticatedSession() && isAuthSessionUnauthorized(status, message)) {
+      expireSession()
+      return Promise.reject(new SessionExpiredError())
+    }
+
+    return Promise.reject(new ApiRequestError(message, status))
+  },
 )
 
 export default api

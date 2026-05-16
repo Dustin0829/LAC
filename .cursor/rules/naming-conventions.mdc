@@ -84,7 +84,7 @@ Rules:
 
 - Prefer **page folder + index**: `pages/<area>/<PageName>/index.tsx` plus page-specific components in the same folder. That keeps page-only UI out of `src/components/`.
 - **One folder per URL area** when routes share a base path — do not split list vs detail vs modals into many sibling folders for the same feature (e.g. one `pages/app/orders/` tree with `OrdersPage.tsx`, `OrderDetailPage.tsx`, colocated modals).
-- **Page-only helpers** — Pure functions unlikely to be reused may stay in the page file **below** the default export, using `function helperName() { ... }`. Types used only by that page usually sit **above** the component. **Reusable** logic belongs under **`src/lib/<domain>/`**; **prefer extending an existing related file** before adding a new `lib/<domain>/*.ts` module.
+- **Page-only helpers** — Pure functions unlikely to be reused may stay in the page file **below** the default export, using `function helperName() { ... }`. Types used only by that page usually sit **above** the component. **Reusable** logic belongs under **`src/lib/<domain>/`**; **prefer extending an existing related file** before adding a new `lib/<domain>/*.ts` module. Brand surface: **`src/lib/brands/{campaigns,dashboard,profile,submissions}/`**.
 
 ## Folders
 

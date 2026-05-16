@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/badge'
+import { formatBadgeLabel } from '@/lib/utils'
 import { Clock, XCircle, BadgeCheck, Loader2, AlertTriangle } from 'lucide-react'
 import type { ContentStatus } from '@/lib/mockData'
 
@@ -36,7 +37,7 @@ export function ContentStatusBadge({ status }: { status: ContentStatus }) {
   return (
     <Badge className={`${cfg.className} border flex items-center gap-1 w-fit`}>
       <Icon className="h-3 w-3" />
-      {cfg.label}
+      {formatBadgeLabel(cfg.label)}
     </Badge>
   )
 }

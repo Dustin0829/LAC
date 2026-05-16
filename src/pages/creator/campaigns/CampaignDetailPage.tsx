@@ -40,7 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { PlatformIcon } from '@/components/PlatformIcon'
+import { PlatformCell, PlatformIcon } from '@/components/PlatformIcon'
 import { cn, formatPHP, formatNumber, formatViews } from '@/lib/utils'
 import { creatorHeadlineRatePer1k, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
 import { toast } from 'sonner'
@@ -657,12 +657,13 @@ export default function CreatorCampaignDetailPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex min-w-0 shrink-0 flex-wrap items-end gap-2 sm:justify-end">
+              <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                 {campaign.platforms.map((p) => (
-                  <div key={p} className="flex flex-col items-center gap-1.5">
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-full border border-border bg-card">
-                      <PlatformIcon platform={p} className="h-6 w-6" />
-                    </div>
+                  <div
+                    key={p}
+                    className="inline-flex items-center rounded-xl border border-border bg-card px-3 py-2.5"
+                  >
+                    <PlatformCell platform={p} iconClassName="h-5 w-5" />
                   </div>
                 ))}
               </div>

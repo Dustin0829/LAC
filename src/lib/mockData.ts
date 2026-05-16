@@ -15,6 +15,8 @@ export type ContentStatus =
   | 'rejected'
 export type MonthlyPackageStatus = 'ready' | 'released' | 'paying' | 'done'
 
+import { MIN_PUBLISH_PHP } from '@/lib/constants'
+
 export const CREATOR_PAYOUT_PERCENT = 0.8
 export const INTAKE_FEE_PERCENT = 0.15
 export const PERFORMANCE_FEE_PERCENT = 0.2
@@ -24,15 +26,14 @@ export function getPlatformFeePercent(): number {
   return INTAKE_FEE_PERCENT
 }
 
-/** Minimum gross funding (₱) for checkout — matches create-campaign / publish validation. */
-export const MIN_GROSS_CAMPAIGN_BUDGET = 10_000
+export { MIN_PUBLISH_PHP }
 
 /**
  * Gross budget to pre-fill Fund & Publish (create page “Total budget”).
  * Uses `plannedGrossBudget` when set; otherwise infers from net `budget` and intake fee.
  */
 export function getPlannedGrossBudgetForFunding(
-  campaign: Pick<Campaign, 'plannedGrossBudget' | 'budget' | 'platformFeePercent'>
+  campaign: Pick<Campaign, 'plannedGrossBudget' | 'budget' | 'grossBudget' | 'platformFeePercent'>
 ): number {
   if (
     typeof campaign.plannedGrossBudget === 'number' &&
@@ -43,9 +44,9 @@ export function getPlannedGrossBudgetForFunding(
   }
   const fee = campaign.platformFeePercent ?? getPlatformFeePercent()
   const net = Math.max(0, campaign.budget)
-  if (fee >= 1) return MIN_GROSS_CAMPAIGN_BUDGET
+  if (fee >= 1) return MIN_PUBLISH_PHP
   const inferred = Math.round(net / (1 - fee))
-  return Math.max(MIN_GROSS_CAMPAIGN_BUDGET, inferred || MIN_GROSS_CAMPAIGN_BUDGET)
+  return Math.max(MIN_PUBLISH_PHP, inferred || MIN_PUBLISH_PHP)
 }
 
 export function getCreatorRatePer1k(brandGrossPer1k: number): number {
@@ -76,8 +77,13 @@ export function getAvailableBalance(
 
 /** Reach bar denominator: pinned post-refund goal when set, otherwise `estimatedReach`. */
 export function getCampaignReachViewGoal(
-  campaign: Pick<Campaign, 'estimatedReach' | 'postRefundReachGoalViews'>
+  campaign: Pick<
+    Campaign,
+    'estimatedReach' | 'postRefundReachGoalViews' | 'status' | 'grossBudget'
+  >
 ): number {
+  const gross = campaign.grossBudget ?? 0
+  if (campaign.status === 'draft' && gross <= 0) return 0
   const pinned = campaign.postRefundReachGoalViews
   if (typeof pinned === 'number' && pinned > 0) return pinned
   return Math.max(0, campaign.estimatedReach)
@@ -97,6 +103,8 @@ export interface Campaign {
    * This is the net amount in the campaign after intake fee at funding time.
    */
   budget: number
+  /** Gross deposits minus refunds (0 until first checkout is paid). */
+  grossBudget?: number
   /** VidU intake fee from confirmed campaign funding. */
   platformFeePercent?: number
   /** Maximum refundable portion of the total campaign budget. */

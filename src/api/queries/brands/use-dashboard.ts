@@ -4,7 +4,7 @@ import type { BrandPerformanceRange } from '@/api/types/brands/dashboard.types'
 import {
   brandDashboardStatsFromApi,
   brandPerformanceChartFromAnalytics,
-} from '@/lib/brandDashboard/brandDashboard'
+} from '@/lib/brands/dashboard/brandDashboard'
 import { useBrandAuthEnabled } from '@/api/queries/brands/auth'
 
 export const brandDashboardQueryKeys = {

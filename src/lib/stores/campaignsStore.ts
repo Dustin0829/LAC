@@ -5,11 +5,8 @@ interface CampaignsState {
   campaigns: Campaign[]
   loading: boolean
   error: string | null
-  loadForBrand: (
-    accessToken: string,
-    user: { id: string; name?: string | null; email?: string | null },
-  ) => Promise<void>
-  loadForCreator: (accessToken: string) => Promise<void>
+  loadForBrand: (user: { id: string; name?: string | null; email?: string | null }) => Promise<void>
+  loadForCreator: () => Promise<void>
   addCampaign: (campaign: Campaign) => void
   updateCampaign: (id: string, patch: Partial<Campaign>) => void
 }
@@ -18,7 +15,7 @@ export const useCampaignsStore = create<CampaignsState>((set) => ({
   campaigns: mockCampaigns,
   loading: false,
   error: null,
-  loadForBrand: async (_accessToken, _user) => {
+  loadForBrand: async (_user) => {
     set({ loading: true, error: null })
     try {
       await new Promise((r) => setTimeout(r, 200))
@@ -31,7 +28,7 @@ export const useCampaignsStore = create<CampaignsState>((set) => ({
       })
     }
   },
-  loadForCreator: async (_accessToken) => {
+  loadForCreator: async () => {
     set({ loading: true, error: null })
     try {
       await new Promise((r) => setTimeout(r, 200))

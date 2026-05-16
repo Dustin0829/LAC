@@ -1,8 +1,14 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { Building2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  addPaymentMethodFormFieldErrors,
+  addPaymentMethodFormSchema,
+  type AddPaymentMethodFormField,
+} from '@/api/schema/paymentMethods.schema'
 import { usePostPaymentMethod } from '@/api/queries/use-payment-methods'
 import { buildPostPaymentMethodBody } from '@/lib/paymentMethods/paymentMethodApi'
+import { paymentMethodAddedMessage } from '@/lib/paymentMethods/paymentMethodMessages'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import {
   E_WALLET_OPTIONS,
@@ -56,17 +62,13 @@ export function AddPaymentMethodDialog({
 }: AddPaymentMethodDialogProps) {
   const methods = usePaymentMethodsStore((s) => s.methods)
   const addMethodLocal = usePaymentMethodsStore((s) => s.addMethod)
-  const postPaymentMethod = usePostPaymentMethod()
+  const { mutate: postPaymentMethod } = usePostPaymentMethod({ surface: mode, suppressToasts })
 
   const [methodType, setMethodType] = useState<AddMethodType>(null)
   const [provider, setProvider] = useState('')
   const [accountNumber, setAccountNumber] = useState('')
   const [accountName, setAccountName] = useState('')
-  const [errors, setErrors] = useState<{
-    provider?: string
-    accountNumber?: string
-    accountName?: string
-  }>({})
+  const [errors, setErrors] = useState<Partial<Record<AddPaymentMethodFormField, string>>>({})
 
   const creator = mode === 'creator'
 
@@ -98,93 +100,74 @@ export function AddPaymentMethodDialog({
     resetModal()
   }
 
-  function validate(): boolean {
-    const next: typeof errors = {}
-    if (!provider.trim()) {
-      next.provider =
-        methodType === 'e-wallet'
-          ? 'Please select a provider'
-          : methodType === 'local-bank'
-            ? 'Please select a bank'
-            : 'Please select a provider'
-    }
-    if (!accountNumber.trim()) next.accountNumber = 'Account number is required'
-    if (!accountName.trim()) next.accountName = 'Account name is required'
-    setErrors(next)
-    return Object.keys(next).length === 0
+  function goBackToTypeChooser() {
+    setMethodType(null)
+    setProvider('')
+    setAccountNumber('')
+    setAccountName('')
+    setErrors({})
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!methodType || !validate()) return
+    if (!methodType) return
+
+    const parsed = addPaymentMethodFormSchema.safeParse({
+      methodType,
+      provider,
+      accountNumber,
+      accountName,
+    })
+    if (!parsed.success) {
+      setErrors(addPaymentMethodFormFieldErrors(parsed.error))
+      return
+    }
+    setErrors({})
 
     if (useApi) {
-      let body
-      try {
-        body = buildPostPaymentMethodBody({
-          methodType,
-          providerLabel: provider,
-          accountNumber: accountNumber.trim(),
-          accountName: accountName.trim(),
-          isDefault: methods.length === 0,
-        })
-      } catch (err) {
-        if (!suppressToasts) {
-          toast.error(err instanceof Error ? err.message : 'Invalid payment method.')
-        }
-        return
-      }
-      postPaymentMethod.mutate(body, {
+      postPaymentMethod(buildPostPaymentMethodBody(parsed.data, methods.length === 0), {
         onSuccess: () => {
-          if (!suppressToasts) {
-            toast.success(creator ? 'Payment method added.' : 'Refund receiving account saved.')
-          }
-          closeModal()
           onSuccess?.()
-        },
-        onError: (err) => {
-          if (!suppressToasts) {
-            toast.error(err instanceof Error ? err.message : 'Could not save payment method.')
-          }
+          closeModal()
         },
       })
       return
     }
 
-    if (methodType === 'e-wallet') {
-      const mapped = EWL_LABEL_TO_TYPE[provider]
+    if (parsed.data.methodType === 'e-wallet') {
+      const mapped = EWL_LABEL_TO_TYPE[parsed.data.provider]
       if (!mapped) {
         if (!suppressToasts) {
           toast.error('Invalid e-wallet selection.')
         }
         return
       }
-      const title = provider === 'PayMaya (Maya)' ? 'Maya' : provider
+      const title = parsed.data.provider === 'PayMaya (Maya)' ? 'Maya' : parsed.data.provider
       addMethodLocal({
         id: `pm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         type: mapped,
         label: title,
-        accountNumber: accountNumber.trim(),
-        accountName: accountName.trim(),
+        accountNumber: parsed.data.accountNumber,
+        accountName: parsed.data.accountName,
         isDefault: methods.length === 0,
       })
     } else {
       addMethodLocal({
         id: `pm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         type: 'bank',
-        label: provider,
-        accountNumber: accountNumber.trim(),
-        accountName: accountName.trim(),
-        bank: provider,
+        label: parsed.data.provider,
+        accountNumber: parsed.data.accountNumber,
+        accountName: parsed.data.accountName,
+        bank: parsed.data.provider,
         isDefault: methods.length === 0,
       })
     }
 
     if (!suppressToasts) {
-      toast.success(creator ? 'Payment method added.' : 'Refund receiving account saved.')
+      toast.success(paymentMethodAddedMessage(mode))
     }
-    closeModal()
     onSuccess?.()
+    closeModal()
   }
 
   const modalTitleAdd = creator ? 'Add Payment Method' : 'Add Receiving Account'
@@ -278,25 +261,28 @@ export function AddPaymentMethodDialog({
                     )}
                   </SelectContent>
                 </Select>
-                {errors.provider && (
+                {errors.provider ? (
                   <p className="mt-1 text-sm text-destructive">{errors.provider}</p>
-                )}
+                ) : null}
               </div>
               <div>
                 <Label htmlFor="pm-account-number">Account number</Label>
                 <Input
                   id="pm-account-number"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
                   placeholder="Enter account number"
                   value={accountNumber}
                   onChange={(e) => {
-                    setAccountNumber(e.target.value)
+                    setAccountNumber(e.target.value.replace(/\D/g, ''))
                     setErrors((er) => ({ ...er, accountNumber: undefined }))
                   }}
                   className="mt-1"
                 />
-                {errors.accountNumber && (
+                {errors.accountNumber ? (
                   <p className="mt-1 text-sm text-destructive">{errors.accountNumber}</p>
-                )}
+                ) : null}
               </div>
               <div>
                 <Label htmlFor="pm-account-name">Account name</Label>
@@ -310,23 +296,21 @@ export function AddPaymentMethodDialog({
                   }}
                   className="mt-1"
                 />
-                {errors.accountName && (
+                {errors.accountName ? (
                   <p className="mt-1 text-sm text-destructive">{errors.accountName}</p>
-                )}
+                ) : null}
               </div>
               <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => {
-                    closeModal()
-                  }}
+                  onClick={goBackToTypeChooser}
                 >
                   Go Back
                 </Button>
                 <Button type="submit" className="flex-1 bg-phc-gradient text-white">
-                  {creator ? 'Save payment method' : 'Save receiving account'}
+                  {creator ? 'Save Payment Method' : 'Save Receiving Account'}
                 </Button>
               </div>
             </form>

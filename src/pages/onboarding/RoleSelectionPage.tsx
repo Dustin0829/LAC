@@ -32,33 +32,31 @@ const ROLES: {
 
 export default function RoleSelectionPage() {
   const navigate = useNavigate()
-  const putMeRole = usePutMeRole()
+  const { mutate: putMeRole, isPending: submitting } = usePutMeRole()
   const signOut = useSignOut()
   const [choice, setChoice] = useState<UserRole | null>(null)
-  const [submitting, setSubmitting] = useState(false)
   const [backPending, setBackPending] = useState(false)
 
-  async function onContinue() {
+  function onContinue() {
     if (!choice) {
       toast.error('Choose Creator or Brand to continue.')
       return
     }
-    setSubmitting(true)
-    try {
-      await putMeRole.mutateAsync({ role: choice })
-      navigate(
-        PROFILE_ONBOARDING_ENABLED
-          ? '/onboarding/profile'
-          : choice === 'brand'
-            ? '/brand/dashboard'
-            : '/dashboard',
-        { replace: true }
-      )
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save your role.')
-    } finally {
-      setSubmitting(false)
-    }
+    putMeRole(
+      { role: choice },
+      {
+        onSuccess: () => {
+          navigate(
+            PROFILE_ONBOARDING_ENABLED
+              ? '/onboarding/profile'
+              : choice === 'brand'
+                ? '/brand/dashboard'
+                : '/dashboard',
+            { replace: true }
+          )
+        },
+      }
+    )
   }
 
   async function onBackToLogin() {

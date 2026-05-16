@@ -63,3 +63,7 @@ export type ListBrandRecentSubmissionsParams = {
 export type ListBrandCampaignSubmissionsParams = {
   status?: BrandSubmissionStatus
 }
+
+export type RejectBrandSubmissionBody = {
+  reason: string
+}

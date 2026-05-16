@@ -1,8 +1,20 @@
 import { create } from 'zustand'
-import { registerAuthAccessTokenGetter } from '@/api/client'
+import { ApiRequestError, registerHasAuthenticatedSession } from '@/api/client'
+import { postAuthSignOut } from '@/api/services/auth'
 import { getMe } from '@/api/services/me'
 import type { MeResponseData } from '@/api/types/me.types'
-import { consumeOAuthSessionSearchParams } from '@/lib/auth/oauthSession'
+import { purgeLegacyAuthStorage } from '@/lib/auth/purgeLegacyAuthStorage'
+import {
+  expireSession,
+  isAuthSessionUnauthorized,
+  registerSessionExpiredSideEffects,
+  SessionExpiredError,
+  useSessionExpiredStore,
+} from '@/lib/auth/sessionExpired'
+
+/** React Strict Mode runs `AuthProvider` effects twice in dev — dedupe `GET /me` + stale-cookie sign-out. */
+let initialBrowserHydrateDone = false
+let hydrateInFlight: Promise<void> | null = null
 
 export type UserRole = 'creator' | 'brand'
 
@@ -16,57 +28,15 @@ export type AuthUser = {
 interface AuthState {
   user: AuthUser | null
   role: UserRole | null
-  accessToken: string | null
   profileOnboardingComplete: Record<string, boolean>
   loading: boolean
   signIn: (user: AuthUser) => void
-  setAccessToken: (token: string | null) => void
-  setRefreshToken: (token: string | null) => void
   setRole: (role: UserRole | null) => void
   clearRole: () => void
-  resetUserAndRole: () => void
   updateUser: (patch: Partial<Pick<AuthUser, 'name' | 'avatarUrl'>>) => void
-  signOut: () => void
+  /** Clears in-memory session only (cookie cleared via `POST /auth/sign-out`). */
+  clearLocalSession: () => void
   hydrate: () => Promise<void>
-}
-
-const USER_KEY = 'vidu.user'
-const ROLE_KEY = 'vidu.role'
-const TOKEN_KEY = 'vidu.access_token'
-const REFRESH_KEY = 'vidu.refresh_token'
-const LEGACY_USER_KEY = 'arpify.user'
-const LEGACY_ROLE_KEY = 'arpify.role'
-
-function readStored(key: string): string | null {
-  return localStorage.getItem(key) ?? sessionStorage.getItem(key)
-}
-
-function writeStored(key: string, value: string): void {
-  localStorage.setItem(key, value)
-  sessionStorage.setItem(key, value)
-}
-
-function removeStored(key: string): void {
-  localStorage.removeItem(key)
-  sessionStorage.removeItem(key)
-}
-
-/** Copy session-only auth into localStorage; pull legacy arpify keys. */
-function migrateAuthStorage(): void {
-  if (typeof window === 'undefined') return
-  for (const key of [TOKEN_KEY, REFRESH_KEY, USER_KEY, ROLE_KEY]) {
-    if (!localStorage.getItem(key) && sessionStorage.getItem(key)) {
-      localStorage.setItem(key, sessionStorage.getItem(key)!)
-    }
-  }
-  if (!readStored(USER_KEY) && localStorage.getItem(LEGACY_USER_KEY)) {
-    writeStored(USER_KEY, localStorage.getItem(LEGACY_USER_KEY)!)
-    localStorage.removeItem(LEGACY_USER_KEY)
-  }
-  if (!readStored(ROLE_KEY) && localStorage.getItem(LEGACY_ROLE_KEY)) {
-    writeStored(ROLE_KEY, localStorage.getItem(LEGACY_ROLE_KEY)!)
-    localStorage.removeItem(LEGACY_ROLE_KEY)
-  }
 }
 
 type AuthActions = Pick<AuthState, 'signIn' | 'setRole' | 'clearRole'>
@@ -96,123 +66,108 @@ function applyMePayload(
   }
 }
 
+function handleHydrateAuthError(err: unknown, clearLocalSession: () => void): void {
+  if (err instanceof SessionExpiredError) return
+  const status = err instanceof ApiRequestError ? err.statusCode : undefined
+  const message = err instanceof Error ? err.message : ''
+  if (isAuthSessionUnauthorized(status, message)) {
+    /* Hydrate clears `user` before `getMe` — 401 here is a cold/stale cookie, not mid-session expiry. */
+    if (useAuthStore.getState().user) {
+      expireSession()
+    } else {
+      clearLocalSession()
+      void postAuthSignOut().catch(() => {
+        /* cookie may already be gone */
+      })
+    }
+    return
+  }
+  clearLocalSession()
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   role: null,
-  accessToken: null,
   profileOnboardingComplete: {},
   loading: true,
-  signIn: (user) => {
-    if (typeof window !== 'undefined') {
-      writeStored(USER_KEY, JSON.stringify(user))
-    }
-    set({ user })
-  },
-  setAccessToken: (token) => {
-    if (typeof window !== 'undefined') {
-      if (token) writeStored(TOKEN_KEY, token)
-      else removeStored(TOKEN_KEY)
-    }
-    set({ accessToken: token })
-  },
-  setRefreshToken: (token) => {
-    if (typeof window !== 'undefined') {
-      if (token) writeStored(REFRESH_KEY, token)
-      else removeStored(REFRESH_KEY)
-    }
-  },
-  setRole: (role) => {
-    if (typeof window !== 'undefined') {
-      if (role) writeStored(ROLE_KEY, role)
-      else removeStored(ROLE_KEY)
-    }
-    set({ role })
-  },
-  clearRole: () => {
-    if (typeof window !== 'undefined') {
-      removeStored(ROLE_KEY)
-    }
-    set({ role: null })
-  },
-  resetUserAndRole: () => {
-    if (typeof window !== 'undefined') {
-      removeStored(USER_KEY)
-      removeStored(ROLE_KEY)
-    }
-    set({ user: null, role: null })
-  },
+  signIn: (user) => set({ user }),
+  setRole: (role) => set({ role }),
+  clearRole: () => set({ role: null }),
   updateUser: (patch) => {
     set((state) => {
       const prev = state.user
       if (!prev) return state
-      const user = { ...prev, ...patch }
-      if (typeof window !== 'undefined') {
-        writeStored(USER_KEY, JSON.stringify(user))
-      }
-      return { user }
+      return { user: { ...prev, ...patch } }
     })
   },
-  signOut: () => {
-    if (typeof window !== 'undefined') {
-      removeStored(USER_KEY)
-      removeStored(ROLE_KEY)
-      removeStored(TOKEN_KEY)
-      removeStored(REFRESH_KEY)
-      localStorage.removeItem(LEGACY_USER_KEY)
-      localStorage.removeItem(LEGACY_ROLE_KEY)
-    }
-    set({ user: null, role: null, accessToken: null, profileOnboardingComplete: {} })
+  clearLocalSession: () => {
+    useSessionExpiredStore.getState().clearExpired()
+    set({ user: null, role: null, profileOnboardingComplete: {} })
   },
   hydrate: async () => {
     if (typeof window === 'undefined') {
       set({ loading: false })
       return
     }
-    try {
-      set({ loading: true })
-      migrateAuthStorage()
-      const { setAccessToken, resetUserAndRole } = get()
-      consumeOAuthSessionSearchParams({
-        setAccessToken,
-        resetUserAndRole,
-      })
-      const token = readStored(TOKEN_KEY)
-      const userRaw = readStored(USER_KEY)
-      const role = readStored(ROLE_KEY) as UserRole | null
-      const user = userRaw ? (JSON.parse(userRaw) as AuthUser) : null
-      set({
-        user,
-        role: role === 'creator' || role === 'brand' ? role : null,
-        accessToken: token,
-      })
-      if (token) {
+    if (initialBrowserHydrateDone) {
+      return
+    }
+    if (hydrateInFlight) {
+      return hydrateInFlight
+    }
+
+    hydrateInFlight = (async () => {
+      try {
+        set({ loading: true, user: null, role: null })
+        purgeLegacyAuthStorage()
+
+        const params = new URLSearchParams(window.location.search)
+        if (params.has('requires_role') || params.has('session_token')) {
+          params.delete('requires_role')
+          params.delete('session_token')
+          const search = params.toString()
+          const path = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`
+          window.history.replaceState(null, '', path)
+        }
+
         try {
           const me = await getMe()
           applyMePayload(me, get(), (flags) => set({ profileOnboardingComplete: flags }))
-        } catch {
-          get().signOut()
+        } catch (err) {
+          handleHydrateAuthError(err, get().clearLocalSession)
         }
+      } catch {
+        get().clearLocalSession()
+      } finally {
+        set({ loading: false })
+        initialBrowserHydrateDone = true
+        hydrateInFlight = null
       }
-    } catch {
-      get().signOut()
-    } finally {
-      set({ loading: false })
-    }
+    })()
+
+    return hydrateInFlight
   },
 }))
 
-/** Call after `/auth/email/verify` succeeds (token already persisted). */
+/** Refresh user/role from `GET /me` (session cookie must already be set). */
 export async function syncAuthMe(): Promise<void> {
-  const snapshot = useAuthStore.getState()
-  if (!snapshot.accessToken) return
   try {
     const me = await getMe()
-    applyMePayload(me, snapshot, (flags) =>
+    applyMePayload(me, useAuthStore.getState(), (flags) =>
       useAuthStore.setState({ profileOnboardingComplete: flags }),
     )
-  } catch {
-    useAuthStore.getState().signOut()
+  } catch (err) {
+    handleHydrateAuthError(err, () => useAuthStore.getState().clearLocalSession())
   }
 }
 
-registerAuthAccessTokenGetter(() => useAuthStore.getState().accessToken)
+registerHasAuthenticatedSession(() => Boolean(useAuthStore.getState().user))
+
+registerSessionExpiredSideEffects({
+  clearAuthSession: () => useAuthStore.getState().clearLocalSession(),
+  requestSignOut: () => {
+    void postAuthSignOut().catch(() => {
+      /* cookie may already be gone */
+    })
+  },
+})

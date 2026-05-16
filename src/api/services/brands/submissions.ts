@@ -5,6 +5,7 @@ import type {
   ListBrandCampaignSubmissionsParams,
   ListBrandRecentSubmissionsParams,
   PaginationMeta,
+  RejectBrandSubmissionBody,
 } from '@/api/types/brands/submissions.types'
 
 export async function getBrandRecentSubmissions(
@@ -27,4 +28,12 @@ export async function getBrandCampaignSubmissions(
     { params }
   )
   return res.data
+}
+
+export async function rejectBrandCampaignSubmission(
+  campaignId: string,
+  submissionId: string,
+  body: RejectBrandSubmissionBody
+): Promise<void> {
+  await api.post(`/brands/campaigns/${campaignId}/submissions/${submissionId}/reject`, body)
 }

@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { AuthProvider } from './providers/AuthProvider'
 import { PlatformOAuthProvider } from './providers/PlatformOAuthProvider'
 import { QueryProvider } from './providers/QueryProvider'
+import { SessionExpiredProvider } from './providers/SessionExpiredProvider'
 import App from './App'
 import './globals.css'
 
@@ -14,9 +15,11 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <QueryProvider>
           <AuthProvider>
-            <PlatformOAuthProvider>
-              <App />
-            </PlatformOAuthProvider>
+            <SessionExpiredProvider>
+              <PlatformOAuthProvider>
+                <App />
+              </PlatformOAuthProvider>
+            </SessionExpiredProvider>
           </AuthProvider>
         </QueryProvider>
       </BrowserRouter>

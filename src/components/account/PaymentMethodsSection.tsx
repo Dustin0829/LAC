@@ -7,6 +7,11 @@ import {
   usePaymentMethods,
 } from '@/api/queries/use-payment-methods'
 import { buildPatchPaymentMethodBody } from '@/lib/paymentMethods/paymentMethodApi'
+import {
+  paymentMethodDefaultRequiredMessage,
+  paymentMethodDefaultUpdatedMessage,
+  paymentMethodRemovedMessage,
+} from '@/lib/paymentMethods/paymentMethodMessages'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import { AddPaymentMethodDialog } from '@/components/account/AddPaymentMethodDialog'
 import { PaymentBrandLogo } from '@/components/account/PaymentBrandLogo'
@@ -41,9 +46,10 @@ export function PaymentMethodsSection({
   const storeMethods = usePaymentMethodsStore((s) => s.methods)
   const removeMethodLocal = usePaymentMethodsStore((s) => s.removeMethod)
   const setDefaultLocal = usePaymentMethodsStore((s) => s.setDefault)
+  const mutationOptions = { surface: mode, suppressToasts }
   const { data: apiMethods = [], isLoading, isError } = usePaymentMethods(useApi)
-  const patchPaymentMethod = usePatchPaymentMethod()
-  const deletePaymentMethod = useDeletePaymentMethod()
+  const { mutate: patchPaymentMethod } = usePatchPaymentMethod(mutationOptions)
+  const { mutate: deletePaymentMethod } = useDeletePaymentMethod(mutationOptions)
   const methods = useApi ? apiMethods : storeMethods
 
   const [addOpen, setAddOpen] = useState(false)
@@ -57,34 +63,15 @@ export function PaymentMethodsSection({
 
   function handleSetDefault(id: string) {
     if (useApi) {
-      patchPaymentMethod.mutate(
-        { paymentMethodId: id, body: buildPatchPaymentMethodBody({ isDefault: true }) },
-        {
-          onSuccess: () => {
-            if (!suppressToasts) {
-              toast.success(
-                creator
-                  ? 'Default payment method updated.'
-                  : 'Default refund account updated — refunds will be sent here.'
-              )
-            }
-          },
-          onError: (err) => {
-            if (!suppressToasts) {
-              toast.error(err instanceof Error ? err.message : 'Could not update default account.')
-            }
-          },
-        }
-      )
+      patchPaymentMethod({
+        paymentMethodId: id,
+        body: buildPatchPaymentMethodBody({ isDefault: true }),
+      })
       return
     }
     setDefaultLocal(id)
     if (!suppressToasts) {
-      toast.success(
-        creator
-          ? 'Default payment method updated.'
-          : 'Default refund account updated — refunds will be sent here.'
-      )
+      toast.success(paymentMethodDefaultUpdatedMessage(mode))
     }
   }
 
@@ -93,28 +80,17 @@ export function PaymentMethodsSection({
     const target = methods.find((m) => m.id === id)
     if (target?.isDefault) {
       if (!suppressToasts) {
-        toast.error('Set another account as default before removing this one.')
+        toast.error(paymentMethodDefaultRequiredMessage())
       }
       return
     }
     if (useApi) {
-      deletePaymentMethod.mutate(id, {
-        onSuccess: () => {
-          if (!suppressToasts) {
-            toast.success(creator ? 'Payment method removed.' : 'Refund receiving account removed.')
-          }
-        },
-        onError: (err) => {
-          if (!suppressToasts) {
-            toast.error(err instanceof Error ? err.message : 'Could not remove account.')
-          }
-        },
-      })
+      deletePaymentMethod(id)
       return
     }
     removeMethodLocal(id)
     if (!suppressToasts) {
-      toast.success(creator ? 'Payment method removed.' : 'Refund receiving account removed.')
+      toast.success(paymentMethodRemovedMessage(mode))
     }
   }
 
@@ -151,7 +127,9 @@ export function PaymentMethodsSection({
           </div>
         ) : null}
         {useApi && isError ? (
-          <p className="text-sm text-destructive">Could not load payment methods. Try again later.</p>
+          <p className="text-sm text-destructive">
+            Could not load payment methods. Try again later.
+          </p>
         ) : null}
         <div className="space-y-4">
           {methods.length > 0 ? (
@@ -245,6 +223,9 @@ export function PaymentMethodsSection({
               >
                 <Wallet className="h-8 w-8 text-primary" aria-hidden />
                 <span className="font-semibold">E-wallets</span>
+                <span className="text-center text-sm text-muted-foreground">
+                  GCash, Maya, GrabPay, ShopeePay
+                </span>
               </button>
               <button
                 type="button"
@@ -256,6 +237,9 @@ export function PaymentMethodsSection({
               >
                 <Building2 className="h-8 w-8 text-primary" aria-hidden />
                 <span className="font-semibold">Bank</span>
+                <span className="text-center text-sm text-muted-foreground">
+                  BDO, BPI, Metrobank, and more
+                </span>
               </button>
             </div>
           )}

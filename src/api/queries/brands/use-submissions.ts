@@ -1,10 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
-import { getBrandCampaignSubmissions, getBrandRecentSubmissions } from '@/api/services/brands/submissions'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  getBrandCampaignSubmissions,
+  getBrandRecentSubmissions,
+  rejectBrandCampaignSubmission,
+} from '@/api/services/brands/submissions'
+import type { RejectBrandSubmissionBody } from '@/api/types/brands/submissions.types'
+import { brandCampaignsQueryKeys } from '@/api/queries/brands/use-campaigns'
 import type {
   ListBrandCampaignSubmissionsParams,
   ListBrandRecentSubmissionsParams,
 } from '@/api/types/brands/submissions.types'
-import { brandSubmissionRowFromApi } from '@/lib/brandSubmissions/brandSubmissionRows'
+import { brandCampaignApiErrorMessage } from '@/lib/brands/campaigns/campaignDetail'
+import { brandSubmissionRowFromApi } from '@/lib/brands/submissions/brandSubmissionRows'
+import { toast } from 'sonner'
 import { useBrandAuthEnabled } from '@/api/queries/brands/auth'
 
 export const brandSubmissionsQueryKeys = {
@@ -47,5 +55,24 @@ export function useBrandCampaignSubmissions(
       return data.items.map(brandSubmissionRowFromApi)
     },
     enabled: enabled && brandEnabled && Boolean(campaignId),
+  })
+}
+
+/** Reject a submission (`POST …/submissions/:submissionId/reject`). */
+export function useRejectBrandCampaignSubmission(campaignId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: [...brandSubmissionsQueryKeys.all, 'reject', campaignId] as const,
+    mutationFn: (vars: { submissionId: string; body: RejectBrandSubmissionBody }) =>
+      rejectBrandCampaignSubmission(campaignId, vars.submissionId, vars.body),
+    retry: false,
+    onSuccess: () => {
+      void qc.invalidateQueries({
+        queryKey: brandSubmissionsQueryKeys.campaign(campaignId, {}),
+      })
+      void qc.invalidateQueries({ queryKey: brandCampaignsQueryKeys.detail(campaignId) })
+      toast.success('Submission rejected.')
+    },
+    onError: (err) => toast.error(brandCampaignApiErrorMessage(err)),
   })
 }

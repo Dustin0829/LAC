@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { useBrandCampaigns } from '@/api/queries/brands/use-campaigns'
+import { useFundingReturn } from '@/api/queries/brands/use-funding-return'
 import { Button } from '@/components/ui/button'
 import { CampaignCard } from '@/components/CampaignCard'
 import { RefreshButton } from '@/components/RefreshButton'
@@ -9,6 +10,8 @@ import { RefreshButton } from '@/components/RefreshButton'
 export default function BrandCampaignsPage() {
   const { data: campaigns = [], isLoading, isError, refetch, isFetching } = useBrandCampaigns()
   const [refreshing, setRefreshing] = useState(false)
+
+  useFundingReturn({ onRefresh: () => void refetch() })
 
   const runRefresh = async () => {
     setRefreshing(true)
