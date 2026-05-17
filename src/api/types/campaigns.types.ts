@@ -37,3 +37,16 @@ export interface ListCampaignsData {
     sort: DiscoverCampaignSort
   }
 }
+
+/** Public discover detail (`GET /campaigns/:id` → `data.campaign`). */
+export interface DiscoverCampaignDetailDto extends DiscoverCampaignPreviewCardDto {
+  rules: string[]
+  referenceLinks: string[]
+  assetUrls: string[] | null
+  /** Brand gross ₱ per 1,000 views. */
+  ratePer1k: string
+}
+
+export interface GetCampaignData {
+  campaign: DiscoverCampaignDetailDto
+}

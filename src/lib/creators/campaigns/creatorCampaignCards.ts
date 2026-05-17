@@ -1,4 +1,7 @@
-import type { DiscoverCampaignPreviewCardDto } from '@/api/types/campaigns.types'
+import type {
+  DiscoverCampaignDetailDto,
+  DiscoverCampaignPreviewCardDto,
+} from '@/api/types/campaigns.types'
 import type { Campaign } from '@/lib/campaigns/types'
 
 const COVER_GRADIENTS = [
@@ -37,5 +40,16 @@ export function creatorCampaignCardFromApi(dto: DiscoverCampaignPreviewCardDto):
     rules: [],
     coverColor: coverColorForId(dto.id),
     coverImageUrl: dto.coverImageUrl ?? undefined,
+  }
+}
+
+/** Maps public discover detail → `Campaign` for creator campaign detail UI. */
+export function creatorCampaignDetailFromApi(dto: DiscoverCampaignDetailDto): Campaign {
+  return {
+    ...creatorCampaignCardFromApi(dto),
+    ratePer1k: Number(dto.ratePer1k) || 0,
+    rules: dto.rules ?? [],
+    referenceLinks: dto.referenceLinks?.length ? dto.referenceLinks : undefined,
+    assetUrl: dto.assetUrls?.[0],
   }
 }

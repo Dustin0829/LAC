@@ -15,7 +15,7 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react'
-import { useCampaignsStore } from '@/lib/stores/campaignsStore'
+import { useCreatorCampaign } from '@/api/queries/creator/use-campaigns'
 import { useContentStore } from '@/lib/stores/contentStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
@@ -43,6 +43,7 @@ import {
 import { PlatformCell, PlatformIcon } from '@/components/PlatformIcon'
 import { cn, formatPHP, formatNumber, formatViews } from '@/lib/utils'
 import type { Platform } from '@/api/types/shared'
+import { campaignStatusLabel } from '@/lib/campaigns/status'
 import { creatorHeadlineRatePer1k } from '@/lib/campaigns/utils'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { toast } from 'sonner'
@@ -99,13 +100,25 @@ type FetchedSnapshot = {
   comments: number
 }
 
+function CreatorCampaignDetailNotFound() {
+  return (
+    <div className="py-20 text-center">
+      <p className="font-display text-lg font-bold">Campaign not found</p>
+      <Button asChild variant="outline" className="mt-4 gap-1.5">
+        <Link to="/campaigns">
+          <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+          Back to Campaigns
+        </Link>
+      </Button>
+    </div>
+  )
+}
+
 export default function CreatorCampaignDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const campaignId = id ?? ''
-  const campaign = useCampaignsStore((s) =>
-    campaignId ? s.campaigns.find((c) => c.id === campaignId) : undefined
-  )
+  const { data: campaign, isLoading, isError } = useCreatorCampaign(campaignId)
   const addContent = useContentStore((s) => s.addContent)
   const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
   const connectPlatform = useCreatorProfileStore((s) => s.connectPlatform)
@@ -132,41 +145,11 @@ export default function CreatorCampaignDetailPage() {
   const campaignPlatformsKey = campaign?.platforms.slice().sort().join('|') ?? ''
 
   useEffect(() => {
-    if (!campaignId) return
-    const c = useCampaignsStore.getState().campaigns.find((x) => x.id === campaignId)
-    if (!c) return
-    setPlatform((p) => (c.platforms.includes(p) ? p : (c.platforms[0] ?? 'tiktok')))
-  }, [campaignId, campaignPlatformsKey])
-
-  if (!campaign) {
-    return (
-      <div className="py-20 text-center">
-        <p className="font-display text-lg font-bold">Campaign not found</p>
-        <Button asChild variant="outline" className="mt-4 gap-1.5">
-          <Link to="/campaigns">
-            <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-            Back to Campaigns
-          </Link>
-        </Button>
-      </div>
+    if (!campaign) return
+    setPlatform((p) =>
+      campaign.platforms.includes(p) ? p : (campaign.platforms[0] ?? 'tiktok')
     )
-  }
-
-  const budgetProgressPct =
-    campaign.budget > 0 ? Math.min(100, (campaign.spent / campaign.budget) * 100) : 0
-  const creatorRatePer1k = creatorHeadlineRatePer1k(campaign)
-
-  const statusVisual = {
-    active: { chip: 'border-emerald-200 bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500' },
-    paused: { chip: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500' },
-    ended: { chip: 'border-zinc-200 bg-zinc-50 text-zinc-700', dot: 'bg-zinc-400' },
-    draft: { chip: 'border-blue-200 bg-blue-50 text-blue-800', dot: 'bg-blue-500' },
-    funding_pending: {
-      chip: 'border-violet-200 bg-violet-50 text-violet-900',
-      dot: 'bg-violet-500',
-    },
-  } as const
-  const statusUi = statusVisual[campaign.status]
+  }, [campaign, campaignPlatformsKey])
 
   function resetSubmitModal() {
     setUrl('')
@@ -183,13 +166,11 @@ export default function CreatorCampaignDetailPage() {
 
   /** Debounced validation only while the modal is open (avoid background churn on the detail page). */
   useEffect(() => {
-    if (!open || !campaignId) return
-    const resolved = useCampaignsStore.getState().campaigns.find((x) => x.id === campaignId)
-    if (!resolved) return
+    if (!open || !campaign) return
 
     const gen = ++validationGenRef.current
     const trimmed = url.trim()
-    const platformsAllowed = resolved.platforms
+    const platformsAllowed = campaign.platforms
 
     if (!trimmed) {
       setLinkPhase('idle')
@@ -240,7 +221,7 @@ export default function CreatorCampaignDetailPage() {
     }, 550)
 
     return () => window.clearTimeout(t)
-  }, [open, url, platform, campaignId, campaignPlatformsKey, hasPayoutMethod, platformConnected])
+  }, [open, url, platform, campaign, campaignPlatformsKey, hasPayoutMethod, platformConnected])
 
   /** Reset submit modal when it closes, except when handing off to “Add payment method”. */
   useEffect(() => {
@@ -277,8 +258,8 @@ export default function CreatorCampaignDetailPage() {
     if (!campaign.platforms.includes(platform)) {
       return
     }
-    const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, false)
-    // v1 (post-MVP): const rate = effectiveCreatorRatePer1k(creatorRatePer1k, platform, tikTokYellowBasket)
+    const rate = effectiveCreatorRatePer1k(creatorHeadlineRatePer1k(campaign), platform, false)
+    // v1 (post-MVP): const rate = effectiveCreatorRatePer1k(creatorHeadlineRatePer1k(campaign), platform, tikTokYellowBasket)
     const earnings = Math.round((snapshot.views / 1_000) * rate * 100) / 100
     setSubmitting(true)
     await new Promise((r) => setTimeout(r, 500))
@@ -304,6 +285,35 @@ export default function CreatorCampaignDetailPage() {
     navigate('/submissions')
   }
 
+  if (!campaignId || (!isLoading && (isError || !campaign))) {
+    return <CreatorCampaignDetailNotFound />
+  }
+
+  if (isLoading || !campaign) {
+    return (
+      <div className="flex items-center justify-center gap-2 px-2 py-20 text-sm text-muted-foreground md:p-8">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Loading campaign…
+      </div>
+    )
+  }
+
+  const budgetProgressPct =
+    campaign.budget > 0 ? Math.min(100, (campaign.spent / campaign.budget) * 100) : 0
+  const creatorRatePer1k = creatorHeadlineRatePer1k(campaign)
+
+  const statusVisual = {
+    active: { chip: 'border-emerald-200 bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500' },
+    paused: { chip: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500' },
+    ended: { chip: 'border-zinc-200 bg-zinc-50 text-zinc-700', dot: 'bg-zinc-400' },
+    draft: { chip: 'border-blue-200 bg-blue-50 text-blue-800', dot: 'bg-blue-500' },
+    funding_pending: {
+      chip: 'border-violet-200 bg-violet-50 text-violet-900',
+      dot: 'bg-violet-500',
+    },
+  } as const
+  const statusUi = statusVisual[campaign.status]
+
   return (
     <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
       <div className="flex justify-between items-center mb-6">
@@ -326,7 +336,7 @@ export default function CreatorCampaignDetailPage() {
               )}
             >
               <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', statusUi.dot)} aria-hidden />
-              {campaign.status}
+              {campaignStatusLabel(campaign.status)}
             </div>
             <h1 className="min-w-0 wrap-break-word font-display text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               {campaign.title}
