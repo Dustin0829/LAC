@@ -1,8 +1,24 @@
-import { AlertCircle, BadgeCheck, CircleDollarSign, Clock, Copy, ExternalLink, Info, Loader2, MoreVertical, Pause, Play, Plus, RefreshCw, Undo2, Wallet, XCircle } from 'lucide-react'
-import { useEffect, useState, type MutableRefObject } from 'react'
+import {
+  AlertCircle,
+  BadgeCheck,
+  CircleDollarSign,
+  Clock,
+  Copy,
+  ExternalLink,
+  Info,
+  Loader2,
+  MoreVertical,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Undo2,
+  Wallet,
+  XCircle,
+} from 'lucide-react'
+import { useEffect, useMemo, useState, type MutableRefObject } from 'react'
 import type { Campaign } from '@/lib/mockData'
 import type { PaymentMethod } from '@/lib/mockData'
-import { toast } from 'sonner'
 import {
   useBrandCampaignTransactions,
   useSyncBrandCampaignCheckout,
@@ -11,6 +27,10 @@ import type {
   BrandCampaignTransaction,
   BrandCampaignTransactionStatus,
 } from '@/api/types/brands/campaigns.types'
+import {
+  copyBrandCampaignCheckoutLink,
+  redirectToBrandCampaignCheckout,
+} from '@/lib/brands/campaigns/campaignUiFeedback'
 import { getPlatformFeePercent } from '@/lib/mockData'
 import { cn, formatBadgeLabel, formatPHP, formatTransactionDateTime } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -39,6 +59,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AddPaymentMethodDialog } from '@/components/account/AddPaymentMethodDialog'
+import { PaymentBrandLogo } from '@/components/account/PaymentBrandLogo'
+import {
+  paymentMethodDisplayDetail,
+  paymentMethodDisplayTitle,
+} from '@/lib/paymentMethods/paymentMethodApi'
 
 function formatSignedAmount(amount: string): string {
   const n = Number(amount)
@@ -185,6 +210,10 @@ const AMOUNT_HINT_BTN_CLASS =
 const FAILURE_HINT_BTN_CLASS =
   'inline-flex shrink-0 rounded-full text-amber-600 hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-400 dark:hover:text-amber-300'
 
+/** Keeps action column height even when a row has no menu or alert. */
+const TRANSACTION_ACTIONS_SLOT_CLASS =
+  'inline-flex h-8 w-8 shrink-0 items-center justify-center'
+
 function TransactionAlertHint({
   message,
   alertKind,
@@ -307,7 +336,7 @@ function TransactionAmountCell({
           type="button"
           className={cn(
             amountClassName,
-            'cursor-help underline decoration-dotted underline-offset-4'
+            'cursor-help underline decoration-dotted underline-offset-4 font-medium'
           )}
         >
           {amountLabel}
@@ -357,10 +386,8 @@ function TransactionRowToolbar({
 }) {
   const actions = getRowActions(row)
   const alert = getRowAlertMessage(row)
-  if (actions.length === 0 && !alert) return null
-
   return (
-    <div className="flex items-center justify-end gap-0.5">
+    <div className="ml-auto flex h-8 items-center justify-end gap-0.5">
       {alert ? (
         <TransactionAlertHint
           message={alert.message}
@@ -368,7 +395,9 @@ function TransactionRowToolbar({
           isMobile={isMobile}
           onMobileOpen={onMobileAlert}
         />
-      ) : null}
+      ) : (
+        <span className={TRANSACTION_ACTIONS_SLOT_CLASS} aria-hidden />
+      )}
       {actions.length > 0 ? (
         <TransactionRowActionsMenu
           row={row}
@@ -378,7 +407,9 @@ function TransactionRowToolbar({
           onCopyLink={onCopyLink}
           onApplyCredit={onApplyCredit}
         />
-      ) : null}
+      ) : (
+        <span className={TRANSACTION_ACTIONS_SLOT_CLASS} aria-hidden />
+      )}
     </div>
   )
 }
@@ -549,259 +580,309 @@ export function BudgetTab(props: BudgetTabProps) {
     refundInProgress,
   } = props
 
+  const defaultRefundAccount = useMemo(
+    () => refundReceivingMethods.find((m) => m.isDefault) ?? refundReceivingMethods[0],
+    [refundReceivingMethods]
+  )
+
+  const refundDisabled = remaining <= 0 || refundInProgress || isRefunding
+
   return (
-<div className="space-y-6" role="tabpanel" aria-labelledby="campaign-tab-budget">
-  <section className="space-y-6 rounded-3xl border border-border bg-card p-6 md:p-8">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex gap-4 items-center">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
-          <Wallet className="h-6 w-6" aria-hidden />
+    <div className="space-y-6" role="tabpanel" aria-labelledby="campaign-tab-budget">
+      <section className="space-y-6 rounded-3xl border border-border bg-card p-6 md:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-4 items-center">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
+              <Wallet className="h-6 w-6" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-display text-xl font-bold tracking-tight md:text-2xl">Budget</h2>
+              <p className="text-sm text-muted-foreground">Manage funds for this campaign.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-col-reverse md:flex-row">
+            {/* <Button
+              type="button"
+              variant="outline"
+              className="font-semibold w-full md:w-auto"
+              disabled={remaining <= 0 || refundInProgress || isRefunding}
+              onClick={onOpenRefund}
+            >
+              <Undo2 className="h-4 w-4" /> Refund Available Balance
+            </Button> */}
+            <Button
+              type="button"
+              className="shrink-0 bg-phc-gradient font-semibold text-white hover:opacity-90 w-full md:w-auto"
+              onClick={campaign.status === 'draft' ? onOpenFundAndPublish : onOpenAddFunds}
+            >
+              {campaign.status === 'draft' ? (
+                <>
+                  <Play className="h-4 w-4" /> Fund &amp; publish
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" /> Add funds
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h2 className="font-display text-xl font-bold tracking-tight md:text-2xl">
-            Budget
-          </h2>
-          <p className="text-sm text-muted-foreground">Manage funds for this campaign.</p>
+
+        {refundInProgress ? (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm dark:border-amber-900/50 dark:bg-amber-950/30">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300">
+                <Clock className="h-6 w-6" aria-hidden />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-900 dark:text-amber-100">
+                  Refund in progress
+                </p>
+                <p className="mt-0.5 text-amber-800 dark:text-amber-200/90">
+                  This campaign is paused until the refund finishes. Creators cannot submit new
+                  content while a refund is processing.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {remaining + reserved < minPublishThreshold && campaign.status === 'active' ? (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm dark:border-amber-900/50 dark:bg-amber-950/30">
+            <Pause
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300"
+              aria-hidden
+            />
+            <div>
+              <p className="font-semibold text-amber-900 dark:text-amber-100">
+                Spendable below publish floor ({formatPHP(minPublishThreshold, { decimals: false })}
+                )
+              </p>
+              <p className="mt-0.5 text-amber-800 dark:text-amber-200/90">
+                New submissions will be auto-paused until you top up. Included lines still settle on
+                next payout.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Payout Pool</p>
+              <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
+                {formatPHP(payoutPool, { decimals: false })}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950/45 dark:text-blue-300">
+              <Wallet className="h-5 w-5" aria-hidden />
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Available (
+                <button
+                  type="button"
+                  disabled={refundDisabled}
+                  onClick={onOpenRefund}
+                  className={cn(
+                    'inline p-0 font-medium underline underline-offset-2',
+                    refundDisabled
+                      ? 'cursor-not-allowed text-muted-foreground no-underline'
+                      : 'cursor-pointer text-primary hover:text-primary/90'
+                  )}
+                >
+                  Refund Balance
+                </button>
+                )
+              </p>
+              <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
+                {formatPHP(remaining, { decimals: false })}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-300">
+              <Wallet className="h-5 w-5" aria-hidden />
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Reserved</p>
+              <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
+                {formatPHP(reserved, { decimals: false })}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950/45 dark:text-orange-300">
+              <Clock className="h-5 w-5" aria-hidden />
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Paid</p>
+              <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
+                {formatPHP(paidOut, { decimals: false })}
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-950/45 dark:text-violet-300">
+              <CircleDollarSign className="h-5 w-5" aria-hidden />
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-2 flex-col-reverse md:flex-row">
-        <Button
-          type="button"
-          variant="outline"
-          className="font-semibold w-full md:w-auto"
-          disabled={remaining <= 0 || refundInProgress || isRefunding}
-          onClick={onOpenRefund}
-        >
-          <Undo2 className="h-4 w-4" /> Refund Available Balance
-        </Button>
-        <Button
-          type="button"
-          className="shrink-0 bg-phc-gradient font-semibold text-white hover:opacity-90 w-full md:w-auto"
-          onClick={campaign.status === 'draft' ? onOpenFundAndPublish : onOpenAddFunds}
-        >
-          {campaign.status === 'draft' ? (
-            <>
-              <Play className="h-4 w-4" /> Fund &amp; publish
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4" /> Add funds
-            </>
-          )}
-        </Button>
-      </div>
+      </section>
+
+      {campaignId ? <CampaignBudgetTransactions campaignId={campaignId} /> : null}
+
+      <Dialog
+        open={refundOpen}
+        onOpenChange={(open) => {
+          setRefundOpen(open)
+          if (!open) setIsRefunding(false)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm refund</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  This returns your available balance ({formatPHP(remaining, { decimals: false })})
+                  to the account below. Paid and reserved amounts are unchanged.
+                </p>
+                <div
+                  className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-3 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-50"
+                  role="note"
+                >
+                  <Pause
+                    className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300"
+                    aria-hidden
+                  />
+                  <div>
+                    <p className="font-semibold text-amber-900 dark:text-amber-100">
+                      Campaign will be paused
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-amber-800 dark:text-amber-200/90">
+                      This campaign pauses after the refund. Creators cannot submit new content
+                      until new funds are added.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Refund will be sent to
+                </p>
+                {defaultRefundAccount ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-3 py-3 text-foreground">
+                    <PaymentBrandLogo
+                      type={defaultRefundAccount.type}
+                      bank={defaultRefundAccount.bank}
+                      className="h-10 w-10 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="mt-0.5 font-semibold">
+                        {paymentMethodDisplayTitle(defaultRefundAccount)}
+                      </p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {paymentMethodDisplayDetail(defaultRefundAccount)}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRefundOpen(false)}
+              disabled={isRefunding}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bg-phc-gradient font-semibold text-white hover:opacity-90"
+              disabled={isRefunding || remaining <= 0}
+              onClick={() => void confirmRefundAvailable()}
+            >
+              {isRefunding ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Processing
+                </>
+              ) : (
+                `Refund ${formatPHP(remaining, { decimals: false })}`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={refundNeedAccountOpen} onOpenChange={setRefundNeedAccountOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add a refund receiving account</DialogTitle>
+            <DialogDescription>
+              We need a bank or e-wallet on file before we can send a campaign balance refund.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-50">
+            <p className="font-medium">Refund receiving account required</p>
+            <p className="mt-1 text-xs leading-relaxed opacity-90">
+              Add a bank or e-wallet where we can send your refund.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3 text-primary hover:opacity-90"
+              onClick={openAddRefundAccountFromPrompt}
+            >
+              <Plus className="h-4 w-4" /> Add Receiving Account
+            </Button>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setRefundNeedAccountOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AddPaymentMethodDialog
+        mode="brand"
+        open={addRefundAccountOpen}
+        onOpenChange={(open) => {
+          setAddRefundAccountOpen(open)
+          if (!open) {
+            if (skipRefundPromptRestoreRef.current) {
+              skipRefundPromptRestoreRef.current = false
+              return
+            }
+            if (refundReceivingMethods.length === 0) {
+              setRefundNeedAccountOpen(true)
+            }
+          }
+        }}
+        onSuccess={() => {
+          skipRefundPromptRestoreRef.current = true
+          setRefundOpen(true)
+        }}
+      />
     </div>
-
-    {refundInProgress ? (
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm dark:border-amber-900/50 dark:bg-amber-950/30">
-        <Clock
-          className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300"
-          aria-hidden
-        />
-        <div>
-          <p className="font-semibold text-amber-900 dark:text-amber-100">
-            Refund in progress
-          </p>
-          <p className="mt-0.5 text-amber-800 dark:text-amber-200/90">
-            This campaign is paused until the refund finishes. Creators cannot submit new content
-            while a refund is processing.
-          </p>
-        </div>
-      </div>
-    ) : null}
-
-    {remaining + reserved < minPublishThreshold &&
-    campaign.status === 'active' ? (
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm dark:border-amber-900/50 dark:bg-amber-950/30">
-        <Pause
-          className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300"
-          aria-hidden
-        />
-        <div>
-          <p className="font-semibold text-amber-900 dark:text-amber-100">
-            Spendable below publish floor (
-            {formatPHP(minPublishThreshold, { decimals: false })})
-          </p>
-          <p className="mt-0.5 text-amber-800 dark:text-amber-200/90">
-            New submissions will be auto-paused until you top up. Included lines still
-            settle on next payout.
-          </p>
-        </div>
-      </div>
-    ) : null}
-
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">Payout Pool</p>
-          <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
-            {formatPHP(payoutPool, { decimals: false })}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950/45 dark:text-blue-300">
-          <Wallet className="h-5 w-5" aria-hidden />
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">Available</p>
-          <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
-            {formatPHP(remaining, { decimals: false })}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950/45 dark:text-emerald-300">
-          <Wallet className="h-5 w-5" aria-hidden />
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">Reserved</p>
-          <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
-            {formatPHP(reserved, { decimals: false })}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950/45 dark:text-orange-300">
-          <Clock className="h-5 w-5" aria-hidden />
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center rounded-2xl border border-border bg-card p-5">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">Paid</p>
-          <p className="mt-1 font-display text-lg md:text-xl font-bold tabular-nums text-foreground">
-            {formatPHP(paidOut, { decimals: false })}
-          </p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 text-violet-600 dark:bg-violet-950/45 dark:text-violet-300">
-          <CircleDollarSign className="h-5 w-5" aria-hidden />
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {campaignId ? <CampaignBudgetTransactions campaignId={campaignId} /> : null}
-
-  <Dialog
-    open={refundOpen}
-    onOpenChange={(open) => {
-      setRefundOpen(open)
-      if (!open) setIsRefunding(false)
-    }}
-  >
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Refund available balance?</DialogTitle>
-        <DialogDescription>
-          This returns your available balance ({formatPHP(remaining, { decimals: false })})
-          to your default refund receiving account (Brand account). Paid and reserved
-          amounts are unchanged. Total budget becomes paid plus reserved after this refund.
-        </DialogDescription>
-      </DialogHeader>
-      <DialogFooter className="gap-2 sm:gap-0">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setRefundOpen(false)}
-          disabled={isRefunding}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          className="bg-phc-gradient font-semibold text-white hover:opacity-90"
-          disabled={isRefunding || remaining <= 0}
-          onClick={() => void confirmRefundAvailable()}
-        >
-          {isRefunding ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Processing
-            </>
-          ) : (
-            `Refund ${formatPHP(remaining, { decimals: false })}`
-          )}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-
-  <Dialog open={refundNeedAccountOpen} onOpenChange={setRefundNeedAccountOpen}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Add a refund receiving account</DialogTitle>
-        <DialogDescription>
-          We need a bank or e-wallet on file before we can send a campaign balance refund.
-        </DialogDescription>
-      </DialogHeader>
-      <div className="rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/35 dark:text-amber-50">
-        <p className="font-medium">Refund receiving account required</p>
-        <p className="mt-1 text-xs leading-relaxed opacity-90">
-          Add a bank or e-wallet where we can send your refund.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-3 text-primary hover:opacity-90"
-          onClick={openAddRefundAccountFromPrompt}
-        >
-          <Plus className="h-4 w-4" /> Add Receiving Account
-        </Button>
-      </div>
-      <DialogFooter className="gap-2 sm:gap-0">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setRefundNeedAccountOpen(false)}
-        >
-          Close
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-
-  <AddPaymentMethodDialog
-    mode="brand"
-    open={addRefundAccountOpen}
-    onOpenChange={(open) => {
-      setAddRefundAccountOpen(open)
-      if (!open) {
-        if (skipRefundPromptRestoreRef.current) {
-          skipRefundPromptRestoreRef.current = false
-          return
-        }
-        if (refundReceivingMethods.length === 0) {
-          setRefundNeedAccountOpen(true)
-        }
-      }
-    }}
-    onSuccess={() => {
-      skipRefundPromptRestoreRef.current = true
-      setRefundOpen(true)
-    }}
-  />
-</div>
   )
 }
 
 function CampaignBudgetTransactions({ campaignId }: { campaignId: string }) {
-  const { data, isLoading, isError, refetch, isFetching } = useBrandCampaignTransactions(campaignId)
+  const { data, isLoading, isError, refetchTransactions, isFetching } =
+    useBrandCampaignTransactions(campaignId)
   const { mutate: syncCheckout } = useSyncBrandCampaignCheckout(campaignId)
   const [syncingExternalId, setSyncingExternalId] = useState<string | null>(null)
   const [amountDetailModal, setAmountDetailModal] = useState<AmountDetailModal>(null)
   const isMobile = useIsMobileViewport()
 
   const items = data?.items ?? []
-
-  async function copyCheckoutLink(url: string) {
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('Checkout link copied.')
-    } catch {
-      toast.error('Could not copy link.')
-    }
-  }
 
   function handleApplyCredit(row: BrandCampaignTransaction) {
     if (!row.externalId || !row.canSync) return
@@ -825,7 +906,7 @@ function CampaignBudgetTransactions({ campaignId }: { campaignId: string }) {
             size="sm"
             className="shrink-0 font-semibold"
             disabled={isFetching}
-            onClick={() => void refetch()}
+            onClick={() => void refetchTransactions()}
           >
             <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
             Refresh
@@ -861,17 +942,20 @@ function CampaignBudgetTransactions({ campaignId }: { campaignId: string }) {
                   </span>
                 </TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right"> </TableHead>
+                <TableHead className="w-[4.75rem] min-w-[4.75rem] text-right"> </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((row) => {
-                const showAmount = row.status !== 'awaiting_payment'
+                const isAwaitingPayment = row.status === 'awaiting_payment'
                 const isAmountInactive = row.status === 'failed' || row.status === 'expired'
-                const displayAmount = row.amountDisplay ?? row.amountGross
+                /** Unpaid checkout: gross due at Xendit. Settled deposits: net in `amountDisplay`. */
+                const displayAmount = isAwaitingPayment
+                  ? row.amountGross
+                  : (row.amountDisplay ?? row.amountGross)
                 const amountNum = Number(displayAmount)
                 const depositBreakdown =
-                  showAmount && !isAmountInactive ? getDepositBreakdown(row) : null
+                  !isAwaitingPayment && !isAmountInactive ? getDepositBreakdown(row) : null
                 const isSyncing = syncingExternalId === row.externalId
                 const statusCfg = TRANSACTION_STATUS_STYLES[row.status]
                 const StatusIcon = statusCfg.Icon
@@ -879,12 +963,19 @@ function CampaignBudgetTransactions({ campaignId }: { campaignId: string }) {
                   'font-display font-semibold tabular-nums',
                   isAmountInactive &&
                     'text-muted-foreground line-through decoration-muted-foreground/70',
-                  !isAmountInactive && amountNum > 0 && 'text-emerald-600 dark:text-emerald-400',
+                  isAwaitingPayment && amountNum > 0 && 'text-foreground',
+                  !isAmountInactive &&
+                    !isAwaitingPayment &&
+                    amountNum > 0 &&
+                    'text-emerald-600 dark:text-emerald-400',
                   !isAmountInactive && amountNum < 0 && 'text-red-600 dark:text-red-400'
                 )
                 const amountLabel = formatSignedAmount(displayAmount)
                 return (
-                  <TableRow key={`${row.kind}-${row.id}`} className="border-border">
+                  <TableRow
+                    key={`${row.kind}-${row.id}`}
+                    className="border-border [&_td]:align-middle"
+                  >
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {formatTransactionDateTime(row.createdAt)}
                     </TableCell>
@@ -892,17 +983,15 @@ function CampaignBudgetTransactions({ campaignId }: { campaignId: string }) {
                       <p className="font-medium text-foreground">{row.description}</p>
                     </TableCell>
                     <TableCell className="text-right">
-                      {showAmount ? (
-                        <TransactionAmountCell
-                          amountLabel={amountLabel}
-                          amountClassName={amountClassName}
-                          depositBreakdown={depositBreakdown}
-                          isMobile={isMobile}
-                          onMobileBreakdown={(breakdown) =>
-                            setAmountDetailModal({ kind: 'breakdown', breakdown })
-                          }
-                        />
-                      ) : null}
+                      <TransactionAmountCell
+                        amountLabel={amountLabel}
+                        amountClassName={amountClassName}
+                        depositBreakdown={depositBreakdown}
+                        isMobile={isMobile}
+                        onMobileBreakdown={(breakdown) =>
+                          setAmountDetailModal({ kind: 'breakdown', breakdown })
+                        }
+                      />
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -915,7 +1004,7 @@ function CampaignBudgetTransactions({ campaignId }: { campaignId: string }) {
                         {formatBadgeLabel(statusCfg.label)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="w-[4.75rem] min-w-[4.75rem] text-right align-middle">
                       <TransactionRowToolbar
                         row={row}
                         isSyncing={isSyncing}
@@ -923,8 +1012,8 @@ function CampaignBudgetTransactions({ campaignId }: { campaignId: string }) {
                         onMobileAlert={(payload) =>
                           setAmountDetailModal({ kind: 'transaction_alert', ...payload })
                         }
-                        onOpenCheckout={(url) => window.open(url, '_blank', 'noopener,noreferrer')}
-                        onCopyLink={copyCheckoutLink}
+                        onOpenCheckout={redirectToBrandCampaignCheckout}
+                        onCopyLink={(url) => void copyBrandCampaignCheckoutLink(url)}
                         onApplyCredit={(r) => void handleApplyCredit(r)}
                       />
                     </TableCell>

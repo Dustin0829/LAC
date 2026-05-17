@@ -6,7 +6,10 @@ import {
   usePatchPaymentMethod,
   usePaymentMethods,
 } from '@/api/queries/use-payment-methods'
-import { buildPatchPaymentMethodBody } from '@/lib/paymentMethods/paymentMethodApi'
+import {
+  buildPatchPaymentMethodBody,
+  paymentMethodDisplayDetail,
+} from '@/lib/paymentMethods/paymentMethodApi'
 import {
   paymentMethodDefaultRequiredMessage,
   paymentMethodDefaultUpdatedMessage,
@@ -24,10 +27,6 @@ function rowTitle(m: PaymentMethod): string {
   if (m.label === 'PayMaya (Maya)') return 'Maya'
   if (m.type === 'bank') return m.bank ?? m.label
   return m.label
-}
-
-function rowDetail(m: PaymentMethod): string {
-  return `${m.accountName} • ${m.accountNumber}`
 }
 
 interface PaymentMethodsSectionProps {
@@ -165,7 +164,7 @@ export function PaymentMethodsSection({
                         />
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-foreground">{rowTitle(m)}</p>
-                          <p className="truncate text-sm text-muted-foreground">{rowDetail(m)}</p>
+                          <p className="truncate text-sm text-muted-foreground">{paymentMethodDisplayDetail(m)}</p>
                         </div>
                         {isDefault && (
                           <span className="ml-auto shrink-0 text-xs md:text-sm font-medium text-muted-foreground">

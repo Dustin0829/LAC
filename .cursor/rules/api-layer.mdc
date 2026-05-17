@@ -76,7 +76,9 @@ Applies to **`src/api/services/`**, TanStack **`queryFn`** / mutation functions,
 - **Auth-gated queries:** Use your template’s **`useAuthenticatedQuery`** (or equivalent). If the query key must include the token, read the token from the same auth hook you use for the client.
 - **Mutations:** Define **`useMutation`** in **`src/api/queries/**`** (not in pages or generic components). Use `mutationKey` where helpful; `retry: false` for auth or non-idempotent actions unless product says otherwise.
   - **`useQueryClient`**, cache updates, **`onSuccess` / `onError` toasts**, and shared side effects (e.g. `window.open` for checkout) belong in query hooks — not in **`src/pages/`** or **`src/components/`**.
-  - Put user-facing copy in **`src/lib/<domain>/`** helpers when messages depend on payload shape (e.g. `patchBrandCampaignSuccessMessage`).
+  - Put user-facing copy in **`src/lib/<domain>/`** helpers when messages depend on payload shape (e.g. `patchBrandCampaignSuccessMessage` in `src/lib/brands/campaigns/campaignMutationMessages.ts`).
+  - **Refetch with user feedback** — When a page offers “Refresh” for server data, expose a helper from the query hook (e.g. `refetchTransactions`) that calls `refetch()` and shows success/error toasts. Do not toast from the page after `refetch()`.
+  - **Non-HTTP UI actions tied to API flows** (e.g. copy checkout URL) — Put toast copy in `src/lib/<domain>/` message helpers; invoke from a small `src/lib/<domain>/` helper (e.g. `copyBrandCampaignCheckoutLink`) or from the query hook if it fits. Pages call the helper, not `toast` + inline strings.
   - **Orchestration hooks** (e.g. `useBrandSubmitCampaignCreate`, `usePutMeBrandProfile`) — validation, navigation, draft state, and derived flags (`isPublishing`) live in the query module. Pages **destructure** (`mutate`, `isPending`, `submitCreateCampaign`) and call **`mutate(body)`** with little or no inline callbacks.
   - Pages may pass **`mutate(..., { onSuccess })`** only for **local UI** (close dialog, end edit section, navigate after role save) — not for toasts or API error strings.
   - **Do not** wrap **`mutateAsync`** in try/catch solely for toasts.
@@ -100,7 +102,7 @@ Applies to **`src/api/services/`**, TanStack **`queryFn`** / mutation functions,
 - [ ] Service functions live under `src/api/services/` and use the shared **`client`**.
 - [ ] TanStack Query hooks live under `src/api/queries/` and are what pages/components import.
 - [ ] Pages and **`src/components/`** do not use **`useQueryClient`** for domain cache logic; mutations that touch the cache are defined in **`src/api/queries/**`\*\*.
-- [ ] Mutation hooks own API success/error toasts; pages call **`mutate`** without try/catch for server feedback (optional **`onSuccess`** only for local UI).
+- [ ] Mutation hooks own API success/error toasts; query hooks own refetch success/error toasts when the UI exposes refresh; pages call **`mutate`** / **`refetchTransactions`** without try/catch for server feedback (optional **`onSuccess`** only for local UI).
 - [ ] Query keys are exported and reusable for invalidation.
 - [ ] Independent async work in services or `queryFn` is not serialized into avoidable waterfalls; early-return paths do not await unused I/O.
 - [ ] No secrets in the frontend; only `VITE_*` (or your bundler’s) env vars as documented in `.env.example`.

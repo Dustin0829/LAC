@@ -44,7 +44,7 @@ export const CAMPAIGN_PLATFORMS = ['tiktok', 'facebook'] as const
 /** Starter rules pre-filled on the create-campaign form. */
 export const DEFAULT_CAMPAIGN_RULES = [
   'Content must be at least 15 seconds long',
-  'Use your campaign hashtags in the caption (e.g. #YourBrand #YourCampaign)',
-  'Tag your official brand account (e.g. @yourbrandph)',
+  'Use these hashtags in the caption (e.g. #YourBrand #YourCampaign)',
+  'Tag our official account (e.g. @yourbrandph)',
   'No stolen, recycled, or duplicate content',
 ] as const

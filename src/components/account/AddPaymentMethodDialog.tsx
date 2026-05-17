@@ -100,7 +100,13 @@ export function AddPaymentMethodDialog({
     resetModal()
   }
 
-  function goBackToTypeChooser() {
+  const openedWithPreset = presetType === 'e-wallet' || presetType === 'local-bank'
+
+  function goBackFromForm() {
+    if (openedWithPreset) {
+      closeModal()
+      return
+    }
     setMethodType(null)
     setProvider('')
     setAccountNumber('')
@@ -272,7 +278,7 @@ export function AddPaymentMethodDialog({
                   type="text"
                   inputMode="numeric"
                   autoComplete="off"
-                  placeholder="Enter account number"
+                  placeholder={methodType === 'e-wallet' ? '09XX XXX XXXX' : 'Enter account number'}
                   value={accountNumber}
                   onChange={(e) => {
                     setAccountNumber(e.target.value.replace(/\D/g, ''))
@@ -301,13 +307,8 @@ export function AddPaymentMethodDialog({
                 ) : null}
               </div>
               <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={goBackToTypeChooser}
-                >
-                  Go Back
+                <Button type="button" variant="outline" className="flex-1" onClick={goBackFromForm}>
+                  {openedWithPreset ? 'Cancel' : 'Go Back'}
                 </Button>
                 <Button type="submit" className="flex-1 bg-phc-gradient text-white">
                   {creator ? 'Save Payment Method' : 'Save Receiving Account'}

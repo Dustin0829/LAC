@@ -199,7 +199,15 @@ export function useCampaignDetail() {
   const remaining = apiCampaignDto ? Number(apiCampaignDto.availableBudget) || 0 : 0
   const payoutPool = apiCampaignDto ? Number(apiCampaignDto.payoutPoolBudget) || 0 : 0
   const reserved = campaign?.reservedBalance ?? 0
-  const reachGoal = campaign ? getCampaignReachViewGoal(campaign) : 0
+  const paidOut = campaign?.spent ?? 0
+  const reachGoal = campaign
+    ? getCampaignReachViewGoal(campaign, {
+        countedViews: countedViewsForReach,
+        reservedBalance: reserved,
+        paidOut,
+        payoutPool,
+      })
+    : 0
   const reachProgressPct =
     reachGoal > 0 ? Math.min(100, (countedViewsForReach / reachGoal) * 100) : 0
 
@@ -228,7 +236,6 @@ export function useCampaignDetail() {
 
   const canEditPreSubmission =
     campaign != null && (campaign.status === 'draft' || campaignSubmissions.length === 0)
-  const paidOut = campaign?.spent ?? 0
   const pendingPayoutTotal = pendingPayoutSubmissions.reduce((s, row) => s + row.payoutGross, 0)
   const statusUi = campaign ? STATUS_VISUAL[campaign.status] : STATUS_VISUAL.draft
 

@@ -4,19 +4,18 @@ import {
   patchBrandCampaign,
 } from '@/api/services/brands/campaigns'
 import { postUploadPresign } from '@/api/services/brands/uploads'
-import { createBrandCampaignBodySchema } from '@/api/schema/brands/createCampaign.schema'
+import {
+  createBrandCampaignBodySchema,
+  type CreateCampaignFormInput,
+  type CreateCampaignFormValidationIssue,
+} from '@/api/schema/brands/createCampaign.schema'
 import type {
   BrandCampaignDetailDto,
   CreateBrandCampaignBody,
   PatchBrandCampaignBody,
 } from '@/api/types/brands/campaigns.types'
 import type { CampaignCoverContentType } from '@/api/types/brands/uploads.types'
-import {
-  DEFAULT_CAMPAIGN_RULES,
-  MIN_BRAND_RATE_PER_1K,
-  MIN_PUBLISH_PHP,
-} from '@/lib/constants'
-import { type Platform } from '@/lib/mockData'
+import { DEFAULT_CAMPAIGN_RULES, MIN_BRAND_RATE_PER_1K, MIN_PUBLISH_PHP } from '@/lib/constants'
 import { isValidHttpOrHttpsUrl } from '@/lib/utils'
 
 /** Placeholder for a rule row — derived from `DEFAULT_CAMPAIGN_RULES`, not duplicated in the page. */
@@ -29,21 +28,7 @@ export function initialCampaignRules(): string[] {
   return [...DEFAULT_CAMPAIGN_RULES]
 }
 
-export type CreateCampaignFormInput = {
-  title: string
-  description: string
-  ratePer1k: number
-  plannedGrossBudget: number
-  platforms: Platform[]
-  rules: string[]
-  referenceLinks: string[]
-  assetUrls: string[]
-}
-
-export type CreateCampaignFormValidationIssue = {
-  message: string
-  fieldId: string
-}
+export type { CreateCampaignFormInput, CreateCampaignFormValidationIssue }
 
 /** Thrown when draft exists but cover upload or checkout failed — caller should retry with `existingCampaignId`. */
 export class CampaignSubmitError extends Error {

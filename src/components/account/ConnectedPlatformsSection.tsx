@@ -41,14 +41,7 @@ export function ConnectedPlatformsSection({
   }
 
   function handleDisconnect(platform: Platform) {
-    deletePlatform.mutate(platform, {
-      onSuccess: () => {
-        toast.success(`${PLATFORM_LABEL[platform]} disconnected.`)
-      },
-      onError: (e) => {
-        toast.error(e instanceof Error ? e.message : 'Could not disconnect platform.')
-      },
-    })
+    deletePlatform.mutate(platform)
   }
 
   const disconnectingPlatform =

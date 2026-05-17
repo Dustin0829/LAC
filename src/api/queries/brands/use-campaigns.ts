@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -21,7 +21,13 @@ import { brandCampaignApiErrorMessage } from '@/lib/brands/campaigns/campaignDet
 import {
   brandCampaignCheckoutToastMessage,
   brandCampaignRefundSuccessMessage,
+  brandCampaignReleasePayoutSuccessMessage,
+  brandCampaignSubmitCreateCheckoutOpenMessage,
+  brandCampaignSubmitCreateDraftSavedMessage,
+  brandCampaignSubmitCreatePartialErrorMessage,
   brandCampaignSyncCheckoutToast,
+  brandCampaignTransactionsRefreshErrorMessage,
+  brandCampaignTransactionsRefreshSuccessMessage,
   patchBrandCampaignSuccessMessage,
 } from '@/lib/brands/campaigns/campaignMutationMessages'
 import {
@@ -34,6 +40,7 @@ import {
   type CreateCampaignFormValidationIssue,
 } from '@/lib/brands/campaigns/createCampaign'
 import { brandCampaignCardFromApi } from '@/lib/brands/campaigns/campaignCards'
+import { redirectToBrandCampaignCheckout } from '@/lib/brands/campaigns/campaignUiFeedback'
 import { useBrandAuthEnabled } from '@/api/queries/brands/auth'
 import { useAuthStore } from '@/lib/stores/authStore'
 
@@ -96,8 +103,8 @@ export function useBrandCampaignCheckout(campaignId: string) {
     retry: false,
     onSuccess: (checkout, body) => {
       void qc.invalidateQueries({ queryKey: brandCampaignsQueryKeys.transactions(campaignId) })
-      window.open(checkout.checkoutUrl, '_blank', 'noopener,noreferrer')
       toast.info(brandCampaignCheckoutToastMessage(body.intent))
+      redirectToBrandCampaignCheckout(checkout.checkoutUrl)
     },
     onError: (err) => toast.error(brandCampaignApiErrorMessage(err)),
   })
@@ -106,11 +113,23 @@ export function useBrandCampaignCheckout(campaignId: string) {
 /** Campaign budget ledger + pending payments (`GET …/transactions`). */
 export function useBrandCampaignTransactions(campaignId: string, enabled = true) {
   const authEnabled = useBrandAuthEnabled()
-  return useQuery({
+  const query = useQuery({
     queryKey: brandCampaignsQueryKeys.transactions(campaignId),
     queryFn: () => getBrandCampaignTransactions(campaignId),
     enabled: authEnabled && Boolean(campaignId) && enabled,
   })
+
+  const refetchTransactions = useCallback(async () => {
+    const result = await query.refetch()
+    if (result.isError) {
+      toast.error(brandCampaignTransactionsRefreshErrorMessage())
+    } else {
+      toast.success(brandCampaignTransactionsRefreshSuccessMessage())
+    }
+    return result
+  }, [query])
+
+  return { ...query, refetchTransactions }
 }
 
 /** Confirm a paid Xendit invoice when the webhook did not credit the campaign. */
@@ -147,9 +166,7 @@ export function useReleaseBrandCampaignPayout(campaignId: string) {
       void qc.invalidateQueries({
         queryKey: ['brands', 'submissions', 'campaign', campaignId],
       })
-      toast.success(
-        `Payout released for ${result.released} submission${result.released === 1 ? '' : 's'}. Disbursements are in flight.`
-      )
+      toast.success(brandCampaignReleasePayoutSuccessMessage(result))
     },
     onError: (err) => toast.error(brandCampaignApiErrorMessage(err)),
   })
@@ -202,20 +219,18 @@ export function useBrandSubmitCampaignCreate() {
       setPersistedDraftId(result.campaign.id)
 
       if (result.checkoutUrl) {
-        window.open(result.checkoutUrl, '_blank', 'noopener,noreferrer')
-        toast.success(
-          'Complete payment in the checkout tab. When you return, you will land on the Budget tab.'
-        )
-      } else {
-        toast.success(hadExistingDraftRef.current ? 'Draft updated.' : 'Draft saved.')
+        toast.success(brandCampaignSubmitCreateCheckoutOpenMessage())
+        redirectToBrandCampaignCheckout(result.checkoutUrl)
+        return
       }
 
+      toast.success(brandCampaignSubmitCreateDraftSavedMessage(hadExistingDraftRef.current))
       navigate(`/brand/campaigns/${result.campaign.id}?tab=budget`)
     },
     onError: (e) => {
       if (e instanceof CampaignSubmitError) {
         setPersistedDraftId(e.campaignId)
-        toast.error(`${e.message} Your draft was saved — fix the issue and submit again.`)
+        toast.error(brandCampaignSubmitCreatePartialErrorMessage(e.message))
       } else {
         toast.error(brandCampaignApiErrorMessage(e))
       }

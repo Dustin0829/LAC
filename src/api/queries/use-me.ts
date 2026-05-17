@@ -12,6 +12,10 @@ import {
 } from '@/api/services/me'
 import type { PutMeBrandProfileBody, PutMeRoleBody } from '@/api/types/me.types'
 import { creatorLinksFromApi } from '@/lib/auth/mapMeProfile'
+import {
+  mePlatformDisconnectedMessage,
+  mePlatformDisconnectErrorMessage,
+} from '@/lib/auth/meMutationMessages'
 import type { Platform } from '@/lib/mockData'
 import { syncAuthMe, useAuthStore } from '@/lib/stores/authStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
@@ -92,12 +96,16 @@ export function useDeleteMePlatform() {
     mutationKey: [...meQueryKeys.all, 'platforms', 'delete'] as const,
     mutationFn: (platform: Platform) => deleteMePlatform(platform),
     retry: false,
-    onSuccess: async () => {
+    onSuccess: async (_data, platform) => {
       const profile = await getMeProfile()
       if ('platformLinks' in profile) {
         useCreatorProfileStore.getState().setPlatformLinks(creatorLinksFromApi(profile))
       }
       void qc.invalidateQueries({ queryKey: meQueryKeys.profile() })
+      toast.success(mePlatformDisconnectedMessage(platform))
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : mePlatformDisconnectErrorMessage())
     },
   })
 }

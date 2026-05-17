@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { paymentChannelByDisplayName } from '@/lib/constants/paymentChannels'
+import { isValidEWalletAccountNumber } from '@/lib/paymentMethods/paymentMethodApi'
 import { LOCAL_BANK_OPTIONS, E_WALLET_OPTIONS } from '@/lib/constants/paymentMethodIcons'
 
 export const paymentMethodTypeSchema = z.enum(['e-wallet', 'local-bank'])
@@ -64,6 +65,18 @@ export const addPaymentMethodFormSchema = z
         message: 'Unsupported payment provider for payouts.',
         path: ['provider'],
       })
+      return
+    }
+
+    if (data.methodType === 'e-wallet') {
+      const digits = data.accountNumber.replace(/\D/g, '')
+      if (!isValidEWalletAccountNumber(digits)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'E-wallet mobile number must be 11 digits (09XXXXXXXXX or 639XXXXXXXXX).',
+          path: ['accountNumber'],
+        })
+      }
     }
   })
 

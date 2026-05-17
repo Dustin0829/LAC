@@ -24,7 +24,9 @@ const STATUS_STYLES: Record<Campaign['status'], { chip: string; dot: string }> =
 
 export function CampaignCard({ campaign, to, showProgress = false }: CampaignCardProps) {
   const isBrandCard = showProgress
-  const reachGoal = getCampaignReachViewGoal(campaign)
+  const reachGoal = getCampaignReachViewGoal(campaign, {
+    countedViews: campaign.campaignViews,
+  })
   const budgetTotal = Math.max(0, campaign.budget)
   const viewsProgress =
     isBrandCard && reachGoal > 0 ? Math.min(100, (campaign.campaignViews / reachGoal) * 100) : 0
@@ -98,7 +100,9 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
             </span>
             <span className="flex items-center gap-1.5 text-right text-sm font-semibold tabular-nums">
               {isBrandCard ? (
-                reachGoal > 0 ? (
+                campaign.status === 'draft' ? (
+                  <span>—</span>
+                ) : reachGoal > 0 ? (
                   <div className="flex items-end">
                     <span>
                       {formatNumber(Math.round(campaign.campaignViews))} / {formatNumber(reachGoal)}{' '}
@@ -107,7 +111,11 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
                     {showFire ? <CampaignGoalFireLottie /> : null}
                   </div>
                 ) : (
-                  <span>{formatNumber(Math.round(campaign.campaignViews))} Views</span>
+                  <span>
+                    {campaign.campaignViews > 0
+                      ? `${formatNumber(Math.round(campaign.campaignViews))} Views`
+                      : '—'}
+                  </span>
                 )
               ) : budgetTotal > 0 ? (
                 <div className="flex items-end">

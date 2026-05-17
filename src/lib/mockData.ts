@@ -75,18 +75,49 @@ export function getAvailableBalance(
   return Math.max(0, campaign.budget - campaign.spent - reserved)
 }
 
-/** Reach bar denominator: pinned post-refund goal when set, otherwise `estimatedReach`. */
+export type CampaignReachGoalContext = {
+  /** Counted submission views (detail page). */
+  countedViews?: number
+  reservedBalance?: number
+  paidOut?: number
+  /** Net payout pool from API (`payoutPoolBudget`). */
+  payoutPool?: number
+}
+
+/**
+ * Reach bar denominator. Returns 0 (UI shows —) when nothing is funded or consumed;
+ * otherwise pinned post-refund goal, API `goalViews`, or counted views when only views remain.
+ */
 export function getCampaignReachViewGoal(
   campaign: Pick<
     Campaign,
     'estimatedReach' | 'postRefundReachGoalViews' | 'status' | 'grossBudget'
-  >
+  >,
+  context?: CampaignReachGoalContext
 ): number {
   const gross = campaign.grossBudget ?? 0
   if (campaign.status === 'draft' && gross <= 0) return 0
+
+  const counted = context?.countedViews ?? 0
+  const reserved = context?.reservedBalance ?? 0
+  const paidOut = context?.paidOut ?? 0
+  const payoutPool = context?.payoutPool ?? 0
+
+  const hasFundedBalance = payoutPool > 0 || reserved > 0 || paidOut > 0
+  const hasConsumedViews = counted > 0
+
+  if (!hasFundedBalance && !hasConsumedViews) return 0
+
   const pinned = campaign.postRefundReachGoalViews
   if (typeof pinned === 'number' && pinned > 0) return pinned
-  return Math.max(0, campaign.estimatedReach)
+
+  const apiGoal = Math.max(0, campaign.estimatedReach)
+
+  if (hasFundedBalance) {
+    return apiGoal > 0 ? apiGoal : counted
+  }
+
+  return counted
 }
 
 export interface Campaign {

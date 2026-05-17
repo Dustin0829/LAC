@@ -12,7 +12,12 @@ export {
   type BrandProfileLinkKey,
 } from './brands/profile.schema'
 
-export { createBrandCampaignBodySchema } from './brands/createCampaign.schema'
+export {
+  createBrandCampaignBodySchema,
+  createCampaignFormInputSchema,
+  type CreateCampaignFormInput,
+  type CreateCampaignFormValidationIssue,
+} from './brands/createCampaign.schema'
 
 export {
   addPaymentMethodFormSchema,

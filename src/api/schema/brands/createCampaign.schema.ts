@@ -18,3 +18,22 @@ export const createBrandCampaignBodySchema = z.object({
   referenceLinks: z.array(z.string().url()).optional(),
   assetUrls: z.array(z.string().url()).optional(),
 })
+
+/** Create-campaign page form state (maps to API body via `buildCreateBrandCampaignBody`). */
+export const createCampaignFormInputSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  ratePer1k: z.number(),
+  plannedGrossBudget: z.number(),
+  platforms: z.array(platformSchema),
+  rules: z.array(z.string()),
+  referenceLinks: z.array(z.string()),
+  assetUrls: z.array(z.string()),
+})
+
+export type CreateCampaignFormInput = z.infer<typeof createCampaignFormInputSchema>
+
+export type CreateCampaignFormValidationIssue = {
+  message: string
+  fieldId: string
+}

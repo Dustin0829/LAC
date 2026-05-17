@@ -2,10 +2,43 @@ import type {
   BrandCampaignCheckoutBody,
   BrandCampaignDetailDto,
   BrandCampaignRefundData,
+  BrandCampaignReleasePayoutData,
   BrandCampaignSyncCheckoutData,
   PatchBrandCampaignBody,
 } from '@/api/types/brands/campaigns.types'
 import { formatPHP } from '@/lib/utils'
+
+export function brandCampaignTransactionsRefreshSuccessMessage() {
+  return 'Transactions updated.'
+}
+
+export function brandCampaignTransactionsRefreshErrorMessage() {
+  return 'Could not refresh transactions.'
+}
+
+export function brandCampaignCheckoutLinkCopiedMessage() {
+  return 'Checkout link copied.'
+}
+
+export function brandCampaignCheckoutLinkCopyFailedMessage() {
+  return 'Could not copy link.'
+}
+
+export function brandCampaignReleasePayoutSuccessMessage(result: BrandCampaignReleasePayoutData) {
+  return `Payout released for ${result.released} submission${result.released === 1 ? '' : 's'}. Disbursements are in flight.`
+}
+
+export function brandCampaignSubmitCreateCheckoutOpenMessage() {
+  return 'Redirecting to checkout…'
+}
+
+export function brandCampaignSubmitCreateDraftSavedMessage(hadExistingDraft: boolean) {
+  return hadExistingDraft ? 'Draft updated.' : 'Draft saved.'
+}
+
+export function brandCampaignSubmitCreatePartialErrorMessage(errorMessage: string) {
+  return `${errorMessage} Your draft was saved — fix the issue and submit again.`
+}
 
 export function patchBrandCampaignSuccessMessage(body: PatchBrandCampaignBody): string | null {
   if (body.status !== undefined) {
@@ -24,9 +57,9 @@ export function patchBrandCampaignSuccessMessage(body: PatchBrandCampaignBody): 
 
 export function brandCampaignCheckoutToastMessage(intent: BrandCampaignCheckoutBody['intent']) {
   if (intent === 'initial_publish') {
-    return 'Complete payment in the checkout window. The campaign goes live once Xendit confirms payment.'
+    return 'Redirecting to checkout. The campaign goes live once payment is confirmed.'
   }
-  return 'Complete payment in the checkout window. This page will refresh when you return.'
+  return 'Redirecting to checkout. You will return to this page when payment finishes.'
 }
 
 export function brandCampaignRefundSuccessMessage(
@@ -40,7 +73,7 @@ export function brandCampaignRefundSuccessMessage(
       ? ' You will receive it once Xendit confirms the transfer (usually within minutes).'
       : '')
   if (campaign?.status === 'active') {
-    message += ' Campaign may auto-pause if spendable drops below the publish floor.'
+    message
   }
   return message
 }

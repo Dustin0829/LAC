@@ -498,15 +498,15 @@ export default function CreateCampaignPage() {
               >
                 {isPublishing ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Opening checkout…
+                    <Loader2 className="h-4 w-4 animate-spin" /> Starting checkout…
                   </>
                 ) : (
                   'Fund & Publish'
                 )}
               </Button>
               <p className="text-xs text-muted-foreground mt-3 text-center mx-auto">
-                Saves a draft, then opens Xendit checkout in a new tab. After payment confirms, the
-                campaign goes live for creators.
+                Saves a draft and sends you to Xendit checkout. After payment, you return to the
+                campaign Budget tab.
               </p>
             </div>
           </div>

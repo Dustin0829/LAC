@@ -10,10 +10,13 @@ export default function RootLayout() {
         <Toaster
           position="bottom-right"
           richColors
+          closeButton
           toastOptions={{
             classNames: {
               title: 'text-sm',
               toast: 'rounded-2xl',
+              closeButton:
+                'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
             },
           }}
         />
