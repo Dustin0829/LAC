@@ -20,6 +20,13 @@ export {
 } from './brands/createCampaign.schema'
 
 export {
+  creatorDisplayNameFormSchema,
+  creatorDisplayNameFormErrorMessage,
+  parseCreatorDisplayNameForm,
+  type CreatorDisplayNameFormValues,
+} from './me.schema'
+
+export {
   addPaymentMethodFormSchema,
   addPaymentMethodFormFieldErrors,
   paymentMethodTypeSchema,

@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { LucideIcon } from 'lucide-react'
-import { LayoutGrid, Clock, CircleDollarSign, XCircle, Scissors, Wallet, Eye } from 'lucide-react'
-import { useContentStore } from '@/lib/stores/contentStore'
-import type { ContentStatus } from '@/api/types/shared'
+import { Scissors, Wallet, Eye, Loader2, Send, Compass } from 'lucide-react'
+import { useCreatorDashboardStats } from '@/api/queries/creator/use-dashboard'
+import { useMeSubmissions, useRefreshCreatorSubmissionsPage } from '@/api/queries/creator/use-submissions'
+import {
+  creatorSubmissionsRefreshErrorMessage,
+  creatorSubmissionsRefreshSuccessMessage,
+} from '@/lib/creators/submissions/creatorUiMessages'
+import {
+  CREATOR_SUBMISSION_TABS,
+  creatorSubmissionEmptyFilterDescription,
+  creatorSubmissionEmptyPlaceholderTitle,
+  creatorSubmissionListParams,
+  type CreatorSubmissionTab,
+} from '@/lib/creators/submissions/creatorSubmissionsPage'
+import { CREATOR_SUBMISSIONS_PAGE_SIZE } from '@/lib/constants'
 import { cn, formatPHP, formatViews } from '@/lib/utils'
 import { ContentStatusBadge } from '@/components/ContentStatusBadge'
 import { PersonAvatar } from '@/components/PersonAvatar'
@@ -22,75 +33,34 @@ import {
 import { Button } from '@/components/ui/button'
 import { RefreshButton } from '@/components/RefreshButton'
 
-const TABS: { id: 'all' | ContentStatus; label: string; shortLabel: string; icon: LucideIcon }[] = [
-  { id: 'all', label: 'All Submissions', shortLabel: 'All', icon: LayoutGrid },
-  { id: 'pending', label: 'Pending', shortLabel: 'Pending', icon: Clock },
-  { id: 'paid', label: 'Paid', shortLabel: 'Paid', icon: CircleDollarSign },
-  { id: 'rejected', label: 'Rejected', shortLabel: 'Rejected', icon: XCircle },
-]
-
-const PAGE_SIZE = 10
-
-function emptyFilterDescription(tab: (typeof TABS)[number]['id']): string {
-  if (tab === 'all') return 'Submit your first content from any active campaign.'
-  if (tab === 'pending') return "You don't have any submissions waiting for review."
-  if (tab === 'paid') return "You don't have any paid submissions yet."
-  return "You don't have any rejected submissions."
-}
-
-function emptyPlaceholderTitle(tab: (typeof TABS)[number]['id'], contentsLength: number): string {
-  if (contentsLength === 0 && tab === 'all') return 'No submissions yet'
-  if (tab === 'pending') return 'No pending submissions'
-  if (tab === 'paid') return 'No paid submissions'
-  if (tab === 'rejected') return 'No rejected submissions'
-  return 'No submissions'
-}
-
 export default function SubmissionsPage() {
-  const allContent = useContentStore((s) => s.contents)
-  const contents = useMemo(
-    () => allContent.filter((content) => content.creatorId === 'me'),
-    [allContent]
-  )
-  const [tab, setTab] = useState<(typeof TABS)[number]['id']>('all')
+  const [tab, setTab] = useState<CreatorSubmissionTab>('all')
   const [page, setPage] = useState(1)
   const [refreshing, setRefreshing] = useState(false)
+
+  const listParams = useMemo(() => creatorSubmissionListParams(tab, page), [tab, page])
+
+  const { data: dashboardStats, isLoading: statsLoading } = useCreatorDashboardStats()
+  const { data: submissionsData, isLoading: listLoading, isError: listError } =
+    useMeSubmissions(listParams)
+  const { refresh: refreshSubmissions, isRefreshing: submissionsRefreshing } =
+    useRefreshCreatorSubmissionsPage(listParams)
 
   useEffect(() => {
     setPage(1)
   }, [tab])
 
-  const filtered = useMemo(() => {
-    if (tab === 'all') return contents
-    return contents.filter((c) => c.status === tab)
-  }, [contents, tab])
-
-  const counts = useMemo(
-    () => ({
-      all: contents.length,
-      pending: contents.filter((c) => c.status === 'pending').length,
-      paid: contents.filter((c) => c.status === 'paid').length,
-      rejected: contents.filter((c) => c.status === 'rejected').length,
-    }),
-    [contents]
-  )
-
-  const sortedFiltered = useMemo(
-    () =>
-      [...filtered].sort(
-        (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
-      ),
-    [filtered]
-  )
-
-  const totalPages = Math.max(1, Math.ceil(sortedFiltered.length / PAGE_SIZE))
+  const pageRows = submissionsData?.rows ?? []
+  const totalItems = submissionsData?.meta.total_items ?? 0
+  const totalPages = Math.max(1, submissionsData?.meta.total_pages ?? 1)
   const safePage = Math.min(Math.max(1, page), totalPages)
-  const pageRows = sortedFiltered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
-  const approvedContents = useMemo(() => contents.filter((c) => c.status === 'paid'), [contents])
-
-  const totalEarnings = approvedContents.reduce((s, c) => s + c.earnings, 0)
-  const totalViews = approvedContents.reduce((s, c) => s + c.views, 0)
+  const counts = dashboardStats?.submissionCounts ?? {
+    all: 0,
+    pending: 0,
+    paid: 0,
+    rejected: 0,
+  }
 
   return (
     <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
@@ -101,17 +71,18 @@ export default function SubmissionsPage() {
           </h1>
           <RefreshButton
             variant="outline"
-            isRefreshing={refreshing}
+            isRefreshing={refreshing || submissionsRefreshing}
             size="icon"
             onRefresh={async () => {
               setRefreshing(true)
               try {
-                await new Promise((r) => setTimeout(r, 500))
+                return await refreshSubmissions()
               } finally {
                 setRefreshing(false)
               }
             }}
-            successMessage="Submissions updated"
+            successMessage={creatorSubmissionsRefreshSuccessMessage()}
+            genericErrorMessage={creatorSubmissionsRefreshErrorMessage()}
             aria-label="Refresh submissions"
             className="md:hidden"
           />
@@ -119,21 +90,25 @@ export default function SubmissionsPage() {
         <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
           <RefreshButton
             variant="outline"
-            isRefreshing={refreshing}
+            isRefreshing={refreshing || submissionsRefreshing}
             onRefresh={async () => {
               setRefreshing(true)
               try {
-                await new Promise((r) => setTimeout(r, 500))
+                return await refreshSubmissions()
               } finally {
                 setRefreshing(false)
               }
             }}
-            successMessage="Submissions updated"
+            successMessage={creatorSubmissionsRefreshSuccessMessage()}
+            genericErrorMessage={creatorSubmissionsRefreshErrorMessage()}
             aria-label="Refresh submissions"
             className="hidden md:block"
           />
-          <Button asChild className="flex flex-1 shrink-0 bg-phc-gradient text-white sm:w-auto">
-            <Link to="/campaigns">Submit new content</Link>
+          <Button asChild className="flex flex-1 shrink-0 gap-1.5 bg-phc-gradient text-white sm:w-auto">
+            <Link to="/campaigns">
+              <Send className="h-4 w-4 shrink-0" aria-hidden />
+              Submit New Content
+            </Link>
           </Button>
         </div>
       </div>
@@ -141,17 +116,26 @@ export default function SubmissionsPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard
           label="Lifetime Earnings"
-          value={formatPHP(totalEarnings, { decimals: false })}
+          value={
+            statsLoading
+              ? '—'
+              : formatPHP(dashboardStats?.lifetimeEarnings ?? 0, { decimals: false })
+          }
           icon={Wallet}
           accent="violet"
         />
         <StatCard
           label="Total Verified Views"
-          value={formatViews(totalViews)}
+          value={statsLoading ? '—' : formatViews(dashboardStats?.totalVerifiedViews ?? 0)}
           icon={Eye}
           accent="pink"
         />
-        <StatCard label="All Submissions" value={contents.length} icon={Scissors} accent="orange" />
+        <StatCard
+          label="All Submissions"
+          value={statsLoading ? '—' : counts.all}
+          icon={Scissors}
+          accent="orange"
+        />
       </div>
 
       <div
@@ -159,7 +143,7 @@ export default function SubmissionsPage() {
         role="tablist"
         aria-label="Filter submissions by status"
       >
-        {TABS.map((t) => {
+        {CREATOR_SUBMISSION_TABS.map((t) => {
           const isActive = tab === t.id
           const count = counts[t.id as keyof typeof counts] ?? 0
           const Icon = t.icon
@@ -198,21 +182,33 @@ export default function SubmissionsPage() {
       </div>
 
       <div id="submissions-tabpanel" role="tabpanel" aria-labelledby={`submissions-tab-${tab}`}>
-        {sortedFiltered.length === 0 ? (
+        {listLoading ? (
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Loading submissions…
+          </div>
+        ) : listError ? (
+          <div className="rounded-2xl border border-border bg-card px-4 py-12 text-center sm:px-8 sm:py-14">
+            <p className="text-sm text-destructive">Could not load submissions. Try again later.</p>
+          </div>
+        ) : pageRows.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card px-4 py-12 text-center sm:px-8 sm:py-14">
             <div className="mb-3 flex justify-center text-muted-foreground">
               <Scissors className="h-10 w-10 shrink-0" aria-hidden />
             </div>
             <h3 className="wrap-break-word font-display text-base font-bold text-foreground sm:text-lg">
-              {emptyPlaceholderTitle(tab, contents.length)}
+              {creatorSubmissionEmptyPlaceholderTitle(tab, counts.all > 0)}
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground wrap-break-word">
-              {emptyFilterDescription(tab)}
+              {creatorSubmissionEmptyFilterDescription(tab)}
             </p>
-            {contents.length === 0 ? (
-              <div className="mt-8 flex justify-center">
-                <Button asChild className="bg-phc-gradient text-white">
-                  <Link to="/campaigns">Browse campaigns</Link>
+            {counts.all === 0 ? (
+              <div className="mt-4 flex justify-center">
+                <Button asChild className="gap-1.5 bg-phc-gradient text-white">
+                  <Link to="/campaigns">
+                    <Compass className="h-4 w-4 shrink-0" aria-hidden />
+                    Browse Campaigns
+                  </Link>
                 </Button>
               </div>
             ) : null}
@@ -254,11 +250,7 @@ export default function SubmissionsPage() {
                         </Link>
                       </TableCell>
                       <TableCell>
-                        <PlatformCell
-                          platform={content.platform}
-                          iconClassName="h-5 w-5"
-                          // v1 (post-MVP): hasYellowBasket={Boolean(content.hasTikTokYellowBasket)}
-                        />
+                        <PlatformCell platform={content.platform} iconClassName="h-5 w-5" />
                       </TableCell>
                       <TableCell className="font-display font-semibold tabular-nums">
                         {formatViews(content.views)}
@@ -276,8 +268,8 @@ export default function SubmissionsPage() {
             </Table>
             <TablePagination
               page={safePage}
-              pageSize={PAGE_SIZE}
-              totalItems={sortedFiltered.length}
+              pageSize={CREATOR_SUBMISSIONS_PAGE_SIZE}
+              totalItems={totalItems}
               onPageChange={setPage}
               itemLabel="submissions"
             />

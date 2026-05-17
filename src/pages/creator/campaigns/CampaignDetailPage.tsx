@@ -142,8 +142,11 @@ export default function CreatorCampaignDetailPage() {
     return (
       <div className="py-20 text-center">
         <p className="font-display text-lg font-bold">Campaign not found</p>
-        <Button asChild variant="outline" className="mt-4">
-          <Link to="/campaigns">Back to campaigns</Link>
+        <Button asChild variant="outline" className="mt-4 gap-1.5">
+          <Link to="/campaigns">
+            <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+            Back to Campaigns
+          </Link>
         </Button>
       </div>
     )
@@ -308,7 +311,7 @@ export default function CreatorCampaignDetailPage() {
           to="/campaigns"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> All campaigns
+          <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden /> All Campaigns
         </Link>
       </div>
 
@@ -335,9 +338,9 @@ export default function CreatorCampaignDetailPage() {
                 <DialogTrigger asChild>
                   <Button
                     size="lg"
-                    className="bg-phc-gradient font-semibold text-white hover:opacity-90"
+                    className="gap-1.5 bg-phc-gradient font-semibold text-white hover:opacity-90"
                   >
-                    <Send className="h-4 w-4" />
+                    <Send className="h-4 w-4 shrink-0" aria-hidden />
                     Submit Content
                   </Button>
                 </DialogTrigger>

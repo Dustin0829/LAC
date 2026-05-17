@@ -24,3 +24,14 @@ export type ApiErrorBody = {
   message?: string
   success?: false
 }
+
+/** List endpoints — `meta` on paginated `GET` responses. */
+export type PaginationMeta = {
+  page: number
+  limit: number
+  total: number
+  total_pages: number
+  current_page: number
+  items_per_page: number
+  total_items: number
+}

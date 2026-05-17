@@ -1,4 +1,7 @@
+import type { PaginationMeta } from '@/api/types/global.types'
 import type { ContentStatus, Platform } from '@/api/types/shared'
+
+export type { PaginationMeta }
 
 export type BrandSubmissionStatus = 'pending' | 'paying' | 'paid' | 'payout_failed' | 'rejected'
 
@@ -42,16 +45,6 @@ export type BrandCampaignSubmissionsData = {
 
 export type BrandRecentSubmissionsData = {
   items: BrandSubmissionDto[]
-}
-
-export type PaginationMeta = {
-  page: number
-  limit: number
-  total: number
-  total_pages: number
-  current_page: number
-  items_per_page: number
-  total_items: number
 }
 
 export type ListBrandRecentSubmissionsParams = {

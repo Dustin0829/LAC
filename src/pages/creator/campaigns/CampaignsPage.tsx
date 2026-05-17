@@ -47,7 +47,7 @@ const SORT_OPTIONS: {
   icon: ComponentType<{ className?: string }>
 }[] = [
   { id: 'newest', label: 'Newest', icon: Clock },
-  { id: 'rate', label: 'Highest rate', icon: CircleDollarSign },
+  { id: 'rate', label: 'Highest Rate', icon: CircleDollarSign },
 ]
 
 const selectTriggerClass =
@@ -126,6 +126,7 @@ function FilterControls({
                 variant={isActive ? 'primary' : 'outline'}
                 size="sm"
                 className={cn(
+                  'gap-1.5',
                   vertical && 'w-full justify-center',
                   isActive && 'bg-phc-gradient text-white shadow-sm hover:opacity-90'
                 )}

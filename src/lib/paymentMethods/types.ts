@@ -6,7 +6,7 @@ export type PaymentMethod = {
   /** Account number / phone (masked for display) */
   accountNumber: string
   accountName: string
-  /** Full bank option label when `type === 'bank'` (matches bank picker). */
+  /** Short bank picker key (e.g. `BDO`) for icons; `label` holds the display title. */
   bank?: string
   isDefault: boolean
 }

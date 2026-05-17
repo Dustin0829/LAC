@@ -32,12 +32,14 @@ export function paymentMethodFromApi(dto: PaymentMethodDto): PaymentMethod {
   const channel = paymentChannelByCode(code)
 
   if (dto.kind === 'bank' || BANK_CHANNEL_CODES.has(code)) {
-    const bank = dto.bankName ?? channel?.displayName ?? channel?.channelName ?? dto.label
+    const bankLabel =
+      dto.bankName ?? channel?.channelName ?? channel?.displayName ?? dto.label
+    const bankPickerKey = channel?.displayName ?? bankLabel
     return {
       id: dto.id,
       type: 'bank',
-      label: bank,
-      bank,
+      label: bankLabel,
+      bank: bankPickerKey,
       accountNumber: maskBankAccountNumber(dto.lastFour),
       accountName: dto.accountName,
       isDefault: dto.isDefault,
@@ -167,7 +169,7 @@ export function isKnownPaymentChannelCode(code: string): boolean {
 
 export function paymentMethodDisplayTitle(method: PaymentMethod): string {
   if (method.label === 'PayMaya (Maya)') return 'Maya'
-  if (method.type === 'bank') return method.bank ?? method.label
+  if (method.type === 'bank') return method.label
   return method.label
 }
 

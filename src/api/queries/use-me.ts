@@ -5,14 +5,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   deleteMePlatform,
   getMeProfile,
+  patchMe,
   postMeOnboardingComplete,
   putMeBrandProfile,
   putMeCreatorProfile,
   putMeRole,
 } from '@/api/services/me'
-import type { PutMeBrandProfileBody, PutMeRoleBody } from '@/api/types/me.types'
+import type { PatchMeBody, PutMeBrandProfileBody, PutMeRoleBody } from '@/api/types/me.types'
 import { creatorLinksFromApi } from '@/lib/auth/mapMeProfile'
 import {
+  meNameUpdatedMessage,
+  meNameUpdateErrorMessage,
   mePlatformDisconnectedMessage,
   mePlatformDisconnectErrorMessage,
 } from '@/lib/auth/meMutationMessages'
@@ -42,6 +45,26 @@ export function usePutMeRole() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Could not save your role.')
+    },
+  })
+}
+
+/** Update display name and/or avatar (`PATCH /me`). */
+export function usePatchMe() {
+  return useMutation({
+    mutationKey: [...meQueryKeys.all, 'patch'] as const,
+    mutationFn: (body: PatchMeBody) => patchMe(body),
+    retry: false,
+    onSuccess: (data) => {
+      const u = data.user
+      useAuthStore.getState().updateUser({
+        name: u.name ?? undefined,
+        avatarUrl: u.avatarUrl ?? undefined,
+      })
+      toast.success(meNameUpdatedMessage())
+    },
+    onError: (err) => {
+      toast.error(meNameUpdateErrorMessage(err))
     },
   })
 }

@@ -25,7 +25,7 @@ const VISIBLE_BEFORE_OVERFLOW = 3
 
 function rowTitle(m: PaymentMethod): string {
   if (m.label === 'PayMaya (Maya)') return 'Maya'
-  if (m.type === 'bank') return m.bank ?? m.label
+  if (m.type === 'bank') return m.label
   return m.label
 }
 

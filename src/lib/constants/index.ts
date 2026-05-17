@@ -1,7 +1,11 @@
 export const TERMS_OF_SERVICE_URL = 'https://www.vid-u.com/terms'
 export const PRIVACY_POLICY_URL = 'https://www.vid-u.com/privacy'
 
-export const RECENT_PAGE_SIZE = 10
+/** Creator submission tables (dashboard recent inbox + submissions page). */
+export const CREATOR_SUBMISSIONS_PAGE_SIZE = 10
+
+/** @deprecated Prefer `CREATOR_SUBMISSIONS_PAGE_SIZE`. */
+export const RECENT_PAGE_SIZE = CREATOR_SUBMISSIONS_PAGE_SIZE
 
 /**
  * Profile wizard at `/onboarding/profile` (platforms, payouts, brand profile).

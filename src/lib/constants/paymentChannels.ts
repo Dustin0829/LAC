@@ -136,6 +136,23 @@ export function paymentChannelByCode(channelCode: string): PaymentChannelOption 
   return [...E_WALLET_CHANNELS, ...BANK_CHANNELS].find((ch) => ch.channelCode === code)
 }
 
+/** Resolve a saved/API bank label (legal name or picker label) to a known channel. */
+export function paymentChannelByBankLabel(bankLabel: string): PaymentChannelOption | undefined {
+  const trimmed = bankLabel.trim()
+  if (!trimmed) return undefined
+
+  const byDisplay = byDisplayName.get(trimmed)
+  if (byDisplay?.kind === 'bank') return byDisplay
+
+  const lower = trimmed.toLowerCase()
+  return BANK_CHANNELS.find((ch) => {
+    if (ch.displayName === trimmed) return true
+    if (ch.channelName === trimmed) return true
+    const channelLower = ch.channelName.toLowerCase()
+    return channelLower === lower || channelLower.startsWith(`${lower} `) || lower.startsWith(channelLower)
+  })
+}
+
 export const BANK_CHANNEL_CODES = new Set(
   BANK_CHANNELS.map((ch) => ch.channelCode)
 )
