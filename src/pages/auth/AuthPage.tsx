@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout'
 import { AuthLoginSocialProof } from '@/components/auth/AuthLoginShowcase'
+import { VidULogo } from '@/components/VidULogo'
 import { Button } from '@/components/ui/button'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/constants'
 import { startGoogleOAuth } from '@/lib/auth/startGoogleOAuth'
@@ -21,12 +22,8 @@ export default function AuthPage() {
       <div className="flex h-screen items-center justify-center px-4">
         <div className="flex w-full flex-col items-center sm:max-w-sm">
           <div className="flex shrink-0 flex-col items-center pb-2 text-center sm:pb-3">
-            <span className="font-display text-[38px] font-extrabold leading-none tracking-[-0.055em] text-slate-950">
-              Vid<span className="text-[#0ea5e9]">U</span>
-            </span>
-            <span className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-              Verified views marketplace
-            </span>
+            <VidULogo variant="mark" className="h-28 w-auto sm:h-32" />
+            <p className='text-sm text-slate-600 font-mediumt'> The platform where creators monetize their content and brands reach new audiences.</p>
           </div>
 
           <div className="relative z-20 w-full">

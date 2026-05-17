@@ -1,32 +1,42 @@
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Loader2, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
+
 import { usePutMeRole } from '@/api/queries/use-me'
+import { OnboardingDotGrid } from '@/components/onboarding/OnboardingDotGrid'
+import { RoleSelectionCard } from '@/components/onboarding/RoleSelectionCard'
+import {
+  BrandRoleIllustration,
+  CreatorRoleIllustration,
+} from '@/components/onboarding/RoleSelectionIllustrations'
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout'
+import { Button } from '@/components/ui/button'
 import { PROFILE_ONBOARDING_ENABLED } from '@/lib/constants'
 import { useSignOut } from '@/lib/hooks/use-sign-out'
 import type { UserRole } from '@/lib/stores/authStore'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const ROLES: {
   role: UserRole
   title: string
   description: string
-  Icon: typeof Sparkles
+  bullets: readonly string[]
+  illustration: ReactNode
 }[] = [
   {
     role: 'creator',
     title: 'Creator',
-    description: 'Join brand campaigns and get paid for your posts.',
-    Icon: Sparkles,
+    description: 'Join brand campaigns, create content, and earn from your performance.',
+    bullets: ['Get paid for your content', 'Work with top brands', 'Flexible & easy to join'],
+    illustration: <CreatorRoleIllustration />,
   },
   {
     role: 'brand',
     title: 'Brand',
-    description: 'Run campaigns and pay creators for verified views.',
-    Icon: Building2,
+    description: 'Launch campaigns and pay creators for real results.',
+    bullets: ['Reach new audiences', 'Pay for performance', 'Track campaign results'],
+    illustration: <BrandRoleIllustration />,
   },
 ]
 
@@ -34,7 +44,7 @@ export default function RoleSelectionPage() {
   const navigate = useNavigate()
   const { mutate: putMeRole, isPending: submitting } = usePutMeRole()
   const signOut = useSignOut()
-  const [choice, setChoice] = useState<UserRole | null>(null)
+  const [choice, setChoice] = useState<UserRole | null>('creator')
   const [backPending, setBackPending] = useState(false)
 
   function onContinue() {
@@ -69,41 +79,40 @@ export default function RoleSelectionPage() {
   }
 
   return (
-    <AuthPageLayout>
-      <div className="flex min-h-screen flex-col justify-center text-center px-6 py-6">
-        <div className="mx-auto w-full max-w-2xl">
-          <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight md:text-4xl">
-            How will you use Vid<span className="text-phc-gradient">U</span>?
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Choose your role.</p>
+    <AuthPageLayout className="md:h-dvh md:max-h-dvh md:overflow-y-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_100%_0%,rgba(221,214,254,0.45),transparent_58%)]"
+      />
+      <OnboardingDotGrid />
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {ROLES.map(({ role, title, description, Icon }) => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => setChoice(role)}
-                className={cn(
-                  'cursor-pointer rounded-2xl border p-6 text-left transition-colors',
-                  choice === role
-                    ? 'border-sky-500 bg-sky-50/50'
-                    : 'border-border bg-white/78 hover:border-muted-foreground/30'
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="h-8 w-8 text-slate-950" />
-                  <p className="text-lg font-semibold text-foreground">{title}</p>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-              </button>
+      <div className="relative z-10 flex w-full flex-1 flex-col max-md:min-h-0 md:min-h-dvh md:justify-center">
+        <main className="mx-auto w-full max-w-7xl px-5 py-8 pb-20 sm:px-8 sm:pb-24 md:overflow-hidden md:py-0 md:pb-0">
+          <div className="text-center">
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl lg:text-[2.5rem]">
+              How will you use Vid<span className="text-phc-gradient">U</span>?
+            </h1>
+            <p className="mx-auto mt-3 max-w-lg text-base text-slate-500">
+              Choose the option that fits you best.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-5 md:mt-10 md:grid-cols-2 md:gap-6 lg:gap-8">
+            {ROLES.map((config) => (
+              <RoleSelectionCard
+                key={config.role}
+                {...config}
+                selected={choice === config.role}
+                onSelect={() => setChoice(config.role)}
+              />
             ))}
           </div>
 
-          <div className="mt-6 flex flex-col gap-4">
+          <div className="mt-8 flex flex-col items-center pb-6 md:mt-5 md:pb-10">
             <Button
               type="button"
               size="lg"
-              className="h-[46px] w-full"
+              className="h-12 min-w-[220px] rounded-full bg-phc-gradient px-16 text-base font-semibold text-white hover:opacity-90 sm:min-w-[260px]"
               disabled={!choice || submitting || backPending}
               onClick={() => void onContinue()}
             >
@@ -116,25 +125,19 @@ export default function RoleSelectionPage() {
                 'Continue'
               )}
             </Button>
-            <span
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               onClick={() => void onBackToLogin()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  void onBackToLogin()
-                }
-              }}
+              disabled={backPending || submitting}
               className={cn(
-                'cursor-pointer text-center text-sm text-muted-foreground underline',
-                backPending && 'pointer-events-none opacity-50'
+                'mt-2 cursor-pointer text-center text-sm text-slate-500 underline underline-offset-2',
+                'hover:text-slate-700 disabled:pointer-events-none disabled:opacity-50'
               )}
             >
               Back to login
-            </span>
+            </button>
           </div>
-        </div>
+        </main>
       </div>
     </AuthPageLayout>
   )

@@ -1,9 +1,22 @@
+import { cn } from '@/lib/utils'
+
 /**
  * Shared full-page backdrop for auth, role selection, and onboarding flows.
  */
-export function AuthPageLayout({ children }: { children: React.ReactNode }) {
+export function AuthPageLayout({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
   return (
-    <div className="relative flex w-full flex-col overflow-x-hidden bg-[#f4f8fd] text-foreground">
+    <div
+      className={cn(
+        'relative flex h-full min-h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-[#f4f8fd] text-foreground',
+        className
+      )}
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#fafcff_0%,#f4f8fd_42%,#edf5ff_100%)]"
