@@ -4,6 +4,17 @@ export const PRIVACY_POLICY_URL = 'https://www.vid-u.com/privacy'
 /** Creator submission tables (dashboard recent inbox + submissions page). */
 export const CREATOR_SUBMISSIONS_PAGE_SIZE = 10
 
+// --- Creator submissions (keep in sync with vidu-backend `submissions.service.ts`) ---
+
+/** Minimum post views required to submit (backend rejects at or below this). */
+export const SUBMISSION_MIN_VIEWS = 1000
+
+/** Substring in backend `ValidationError` when views are below the MVP floor. */
+export const SUBMISSION_VIEWS_FLOOR_API_SNIPPET = '1k threshold'
+
+/** Debounce while typing a content URL in the submit-content modal preview. */
+export const CREATOR_SUBMISSION_PREVIEW_DEBOUNCE_MS = 550
+
 /** @deprecated Prefer `CREATOR_SUBMISSIONS_PAGE_SIZE`. */
 export const RECENT_PAGE_SIZE = CREATOR_SUBMISSIONS_PAGE_SIZE
 
@@ -16,7 +27,7 @@ export const PROFILE_ONBOARDING_ENABLED = false
 /** Toggle creator OAuth connect per platform (account + onboarding). */
 export const CREATOR_PLATFORM_CONNECT_ENABLED = {
   tiktok: true,
-  facebook: false,
+  facebook: true,
 } as const satisfies Record<'tiktok' | 'facebook', boolean>
 
 export function isCreatorPlatformConnectEnabled(platform: 'tiktok' | 'facebook'): boolean {

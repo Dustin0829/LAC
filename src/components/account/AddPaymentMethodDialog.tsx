@@ -6,8 +6,12 @@ import {
   addPaymentMethodFormSchema,
   type AddPaymentMethodFormField,
 } from '@/api/schema/paymentMethods.schema'
-import { usePostPaymentMethod } from '@/api/queries/use-payment-methods'
+import { usePaymentMethods, usePostPaymentMethod } from '@/api/queries/use-payment-methods'
 import { buildPostPaymentMethodBody } from '@/lib/paymentMethods/paymentMethodApi'
+import {
+  isDuplicatePaymentMethodForm,
+  paymentMethodDuplicateMessage,
+} from '@/lib/paymentMethods/paymentMethodDuplicates'
 import { paymentMethodAddedMessage } from '@/lib/paymentMethods/paymentMethodMessages'
 import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import {
@@ -60,8 +64,10 @@ export function AddPaymentMethodDialog({
   suppressToasts = false,
   presetType = null,
 }: AddPaymentMethodDialogProps) {
-  const methods = usePaymentMethodsStore((s) => s.methods)
+  const storeMethods = usePaymentMethodsStore((s) => s.methods)
   const addMethodLocal = usePaymentMethodsStore((s) => s.addMethod)
+  const { data: apiMethods = [] } = usePaymentMethods(useApi)
+  const methods = useApi ? apiMethods : storeMethods
   const { mutate: postPaymentMethod } = usePostPaymentMethod({ surface: mode, suppressToasts })
 
   const [methodType, setMethodType] = useState<AddMethodType>(null)
@@ -129,6 +135,15 @@ export function AddPaymentMethodDialog({
       return
     }
     setErrors({})
+
+    const duplicateMessage = paymentMethodDuplicateMessage()
+    if (isDuplicatePaymentMethodForm(methods, parsed.data)) {
+      setErrors({ accountNumber: duplicateMessage })
+      if (!suppressToasts) {
+        toast.error(duplicateMessage)
+      }
+      return
+    }
 
     if (useApi) {
       postPaymentMethod(buildPostPaymentMethodBody(parsed.data, methods.length === 0), {

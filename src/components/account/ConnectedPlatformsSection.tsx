@@ -5,6 +5,7 @@ import { useDeleteMePlatform } from '@/api/queries/use-me'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { Button } from '@/components/ui/button'
 import { isCreatorPlatformConnectEnabled } from '@/lib/constants'
+import { startFacebookOAuth } from '@/lib/auth/startFacebookOAuth'
 import { startTikTokOAuth } from '@/lib/auth/startTikTokOAuth'
 import type { Platform } from '@/api/types/shared'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
@@ -29,16 +30,21 @@ export function ConnectedPlatformsSection({
   const [connectingPlatform, setConnectingPlatform] = useState<Platform | null>(null)
 
   async function handleConnect(platform: Platform) {
-    if (platform === 'tiktok') {
-      setConnectingPlatform('tiktok')
-      try {
-        await startTikTokOAuth()
-      } catch {
-        setConnectingPlatform(null)
-      }
+    if (!isCreatorPlatformConnectEnabled(platform)) {
+      toast.info(`${PLATFORM_LABEL[platform]} connect is not available yet.`)
       return
     }
-    toast.info(`${PLATFORM_LABEL[platform]} connect is not available yet.`)
+
+    setConnectingPlatform(platform)
+    try {
+      if (platform === 'tiktok') {
+        await startTikTokOAuth()
+      } else {
+        await startFacebookOAuth()
+      }
+    } catch {
+      setConnectingPlatform(null)
+    }
   }
 
   function handleDisconnect(platform: Platform) {
@@ -53,9 +59,7 @@ export function ConnectedPlatformsSection({
       <div className="mb-5">
         <h2 className="font-display text-xl font-bold">Connected platforms</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {isCreatorPlatformConnectEnabled('facebook')
-            ? 'Connect TikTok and Meta/Facebook once; we reuse them when you submit campaign content.'
-            : 'Connect TikTok once; we reuse it when you submit campaign content. Meta/Facebook is coming soon.'}
+          Connect TikTok and Facebook once; we reuse them when you submit campaign content.
         </p>
       </div>
       <div className="grid min-w-0 gap-3 md:grid-cols-2">

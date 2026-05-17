@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   deletePaymentMethod,
@@ -39,6 +39,20 @@ function syncPaymentMethodsStore(items: ReturnType<typeof paymentMethodFromApi>[
   usePaymentMethodsStore.setState({ methods: items })
 }
 
+async function refetchAndSyncPaymentMethods(qc: QueryClient) {
+  const role = useAuthStore.getState().role
+  const items = await qc.fetchQuery({
+    queryKey: [...paymentMethodsQueryKeys.list(), role] as const,
+    queryFn: async () => {
+      const data = await getPaymentMethods()
+      const mapped = data.items.map(paymentMethodFromApi)
+      syncPaymentMethodsStore(mapped)
+      return mapped
+    },
+  })
+  return items
+}
+
 /** `GET /me/payment-methods` — purpose from JWT role (creator vs brand). */
 export function usePaymentMethods(enabled = true) {
   const user = useAuthStore((s) => s.user)
@@ -62,8 +76,8 @@ export function usePostPaymentMethod(options: PaymentMethodMutationOptions) {
     mutationKey: [...paymentMethodsQueryKeys.all, 'create'] as const,
     mutationFn: (body: PostPaymentMethodBody) => postPaymentMethod(body),
     retry: false,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: paymentMethodsQueryKeys.list() })
+    onSuccess: async () => {
+      await refetchAndSyncPaymentMethods(qc)
       if (shouldToast(options)) {
         toast.success(paymentMethodAddedMessage(options.surface))
       }
@@ -88,8 +102,8 @@ export function usePatchPaymentMethod(options: PaymentMethodMutationOptions) {
       body: PatchPaymentMethodBody
     }) => patchPaymentMethod(paymentMethodId, body),
     retry: false,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: paymentMethodsQueryKeys.list() })
+    onSuccess: async () => {
+      await refetchAndSyncPaymentMethods(qc)
       if (shouldToast(options)) {
         toast.success(paymentMethodDefaultUpdatedMessage(options.surface))
       }
@@ -108,8 +122,8 @@ export function useDeletePaymentMethod(options: PaymentMethodMutationOptions) {
     mutationKey: [...paymentMethodsQueryKeys.all, 'delete'] as const,
     mutationFn: (paymentMethodId: string) => deletePaymentMethod(paymentMethodId),
     retry: false,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: paymentMethodsQueryKeys.list() })
+    onSuccess: async () => {
+      await refetchAndSyncPaymentMethods(qc)
       if (shouldToast(options)) {
         toast.success(paymentMethodRemovedMessage(options.surface))
       }

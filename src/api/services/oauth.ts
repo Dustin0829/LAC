@@ -1,11 +1,8 @@
 import api from '@/api/client'
-import type { OAuthTikTokStartData } from '@/api/types/oauth.types'
+import type { OAuthAuthorizeStartData } from '@/api/types/oauth.types'
 
-/**
- * `GET /oauth/tiktok/start` (Bearer). Returns TikTok authorize URL (JSON body or 302 Location).
- */
-export async function getOAuthTikTokAuthorizeUrl(): Promise<string> {
-  const res = await api.get<OAuthTikTokStartData>('/oauth/tiktok/start', {
+async function oauthAuthorizeUrlFromStart(path: string, fallbackError: string): Promise<string> {
+  const res = await api.get<OAuthAuthorizeStartData>(path, {
     headers: { Accept: 'application/json' },
     maxRedirects: 0,
     validateStatus: (status) => status === 200 || status === 302,
@@ -21,5 +18,19 @@ export async function getOAuthTikTokAuthorizeUrl(): Promise<string> {
     if (location) return location
   }
 
-  throw new Error('Could not start TikTok OAuth.')
+  throw new Error(fallbackError)
+}
+
+/**
+ * `GET /oauth/tiktok/start` (Bearer). Returns TikTok authorize URL (JSON body or 302 Location).
+ */
+export async function getOAuthTikTokAuthorizeUrl(): Promise<string> {
+  return oauthAuthorizeUrlFromStart('/oauth/tiktok/start', 'Could not start TikTok OAuth.')
+}
+
+/**
+ * `GET /oauth/facebook/start` (Bearer). Returns Meta authorize URL (302 Location).
+ */
+export async function getOAuthFacebookAuthorizeUrl(): Promise<string> {
+  return oauthAuthorizeUrlFromStart('/oauth/facebook/start', 'Could not start Facebook OAuth.')
 }

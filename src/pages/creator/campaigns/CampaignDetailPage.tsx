@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -15,11 +15,23 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react'
+import {
+  useCampaignSubmissionLinkPreview,
+  useConfirmCampaignSubmission,
+} from '@/api/queries/creator/use-campaign-submissions'
 import { useCreatorCampaign } from '@/api/queries/creator/use-campaigns'
-import { useContentStore } from '@/lib/stores/contentStore'
+import { useMeProfile } from '@/api/queries/use-me'
+import { usePaymentMethods } from '@/api/queries/use-payment-methods'
+import { parseCampaignSubmissionBody } from '@/api/schema/creator/submission.schema'
+import { creatorLinksFromApi } from '@/lib/auth/mapMeProfile'
+import { startFacebookOAuth } from '@/lib/auth/startFacebookOAuth'
+import { startTikTokOAuth } from '@/lib/auth/startTikTokOAuth'
+import { isCreatorPlatformConnectEnabled } from '@/lib/constants'
+import {
+  campaignSubmissionBelowMinViewsMessage,
+  campaignSubmissionUrlErrorMessage,
+} from '@/lib/creators/submissions/campaignSubmissionMessages'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
-import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
-import { useAuth } from '@/lib/hooks/use-auth'
 import { AddPaymentMethodDialog } from '@/components/account/AddPaymentMethodDialog'
 import {
   Dialog,
@@ -48,25 +60,6 @@ import { creatorHeadlineRatePer1k } from '@/lib/campaigns/utils'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { toast } from 'sonner'
 
-function isValidContentUrl(value: string): boolean {
-  try {
-    const u = new URL(value)
-    return (u.protocol === 'http:' || u.protocol === 'https:') && Boolean(u.hostname)
-  } catch {
-    return false
-  }
-}
-
-// v1 (post-MVP): TikTok Yellow Basket — optional 50% headline-rate factor for commerce posts (not shipped).
-// /** 50% vs 80% creator share of gross performance → multiply headline ₱/1k by 5/8 */
-// const YELLOW_BASKET_RATE_FACTOR = 0.625
-
-function mockPostViewsForDemoUrl(url: string): number {
-  const lower = url.toLowerCase()
-  if (lower.includes('demo-low') || lower.includes('lowviews')) return 800
-  return 12_400
-}
-
 /** Placeholder preview still (replace with thumbnail from oEmbed/API). */
 const STATS_PREVIEW_IMAGE_SRC = '/sear-preview.jpg'
 
@@ -92,14 +85,6 @@ function effectiveCreatorRatePer1k(
   return basePer1k
 }
 
-type LinkValidationPhase = 'idle' | 'validating' | 'ready' | 'below_quota'
-
-type FetchedSnapshot = {
-  views: number
-  likes: number
-  comments: number
-}
-
 function CreatorCampaignDetailNotFound() {
   return (
     <div className="py-20 text-center">
@@ -119,21 +104,18 @@ export default function CreatorCampaignDetailPage() {
   const navigate = useNavigate()
   const campaignId = id ?? ''
   const { data: campaign, isLoading, isError } = useCreatorCampaign(campaignId)
-  const addContent = useContentStore((s) => s.addContent)
+  const { data: meProfile } = useMeProfile()
+  const setPlatformLinks = useCreatorProfileStore((s) => s.setPlatformLinks)
   const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
-  const connectPlatform = useCreatorProfileStore((s) => s.connectPlatform)
-  const payoutMethods = usePaymentMethodsStore((s) => s.methods)
-  const { user } = useAuth()
+  const { data: payoutMethods = [] } = usePaymentMethods()
+  const { mutate: confirmSubmission, isPending: submitting } =
+    useConfirmCampaignSubmission(campaignId)
 
   const [open, setOpen] = useState(false)
   const [addPaymentOpen, setAddPaymentOpen] = useState(false)
   const [url, setUrl] = useState('')
   const [platform, setPlatform] = useState<Platform>('tiktok')
   // v1 (post-MVP): const [tikTokYellowBasket, setTikTokYellowBasket] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [linkPhase, setLinkPhase] = useState<LinkValidationPhase>('idle')
-  const [snapshot, setSnapshot] = useState<FetchedSnapshot | null>(null)
-  const validationGenRef = useRef(0)
   const skipSubmitResetForPaymentRef = useRef(false)
   const prevSubmitOpenRef = useRef(open)
   const connectedPlatforms = platformLinks
@@ -144,6 +126,36 @@ export default function CreatorCampaignDetailPage() {
 
   const campaignPlatformsKey = campaign?.platforms.slice().sort().join('|') ?? ''
 
+  const openAddPaymentFromSubmit = useCallback(() => {
+    skipSubmitResetForPaymentRef.current = true
+    setOpen(false)
+    setAddPaymentOpen(true)
+  }, [])
+
+  const handlePlatformReconnect = useCallback(() => {
+    if (meProfile && 'platformLinks' in meProfile) {
+      setPlatformLinks(creatorLinksFromApi(meProfile))
+    }
+  }, [meProfile, setPlatformLinks])
+
+  const {
+    linkPhase,
+    snapshot,
+    previewError,
+    resetLinkPreview,
+    clearLinkPreviewProgress,
+  } = useCampaignSubmissionLinkPreview({
+    campaignId,
+    open: open && Boolean(campaign),
+    url,
+    platform,
+    platformsAllowed: campaign?.platforms ?? [],
+    hasPayoutMethod,
+    platformConnected,
+    onPaymentMethodRequired: openAddPaymentFromSubmit,
+    onPlatformReconnect: handlePlatformReconnect,
+  })
+
   useEffect(() => {
     if (!campaign) return
     setPlatform((p) =>
@@ -151,77 +163,29 @@ export default function CreatorCampaignDetailPage() {
     )
   }, [campaign, campaignPlatformsKey])
 
+  useEffect(() => {
+    if (meProfile && 'platformLinks' in meProfile) {
+      setPlatformLinks(creatorLinksFromApi(meProfile))
+    }
+  }, [meProfile, setPlatformLinks])
+
   function resetSubmitModal() {
     setUrl('')
     // v1 (post-MVP): setTikTokYellowBasket(false)
-    setLinkPhase('idle')
-    setSnapshot(null)
-    setSubmitting(false)
+    resetLinkPreview()
   }
 
-  function handleConnectOnly() {
-    connectPlatform(platform)
-    toast.success(`${PLATFORM_LABEL[platform]} connected`)
+  async function handleConnectOnly() {
+    if (!isCreatorPlatformConnectEnabled(platform)) {
+      toast.info(`${PLATFORM_LABEL[platform]} connect is not available yet.`)
+      return
+    }
+    if (platform === 'tiktok') {
+      await startTikTokOAuth()
+      return
+    }
+    await startFacebookOAuth()
   }
-
-  /** Debounced validation only while the modal is open (avoid background churn on the detail page). */
-  useEffect(() => {
-    if (!open || !campaign) return
-
-    const gen = ++validationGenRef.current
-    const trimmed = url.trim()
-    const platformsAllowed = campaign.platforms
-
-    if (!trimmed) {
-      setLinkPhase('idle')
-      setSnapshot(null)
-      return
-    }
-    if (!hasPayoutMethod || !platformConnected) {
-      setLinkPhase('idle')
-      setSnapshot(null)
-      return
-    }
-
-    setLinkPhase('validating')
-    setSnapshot(null)
-
-    const t = window.setTimeout(() => {
-      void (async () => {
-        if (gen !== validationGenRef.current) return
-
-        if (!isValidContentUrl(trimmed)) {
-          if (gen !== validationGenRef.current) return
-          setLinkPhase('idle')
-          setSnapshot(null)
-          return
-        }
-        if (!platformsAllowed.includes(platform)) {
-          if (gen !== validationGenRef.current) return
-          setLinkPhase('idle')
-          setSnapshot(null)
-          return
-        }
-
-        await new Promise((r) => setTimeout(r, 550))
-        if (gen !== validationGenRef.current) return
-
-        const views = mockPostViewsForDemoUrl(trimmed)
-        const likes = Math.max(0, Math.round(views * 0.032))
-        const comments = Math.max(0, Math.round(views * 0.0012))
-        const snap: FetchedSnapshot = { views, likes, comments }
-        setSnapshot(snap)
-
-        if (views <= 1_000) {
-          setLinkPhase('below_quota')
-        } else {
-          setLinkPhase('ready')
-        }
-      })()
-    }, 550)
-
-    return () => window.clearTimeout(t)
-  }, [open, url, platform, campaign, campaignPlatformsKey, hasPayoutMethod, platformConnected])
 
   /** Reset submit modal when it closes, except when handing off to “Add payment method”. */
   useEffect(() => {
@@ -234,55 +198,26 @@ export default function CreatorCampaignDetailPage() {
     prevSubmitOpenRef.current = open
   }, [open])
 
-  function openAddPaymentFromSubmit() {
-    skipSubmitResetForPaymentRef.current = true
-    setOpen(false)
-    setAddPaymentOpen(true)
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!url.trim() || !campaign) return
-    if (!hasPayoutMethod) {
+    if (!hasPayoutMethod || !platformConnected) return
+    if (linkPhase !== 'ready' || !snapshot) return
+    if (!campaign.platforms.includes(platform)) return
+
+    const parsed = parseCampaignSubmissionBody(url, platform)
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? campaignSubmissionUrlErrorMessage())
       return
     }
-    if (!platformConnected) {
-      return
-    }
-    if (linkPhase !== 'ready' || !snapshot || snapshot.views <= 1_000) {
-      return
-    }
-    if (!isValidContentUrl(url.trim())) {
-      return
-    }
-    if (!campaign.platforms.includes(platform)) {
-      return
-    }
-    const rate = effectiveCreatorRatePer1k(creatorHeadlineRatePer1k(campaign), platform, false)
-    // v1 (post-MVP): const rate = effectiveCreatorRatePer1k(creatorHeadlineRatePer1k(campaign), platform, tikTokYellowBasket)
-    const earnings = Math.round((snapshot.views / 1_000) * rate * 100) / 100
-    setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 500))
-    addContent({
-      id: `content-${Date.now()}`,
-      campaignId: campaign.id,
-      campaignTitle: campaign.title,
-      brandName: campaign.brandName,
-      creatorId: 'me',
-      creatorName: user?.name ?? 'You',
-      url: url.trim(),
-      platform,
-      // v1 (post-MVP): ...(platform === 'tiktok' ? { hasTikTokYellowBasket: tikTokYellowBasket } : {}),
-      views: snapshot.views,
-      earnings,
-      status: 'pending',
-      submittedAt: new Date().toISOString(),
-      thumbnailColor: campaign.coverColor,
+
+    confirmSubmission(parsed.data, {
+      onSuccess: () => {
+        setOpen(false)
+        resetSubmitModal()
+        navigate('/submissions')
+      },
     })
-    setSubmitting(false)
-    setOpen(false)
-    resetSubmitModal()
-    navigate('/submissions')
   }
 
   if (!campaignId || (!isLoading && (isError || !campaign))) {
@@ -386,8 +321,7 @@ export default function CreatorCampaignDetailPage() {
                           const p = v as Platform
                           setPlatform(p)
                           // v1 (post-MVP): if (p !== 'tiktok') setTikTokYellowBasket(false)
-                          setLinkPhase('idle')
-                          setSnapshot(null)
+                          clearLinkPreviewProgress()
                         }}
                       >
                         <SelectTrigger className="h-auto min-h-10 gap-2 border border-border bg-muted/60 py-2.5 text-left  ring-offset-background hover:bg-muted/80 focus-visible:ring-2 dark:border-border dark:bg-muted/40 dark:hover:bg-muted/55">
@@ -432,10 +366,14 @@ export default function CreatorCampaignDetailPage() {
                             autoFocus
                             onChange={(e) => {
                               setUrl(e.target.value)
-                              setLinkPhase('idle')
-                              setSnapshot(null)
+                              clearLinkPreviewProgress()
                             }}
                           />
+                          {previewError && linkPhase !== 'below_quota' ? (
+                            <p className="text-sm text-destructive" role="alert">
+                              {previewError}
+                            </p>
+                          ) : null}
                         </div>
                         {
                           null /* v1 (post-MVP): TikTok “yellow basket” checkbox lived here (Checkbox + label). */
@@ -459,6 +397,11 @@ export default function CreatorCampaignDetailPage() {
                                 This usually takes a moment.
                               </p>
                             </div>
+                          </div>
+                        ) : null}
+                        {linkPhase === 'below_quota' && !snapshot ? (
+                          <div className="rounded-xl border border-amber-200/90 bg-amber-50/60 px-3 py-4 text-center text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+                            {previewError ?? campaignSubmissionBelowMinViewsMessage()}
                           </div>
                         ) : null}
                         {snapshot && (linkPhase === 'ready' || linkPhase === 'below_quota') ? (
@@ -553,8 +496,7 @@ export default function CreatorCampaignDetailPage() {
                                 </dl>
                                 {linkPhase === 'below_quota' ? (
                                   <p className="mt-2 rounded-lg border border-amber-200/80 bg-white/80 px-3 py-2 text-center text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/50 dark:text-amber-100">
-                                    This post needs more than 1,000 views to submit for this
-                                    campaign.
+                                    {campaignSubmissionBelowMinViewsMessage()}
                                   </p>
                                 ) : null}
                               </div>
@@ -588,6 +530,7 @@ export default function CreatorCampaignDetailPage() {
               </Dialog>
               <AddPaymentMethodDialog
                 mode="creator"
+                useApi
                 open={addPaymentOpen}
                 onOpenChange={setAddPaymentOpen}
                 onSuccess={() => setOpen(true)}
