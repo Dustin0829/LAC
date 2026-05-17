@@ -152,6 +152,13 @@ export function useSyncBrandCampaignCheckout(campaignId: string) {
   })
 }
 
+function campaignDetailFromCache(
+  qc: ReturnType<typeof useQueryClient>,
+  campaignId: string
+): BrandCampaignDetailDto | undefined {
+  return qc.getQueryData<BrandCampaignDetailDto>(brandCampaignsQueryKeys.detail(campaignId))
+}
+
 /** Release pending / failed payouts (`POST …/release-payout`). */
 export function useReleaseBrandCampaignPayout(campaignId: string) {
   const qc = useQueryClient()
@@ -168,7 +175,15 @@ export function useReleaseBrandCampaignPayout(campaignId: string) {
       })
       toast.success(brandCampaignReleasePayoutSuccessMessage(result))
     },
-    onError: (err) => toast.error(brandCampaignApiErrorMessage(err)),
+    onError: (err) => {
+      const campaign = campaignDetailFromCache(qc, campaignId)
+      toast.error(
+        brandCampaignApiErrorMessage(err, {
+          createdAt: campaign?.createdAt,
+          settlingAction: 'payout',
+        })
+      )
+    },
   })
 }
 
@@ -191,7 +206,15 @@ export function useRefundBrandCampaign(campaignId: string) {
       )
       toast.success(brandCampaignRefundSuccessMessage(result, campaign))
     },
-    onError: (err) => toast.error(brandCampaignApiErrorMessage(err)),
+    onError: (err) => {
+      const campaign = campaignDetailFromCache(qc, campaignId)
+      toast.error(
+        brandCampaignApiErrorMessage(err, {
+          createdAt: campaign?.createdAt,
+          settlingAction: 'refund',
+        })
+      )
+    },
   })
 }
 

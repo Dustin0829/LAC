@@ -1,4 +1,4 @@
-import type { PaymentMethod } from '@/lib/mockData'
+import type { PaymentMethod } from '@/lib/paymentMethods/types'
 import { getPaymentMethodIcon } from '@/lib/constants/paymentMethodIcons'
 
 const EWALLET_LABEL_BY_TYPE: Record<Exclude<PaymentMethod['type'], 'bank'>, string> = {

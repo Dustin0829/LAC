@@ -5,7 +5,7 @@ import { meQueryKeys } from '@/api/queries/use-me'
 import { getMeProfile } from '@/api/services/me'
 import { creatorLinksFromApi } from '@/lib/auth/mapMeProfile'
 import { consumeCreatorPlatformOAuthSearchParams } from '@/lib/auth/oauthPlatformCallback'
-import { PLATFORM_LABEL } from '@/lib/mockData'
+import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
 

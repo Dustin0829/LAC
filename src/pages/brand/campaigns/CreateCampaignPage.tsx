@@ -18,12 +18,10 @@ import { RequiredFieldAsterisk } from '@/components/RequiredFieldAsterisk'
 import { Textarea } from '@/components/ui/textarea'
 import { Check } from 'lucide-react'
 import { PlatformIcon } from '@/components/PlatformIcon'
-import {
-  PLATFORM_LABEL,
-  estimatedReachViewsFromNetPool,
-  getPlatformFeePercent,
-  type Platform,
-} from '@/lib/mockData'
+import { estimatedReachViewsFromNetPool } from '@/lib/campaigns/utils'
+import { getPlatformFeePercent } from '@/lib/constants'
+import type { Platform } from '@/api/types/shared'
+import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { cn, formatPHP, isValidHttpOrHttpsUrl } from '@/lib/utils'
 
 export default function CreateCampaignPage() {

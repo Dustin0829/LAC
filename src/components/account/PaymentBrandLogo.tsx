@@ -1,7 +1,7 @@
 import { Building2, Smartphone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { paymentLogoSrc } from '@/lib/constants/paymentLogos'
-import type { PaymentMethod } from '@/lib/mockData'
+import type { PaymentMethod } from '@/lib/paymentMethods/types'
 
 export function PaymentBrandLogo({
   type,

@@ -1,4 +1,4 @@
-import type { Platform } from '@/lib/mockData'
+import type { Platform } from '@/api/types/shared'
 
 /** Details tab per-section Edit / Save (ghost + primary text). */
 export const DETAILS_SECTION_ACTION_BTN_CLASS =

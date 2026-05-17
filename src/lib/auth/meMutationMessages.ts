@@ -1,4 +1,5 @@
-import { PLATFORM_LABEL, type Platform } from '@/lib/mockData'
+import type { Platform } from '@/api/types/shared'
+import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 
 export function mePlatformDisconnectedMessage(platform: Platform) {
   return `${PLATFORM_LABEL[platform]} disconnected.`

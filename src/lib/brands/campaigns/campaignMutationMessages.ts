@@ -67,11 +67,8 @@ export function brandCampaignRefundSuccessMessage(
   campaign?: BrandCampaignDetailDto
 ) {
   const refunded = Number(result.refunded) || 0
-  let message =
-    `${formatPHP(refunded, { decimals: false })} refund initiated.` +
-    (result.payoutId
-      ? ' You will receive it once Xendit confirms the transfer (usually within minutes).'
-      : '')
+  let message = `${formatPHP(refunded, { decimals: false })} refund initiated.`
+
   if (campaign?.status === 'active') {
     message
   }

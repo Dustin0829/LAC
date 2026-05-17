@@ -12,11 +12,8 @@ import {
 } from 'recharts'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useContentStore } from '@/lib/stores/contentStore'
-import {
-  mockBrandPerformanceMonthly,
-  mockBrandPerformanceYearly,
-  type ContentStatus,
-} from '@/lib/mockData'
+import type { ContentStatus } from '@/api/types/shared'
+import { mockCreatorPerformanceMonthly, mockCreatorPerformanceYearly } from '@/lib/mockData'
 import { formatPHP, formatViews } from '@/lib/utils'
 import { StatCard } from '@/components/StatCard'
 import { ContentStatusBadge } from '@/components/ContentStatusBadge'
@@ -53,7 +50,7 @@ const RECENT_PAGE_SIZE = 10
 
 /** Same buckets as brand “Campaign performance” — creator sees net payouts over time */
 function creatorEarningsChartRowsForRange(range: PerformanceRange) {
-  const rows = range === 'monthly' ? mockBrandPerformanceMonthly : mockBrandPerformanceYearly
+  const rows = range === 'monthly' ? mockCreatorPerformanceMonthly : mockCreatorPerformanceYearly
   return rows.map(({ period, payout }) => ({
     period,
     earnings: payout,

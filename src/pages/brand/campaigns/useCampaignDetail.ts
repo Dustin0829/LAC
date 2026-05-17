@@ -14,18 +14,21 @@ import {
 } from '@/api/queries/brands/use-submissions'
 import { usePaymentMethods } from '@/api/queries/use-payment-methods'
 import { brandCampaignDetailFromApi } from '@/lib/brands/campaigns/campaignCards'
+import {
+  formatCampaignPayoutReleaseSettlingToast,
+  formatCampaignRefundSettlingToast,
+} from '@/lib/brands/campaigns/campaignDetail'
 import { useFundingReturn } from '@/api/queries/brands/use-funding-return'
 import { useAuthStore } from '@/lib/stores/authStore'
-import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import { formatPHP, isValidHttpOrHttpsUrl } from '@/lib/utils'
+import type { Campaign } from '@/lib/campaigns/types'
 import {
   brandHeadlineRatePer1k,
   getCampaignReachViewGoal,
-  getPlatformFeePercent,
   getPlannedGrossBudgetForFunding,
-  type Campaign,
-  type Platform,
-} from '@/lib/mockData'
+} from '@/lib/campaigns/utils'
+import { getPlatformFeePercent } from '@/lib/constants'
+import type { Platform } from '@/api/types/shared'
 import { MIN_BRAND_RATE_PER_1K, MIN_PUBLISH_PHP, minPublishAvailableThresholdPhp } from '@/lib/constants'
 import {
   BRAND_REJECT_PRESETS,
@@ -45,6 +48,10 @@ const STATUS_VISUAL = {
   paused: { chip: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500' },
   ended: { chip: 'border-zinc-200 bg-zinc-50 text-zinc-700', dot: 'bg-zinc-400' },
   draft: { chip: 'border-blue-200 bg-blue-50 text-blue-800', dot: 'bg-blue-500' },
+  funding_pending: {
+    chip: 'border-violet-200 bg-violet-50 text-violet-900',
+    dot: 'bg-violet-500',
+  },
 } as const
 
 export function useCampaignDetail() {
@@ -88,7 +95,8 @@ export function useCampaignDetail() {
   const { mutate: refundCampaign } = useRefundBrandCampaign(id)
   const { mutate: rejectSubmission } = useRejectBrandCampaignSubmission(id)
 
-  usePaymentMethods()
+  const { data: refundReceivingMethods = [] } = usePaymentMethods()
+  const hasRefundReceivingAccount = refundReceivingMethods.length > 0
   const {
     data: campaignSubmissions = [],
     isLoading: submissionsLoading,
@@ -118,8 +126,6 @@ export function useCampaignDetail() {
   const [addRefundAccountOpen, setAddRefundAccountOpen] = useState(false)
   const [isRefunding, setIsRefunding] = useState(false)
   const skipRefundPromptRestoreRef = useRef(false)
-  const refundReceivingMethods = usePaymentMethodsStore((s) => s.methods)
-  const hasRefundReceivingAccount = refundReceivingMethods.length > 0
   const [releasePayoutOpen, setReleasePayoutOpen] = useState(false)
 
   const [draftTitle, setDraftTitle] = useState('')
@@ -423,7 +429,13 @@ export function useCampaignDetail() {
     setAddRefundAccountOpen(true)
   }, [])
 
+  const refundPoolSettled = apiCampaignDto?.xenditPoolSettled !== false
+  const refundSettlingMessage = refundPoolSettled
+    ? undefined
+    : formatCampaignRefundSettlingToast(apiCampaignDto?.createdAt)
+
   const confirmRefundAvailable = useCallback(() => {
+    if (!refundPoolSettled) return
     if (!hasRefundReceivingAccount) {
       setRefundOpen(false)
       setRefundNeedAccountOpen(true)
@@ -439,7 +451,7 @@ export function useCampaignDetail() {
       onSuccess: () => setRefundOpen(false),
       onSettled: () => setIsRefunding(false),
     })
-  }, [hasRefundReceivingAccount, remaining, refundCampaign])
+  }, [refundPoolSettled, hasRefundReceivingAccount, remaining, refundCampaign])
 
   const handleFundPublishSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -483,6 +495,14 @@ export function useCampaignDetail() {
     setFundPublishGross(String(getPlannedGrossBudgetForFunding(campaign)))
     setFundPublishOpen(true)
   }, [campaign])
+
+  const openReleasePayoutDialog = useCallback(() => {
+    if (apiCampaignDto?.xenditPoolSettled === false) {
+      toast.error(formatCampaignPayoutReleaseSettlingToast(apiCampaignDto.createdAt))
+      return
+    }
+    setReleasePayoutOpen(true)
+  }, [apiCampaignDto?.xenditPoolSettled, apiCampaignDto?.createdAt])
 
   const confirmReleasePayouts = useCallback(() => {
     if (pendingPayoutSubmissions.length === 0) {
@@ -664,6 +684,8 @@ export function useCampaignDetail() {
           }
           setRefundOpen(true)
         },
+        refundPoolSettled,
+        refundSettlingMessage,
         refundInProgress: apiCampaignDto?.refundInProgress ?? false,
         onOpenAddFunds: () => setAddFundsOpen(true),
         onOpenFundAndPublish: openFundAndPublishDialog,
@@ -688,6 +710,7 @@ export function useCampaignDetail() {
         isReleasingPayout,
         releasePayoutOpen,
         setReleasePayoutOpen,
+        openReleasePayoutDialog,
         confirmReleasePayouts,
         rejectTarget,
         rejectPreset,
@@ -746,6 +769,8 @@ export function useCampaignDetail() {
     pendingPayoutTotal,
     isReleasingPayout,
     releasePayoutOpen,
+    setReleasePayoutOpen,
+    openReleasePayoutDialog,
     rejectTarget,
     rejectPreset,
     rejectOtherDetail,
@@ -753,6 +778,8 @@ export function useCampaignDetail() {
     resetRejectDialog,
     confirmBrandReject,
     confirmReleasePayouts,
+    refundPoolSettled,
+    refundSettlingMessage,
   ])
 
   return {

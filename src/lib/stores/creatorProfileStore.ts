@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { isCreatorPlatformConnectEnabled } from '@/lib/constants'
-import { mockCreatorPlatformLinks, type CreatorPlatformLink, type Platform } from '@/lib/mockData'
+import type { Platform } from '@/api/types/shared'
+import type { CreatorPlatformLink } from '@/lib/campaigns/types'
+import { mockCreatorPlatformLinks } from '@/lib/mockData'
 
 const DEMO_HANDLE: Record<Platform, string> = {
   tiktok: '@demo.creator',

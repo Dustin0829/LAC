@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { PaymentMethod } from '@/lib/mockData'
+import type { PaymentMethod } from '@/lib/paymentMethods/types'
 
 interface PaymentMethodsState {
   methods: PaymentMethod[]

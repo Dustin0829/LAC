@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
-import { PLATFORM_LABEL, type Platform } from '@/lib/mockData'
+import type { Platform } from '@/api/types/shared'
+import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 // v1 (post-MVP): Yellow basket tooltip — not shipped yet.
 // import { ShoppingBag } from 'lucide-react'
 // import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'

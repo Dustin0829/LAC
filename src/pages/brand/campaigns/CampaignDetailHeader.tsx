@@ -1,5 +1,6 @@
 import { Loader2, Pause, Play, Plus, Target } from 'lucide-react'
-import type { Campaign } from '@/lib/mockData'
+import { campaignStatusLabel } from '@/lib/campaigns/status'
+import type { Campaign } from '@/lib/campaigns/types'
 import { cn, formatNumber, formatPHP } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { RefreshButton } from '@/components/RefreshButton'
@@ -112,7 +113,7 @@ export function CampaignDetailHeader(props: CampaignDetailHeaderProps) {
               )}
             >
               <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', statusUi.dot)} aria-hidden />
-              {campaign.status}
+              {campaignStatusLabel(campaign.status)}
             </div>
             <h1 className="min-w-0 wrap-break-word font-display text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               {campaign.title}

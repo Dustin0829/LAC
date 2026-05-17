@@ -21,12 +21,9 @@ import { RefreshButton } from '@/components/RefreshButton'
 import { CampaignCard } from '@/components/CampaignCard'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { cn } from '@/lib/utils'
-import {
-  PLATFORM_LABEL,
-  creatorHeadlineRatePer1k,
-  type CampaignStatus,
-  type Platform,
-} from '@/lib/mockData'
+import type { CampaignStatus, Platform } from '@/api/types/shared'
+import { creatorHeadlineRatePer1k } from '@/lib/campaigns/utils'
+import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 
 type StatusFilter = 'all' | CampaignStatus
 type SortId = 'newest' | 'rate'

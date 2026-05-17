@@ -5,7 +5,9 @@ import { Progress } from '@/components/ui/progress'
 import { CampaignGoalFireLottie } from '@/components/CampaignGoalFireLottie'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { formatPHP, formatNumber } from '@/lib/utils'
-import { type Campaign, getCampaignReachViewGoal } from '@/lib/mockData'
+import { campaignStatusLabel } from '@/lib/campaigns/status'
+import type { Campaign } from '@/lib/campaigns/types'
+import { getCampaignReachViewGoal } from '@/lib/campaigns/utils'
 
 interface CampaignCardProps {
   campaign: Campaign
@@ -20,6 +22,10 @@ const STATUS_STYLES: Record<Campaign['status'], { chip: string; dot: string }> =
   paused: { chip: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500' },
   ended: { chip: 'border-zinc-200 bg-zinc-50 text-zinc-700', dot: 'bg-zinc-400' },
   draft: { chip: 'border-blue-200 bg-blue-50 text-blue-800', dot: 'bg-blue-500' },
+  funding_pending: {
+    chip: 'border-violet-200 bg-violet-50 text-violet-900',
+    dot: 'bg-violet-500',
+  },
 }
 
 export function CampaignCard({ campaign, to, showProgress = false }: CampaignCardProps) {
@@ -72,7 +78,7 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_STYLES[campaign.status].dot}`}
               aria-hidden
             />
-            {campaign.status}
+            {campaignStatusLabel(campaign.status)}
           </Badge>
         </div>
       </div>

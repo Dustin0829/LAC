@@ -1,6 +1,6 @@
 import { Loader2, Send } from 'lucide-react'
 import type { BrandSubmissionRow } from '@/api/types/brands/submissions.types'
-import type { Campaign } from '@/lib/mockData'
+import type { Campaign } from '@/lib/campaigns/types'
 import { cn, formatPHP, formatViews } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -41,6 +41,7 @@ export type SubmissionsTabProps = {
   isReleasingPayout: boolean
   releasePayoutOpen: boolean
   setReleasePayoutOpen: (open: boolean) => void
+  openReleasePayoutDialog: () => void
   confirmReleasePayouts: () => void
   rejectTarget: BrandRejectTarget | null
   rejectPreset: BrandRejectPresetId
@@ -62,6 +63,7 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
     isReleasingPayout,
     releasePayoutOpen,
     setReleasePayoutOpen,
+    openReleasePayoutDialog,
     confirmReleasePayouts,
     rejectTarget,
     rejectPreset,
@@ -98,7 +100,7 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
           <Button
             type="button"
             className="bg-phc-gradient font-semibold text-white hover:opacity-90"
-            onClick={() => setReleasePayoutOpen(true)}
+            onClick={openReleasePayoutDialog}
           >
             <Send className="h-4 w-4" /> Release payout
           </Button>

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { mockBrandContent, mockContent, type Content } from '@/lib/mockData'
+import { mockContent, type Content } from '@/lib/mockData'
 
 interface ContentState {
   contents: Content[]
@@ -8,7 +8,7 @@ interface ContentState {
 }
 
 export const useContentStore = create<ContentState>((set) => ({
-  contents: [...mockBrandContent, ...mockContent],
+  contents: [...mockContent],
   addContent: (content) => set((s) => ({ contents: [content, ...s.contents] })),
   updateContent: (id, patch) =>
     set((s) => ({

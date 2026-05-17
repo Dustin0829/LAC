@@ -9,8 +9,9 @@ import {
   TrendingUp,
   X,
 } from 'lucide-react'
-import type { Campaign, Platform } from '@/lib/mockData'
-import { brandHeadlineRatePer1k } from '@/lib/mockData'
+import type { Campaign } from '@/lib/campaigns/types'
+import { brandHeadlineRatePer1k } from '@/lib/campaigns/utils'
+import type { Platform } from '@/api/types/shared'
 import { cn, formatPHP } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { IntegerInput } from '@/components/ui/integer-input'

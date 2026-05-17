@@ -1,4 +1,4 @@
-import type { ContentStatus, Platform } from '@/lib/mockData'
+import type { ContentStatus, Platform } from '@/api/types/shared'
 
 export type BrandSubmissionStatus = 'pending' | 'paying' | 'paid' | 'payout_failed' | 'rejected'
 

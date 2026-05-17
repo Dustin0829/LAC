@@ -42,7 +42,9 @@ import {
 } from '@/components/ui/select'
 import { PlatformCell, PlatformIcon } from '@/components/PlatformIcon'
 import { cn, formatPHP, formatNumber, formatViews } from '@/lib/utils'
-import { creatorHeadlineRatePer1k, PLATFORM_LABEL, type Platform } from '@/lib/mockData'
+import type { Platform } from '@/api/types/shared'
+import { creatorHeadlineRatePer1k } from '@/lib/campaigns/utils'
+import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { toast } from 'sonner'
 
 function isValidContentUrl(value: string): boolean {
@@ -156,6 +158,10 @@ export default function CreatorCampaignDetailPage() {
     paused: { chip: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500' },
     ended: { chip: 'border-zinc-200 bg-zinc-50 text-zinc-700', dot: 'bg-zinc-400' },
     draft: { chip: 'border-blue-200 bg-blue-50 text-blue-800', dot: 'bg-blue-500' },
+    funding_pending: {
+      chip: 'border-violet-200 bg-violet-50 text-violet-900',
+      dot: 'bg-violet-500',
+    },
   } as const
   const statusUi = statusVisual[campaign.status]
 

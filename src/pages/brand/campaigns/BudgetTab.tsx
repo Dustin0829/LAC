@@ -12,13 +12,12 @@ import {
   Play,
   Plus,
   RefreshCw,
-  Undo2,
   Wallet,
   XCircle,
 } from 'lucide-react'
 import { useEffect, useMemo, useState, type MutableRefObject } from 'react'
-import type { Campaign } from '@/lib/mockData'
-import type { PaymentMethod } from '@/lib/mockData'
+import type { Campaign } from '@/lib/campaigns/types'
+import type { PaymentMethod } from '@/lib/paymentMethods/types'
 import {
   useBrandCampaignTransactions,
   useSyncBrandCampaignCheckout,
@@ -31,7 +30,7 @@ import {
   copyBrandCampaignCheckoutLink,
   redirectToBrandCampaignCheckout,
 } from '@/lib/brands/campaigns/campaignUiFeedback'
-import { getPlatformFeePercent } from '@/lib/mockData'
+import { getPlatformFeePercent } from '@/lib/constants'
 import { cn, formatBadgeLabel, formatPHP, formatTransactionDateTime } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -211,8 +210,7 @@ const FAILURE_HINT_BTN_CLASS =
   'inline-flex shrink-0 rounded-full text-amber-600 hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-amber-400 dark:hover:text-amber-300'
 
 /** Keeps action column height even when a row has no menu or alert. */
-const TRANSACTION_ACTIONS_SLOT_CLASS =
-  'inline-flex h-8 w-8 shrink-0 items-center justify-center'
+const TRANSACTION_ACTIONS_SLOT_CLASS = 'inline-flex h-8 w-8 shrink-0 items-center justify-center'
 
 function TransactionAlertHint({
   message,
@@ -551,6 +549,10 @@ export type BudgetTabProps = {
   setAddRefundAccountOpen: (open: boolean) => void
   skipRefundPromptRestoreRef: MutableRefObject<boolean>
   refundInProgress: boolean
+  /** False while Xendit split to brand sub-account is pending. */
+  refundPoolSettled: boolean
+  /** Shown in confirm dialog when refund is temporarily blocked. */
+  refundSettlingMessage?: string
 }
 
 export function BudgetTab(props: BudgetTabProps) {
@@ -578,6 +580,8 @@ export function BudgetTab(props: BudgetTabProps) {
     skipRefundPromptRestoreRef,
     refundReceivingMethods,
     refundInProgress,
+    refundPoolSettled,
+    refundSettlingMessage,
   } = props
 
   const defaultRefundAccount = useMemo(
@@ -694,7 +698,7 @@ export function BudgetTab(props: BudgetTabProps) {
                       : 'cursor-pointer text-primary hover:text-primary/90'
                   )}
                 >
-                  Refund Balance
+                  Refund
                 </button>
                 )
               </p>
@@ -801,20 +805,39 @@ export function BudgetTab(props: BudgetTabProps) {
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              className="bg-phc-gradient font-semibold text-white hover:opacity-90"
-              disabled={isRefunding || remaining <= 0}
-              onClick={() => void confirmRefundAvailable()}
-            >
-              {isRefunding ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Processing
-                </>
-              ) : (
-                `Refund ${formatPHP(remaining, { decimals: false })}`
-              )}
-            </Button>
+            {refundSettlingMessage && !refundPoolSettled ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex cursor-not-allowed">
+                    <Button
+                      type="button"
+                      className="pointer-events-none bg-phc-gradient font-semibold text-white hover:opacity-90"
+                      disabled
+                    >
+                      {`Refund ${formatPHP(remaining, { decimals: false })}`}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-sm leading-relaxed">{refundSettlingMessage}</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <Button
+                type="button"
+                className="bg-phc-gradient font-semibold text-white hover:opacity-90"
+                disabled={isRefunding || remaining <= 0 || !refundPoolSettled}
+                onClick={() => void confirmRefundAvailable()}
+              >
+                {isRefunding ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Processing
+                  </>
+                ) : (
+                  `Refund ${formatPHP(remaining, { decimals: false })}`
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

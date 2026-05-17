@@ -19,7 +19,7 @@ import { usePaymentMethodsStore } from '@/lib/stores/paymentMethodsStore'
 import { AddPaymentMethodDialog } from '@/components/account/AddPaymentMethodDialog'
 import { PaymentBrandLogo } from '@/components/account/PaymentBrandLogo'
 import { Button } from '@/components/ui/button'
-import type { PaymentMethod } from '@/lib/mockData'
+import type { PaymentMethod } from '@/lib/paymentMethods/types'
 
 const VISIBLE_BEFORE_OVERFLOW = 3
 

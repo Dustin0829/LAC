@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import type { PaymentMethod } from '@/lib/mockData'
+import type { PaymentMethod } from '@/lib/paymentMethods/types'
 
 type AddMethodType = 'e-wallet' | 'local-bank' | null
 

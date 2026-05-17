@@ -19,8 +19,21 @@ export function isCreatorPlatformConnectEnabled(platform: 'tiktok' | 'facebook')
   return CREATOR_PLATFORM_CONNECT_ENABLED[platform]
 }
 
-/** Platform deposit fee — keep in sync with `vidu-backend` `PLATFORM_DEPOSIT_FEE_PERCENT`. */
-const PLATFORM_DEPOSIT_FEE_PERCENT = 0.15
+// --- Fees (keep in sync with vidu-backend `config/fees.ts`) ---
+
+/** VidU's cut of every brand deposit (gross). */
+export const PLATFORM_DEPOSIT_FEE_PERCENT = 0.15
+
+/** VidU's cut of creator gross performance. Creator share = 1 − this. */
+export const CREATOR_PAYOUT_FEE_PERCENT = 0.2
+
+/** Creator share of gross performance (1 − `CREATOR_PAYOUT_FEE_PERCENT`). */
+export const CREATOR_PAYOUT_SHARE = 1 - CREATOR_PAYOUT_FEE_PERCENT
+
+/** Brand funding / checkout UI — same as `PLATFORM_DEPOSIT_FEE_PERCENT`. */
+export function getPlatformFeePercent(): number {
+  return PLATFORM_DEPOSIT_FEE_PERCENT
+}
 
 // --- Campaign limits (keep in sync with vidu-backend `campaign-limits.ts` & `fees.ts`) ---
 

@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { formatBadgeLabel } from '@/lib/utils'
 import { Clock, XCircle, BadgeCheck, Loader2, AlertTriangle } from 'lucide-react'
-import type { ContentStatus } from '@/lib/mockData'
+import type { ContentStatus } from '@/api/types/shared'
 
 const STYLES: Record<ContentStatus, { className: string; label: string; Icon: typeof Clock }> = {
   pending: {

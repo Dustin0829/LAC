@@ -2,7 +2,7 @@ import type {
   BrandCampaignCardDto,
   BrandCampaignDetailDto,
 } from '@/api/types/brands/campaigns.types'
-import type { Campaign } from '@/lib/mockData'
+import type { Campaign } from '@/lib/campaigns/types'
 
 const COVER_GRADIENTS = [
   'from-orange-950 to-amber-800',
@@ -29,7 +29,6 @@ export function brandCampaignCardFromApi(dto: BrandCampaignCardDto, brandUserId:
     id: dto.id,
     brandId: brandUserId,
     brandName: dto.brandName,
-    brandLogoColor: coverColorForId(dto.id),
     title: dto.title,
     description: dto.description,
     ratePer1k: 0,
@@ -65,7 +64,6 @@ export function brandCampaignDetailFromApi(
     id: dto.id,
     brandId: brandUserId,
     brandName: dto.brandName,
-    brandLogoColor: coverColorForId(dto.id),
     title: dto.title,
     description: dto.description,
     ratePer1k: rate,

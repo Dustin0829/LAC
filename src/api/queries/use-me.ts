@@ -16,7 +16,7 @@ import {
   mePlatformDisconnectedMessage,
   mePlatformDisconnectErrorMessage,
 } from '@/lib/auth/meMutationMessages'
-import type { Platform } from '@/lib/mockData'
+import type { Platform } from '@/api/types/shared'
 import { syncAuthMe, useAuthStore } from '@/lib/stores/authStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
 import { toast } from 'sonner'

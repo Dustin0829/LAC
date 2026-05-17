@@ -1,4 +1,4 @@
-import type { ContentStatus } from '@/lib/mockData'
+import type { ContentStatus } from '@/api/types/shared'
 
 /**
  * Brand review UI: session reject overrides store; otherwise map store → badge.

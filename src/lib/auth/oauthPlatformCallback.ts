@@ -1,4 +1,4 @@
-import type { Platform } from '@/lib/mockData'
+import type { Platform } from '@/api/types/shared'
 
 export type PlatformOAuthCallbackResult =
   | { handled: false }

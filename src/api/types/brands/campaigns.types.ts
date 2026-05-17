@@ -1,4 +1,4 @@
-import type { CampaignStatus, Platform } from '@/lib/mockData'
+import type { CampaignStatus, Platform } from '@/api/types/shared'
 
 export type BrandCampaignCardDto = {
   id: string
@@ -58,6 +58,8 @@ export type BrandCampaignDetailDto = {
   pendingRefundBudget: string
   /** True while a brand balance refund payout is in flight (Xendit disbursement pending). */
   refundInProgress: boolean
+  /** False while a paid deposit is waiting for Xendit split to the brand sub-account. */
+  xenditPoolSettled: boolean
   createdAt: string
   updatedAt: string
 }

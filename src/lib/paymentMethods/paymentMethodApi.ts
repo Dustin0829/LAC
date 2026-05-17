@@ -10,7 +10,7 @@ import {
   paymentChannelByCode,
   paymentChannelByDisplayName,
 } from '@/lib/constants/paymentChannels'
-import type { PaymentMethod } from '@/lib/mockData'
+import type { PaymentMethod } from '@/lib/paymentMethods/types'
 
 const E_WALLET_UI_TYPES = new Set<Exclude<PaymentMethod['type'], 'bank'>>([
   'gcash',
@@ -70,13 +70,16 @@ function maskBankAccountNumber(lastFour: string): string {
   return digits ? `•••• ${digits}` : '••••'
 }
 
-/** Domestic display grouping for PH e-wallet mobiles: 09XX XXX XXXX (11 digits). */
-export const PH_EWALLET_MOBILE_DISPLAY_PATTERN = /^09•• ••• •(\d{4}|••••)$/
+/** Domestic display grouping for PH e-wallet mobiles: 09XX XXX XXXX (11 chars masked). */
+export const PH_EWALLET_MOBILE_DISPLAY_PATTERN = /^09•• ••• (\d{4}|••••)$/
 
-/** Mask e-wallet numbers as 09XX XXX XXXX (09•• ••• ••••). */
+/** Legacy mask included an extra • before the last four digits. */
+const PH_EWALLET_MOBILE_DISPLAY_PATTERN_LEGACY = /^09•• ••• •(\d{4}|••••)$/
+
+/** Mask e-wallet numbers as 09•• ••• 7823 (no • before last four). */
 function maskEWalletAccountNumber(lastFour: string): string {
   const digits = extractLastFour(lastFour)
-  return digits ? `09•• ••• •${digits}` : '09•• ••• ••••'
+  return digits ? `09•• ••• ${digits}` : '09•• ••• ••••'
 }
 
 /** Account / mobile number for lists and refund confirmation. */
@@ -87,6 +90,10 @@ export function formatPaymentMethodAccountNumber(method: PaymentMethod): string 
 
   const raw = method.accountNumber.trim()
   if (PH_EWALLET_MOBILE_DISPLAY_PATTERN.test(raw)) return raw
+
+  if (PH_EWALLET_MOBILE_DISPLAY_PATTERN_LEGACY.test(raw)) {
+    return maskEWalletAccountNumber(extractLastFour(raw))
+  }
 
   if (/^09•• •••• \d{4}$/.test(raw)) {
     return maskEWalletAccountNumber(extractLastFour(raw))

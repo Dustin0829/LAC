@@ -1,4 +1,4 @@
-import type { Platform } from '@/lib/mockData'
+import type { Platform } from '@/api/types/shared'
 
 /**
  * Best-effort creator profile URL from a submission post/reel URL.
