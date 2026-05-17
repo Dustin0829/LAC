@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Select,
   SelectContent,
@@ -13,42 +13,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Filter, Clock, CircleDollarSign } from 'lucide-react'
-import { useCampaignsStore } from '@/lib/stores/campaignsStore'
-import { useAuth } from '@/lib/hooks/use-auth'
+import { Filter, Loader2 } from 'lucide-react'
+import { useCreatorCampaigns } from '@/api/queries/creator/use-campaigns'
+import {
+  CREATOR_CAMPAIGN_PLATFORM_OPTIONS,
+  CREATOR_CAMPAIGN_SORT_OPTIONS,
+  CREATOR_CAMPAIGN_STATUS_OPTIONS,
+  creatorCampaignEmptyFilterDescription,
+  creatorCampaignEmptyFilterTitle,
+  creatorCampaignListParams,
+  type CreatorCampaignSortId,
+  type CreatorCampaignStatusFilter,
+} from '@/lib/creators/campaigns/creatorCampaignsPage'
+import {
+  creatorCampaignsRefreshErrorMessage,
+  creatorCampaignsRefreshSuccessMessage,
+} from '@/lib/creators/campaigns/creatorUiMessages'
 import { Button } from '@/components/ui/button'
 import { RefreshButton } from '@/components/RefreshButton'
 import { CampaignCard } from '@/components/CampaignCard'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { cn } from '@/lib/utils'
-import type { CampaignStatus, Platform } from '@/api/types/shared'
-import { creatorHeadlineRatePer1k } from '@/lib/campaigns/utils'
-import { PLATFORM_LABEL } from '@/lib/platforms/labels'
-
-type StatusFilter = 'all' | CampaignStatus
-type SortId = 'newest' | 'rate'
-
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'All Campaigns' },
-  { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'ended', label: 'Ended' },
-]
-
-const PLATFORM_OPTIONS: { value: Platform | 'all'; label: string }[] = [
-  { value: 'all', label: 'All platforms' },
-  { value: 'tiktok', label: PLATFORM_LABEL.tiktok },
-  { value: 'facebook', label: PLATFORM_LABEL.facebook },
-]
-
-const SORT_OPTIONS: {
-  id: SortId
-  label: string
-  icon: ComponentType<{ className?: string }>
-}[] = [
-  { id: 'newest', label: 'Newest', icon: Clock },
-  { id: 'rate', label: 'Highest Rate', icon: CircleDollarSign },
-]
+import type { Platform } from '@/api/types/shared'
 
 const selectTriggerClass =
   'h-9 border-border bg-card text-foreground ring-offset-background hover:bg-muted/50 dark:bg-card'
@@ -63,23 +49,23 @@ function FilterControls({
   setSort,
 }: {
   vertical?: boolean
-  statusFilter: StatusFilter
-  setStatusFilter: (v: StatusFilter) => void
+  statusFilter: CreatorCampaignStatusFilter
+  setStatusFilter: (v: CreatorCampaignStatusFilter) => void
   platform: Platform | 'all'
   setPlatform: (v: Platform | 'all') => void
-  sort: SortId
-  setSort: (v: SortId) => void
+  sort: CreatorCampaignSortId
+  setSort: (v: CreatorCampaignSortId) => void
 }) {
   return (
     <div className={cn(vertical ? 'flex flex-col gap-4' : 'flex flex-wrap items-center gap-2')}>
       <div className={cn(vertical && 'space-y-2')}>
         {vertical ? <label className="text-sm font-medium text-foreground">Status</label> : null}
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as CreatorCampaignStatusFilter)}>
           <SelectTrigger className={cn(selectTriggerClass, vertical ? 'w-full' : 'w-fit shrink-0')}>
             <SelectValue placeholder="All Campaigns" />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_OPTIONS.map((o) => (
+            {CREATOR_CAMPAIGN_STATUS_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
               </SelectItem>
@@ -95,7 +81,7 @@ function FilterControls({
             <SelectValue placeholder="All platforms" />
           </SelectTrigger>
           <SelectContent>
-            {PLATFORM_OPTIONS.map((o) =>
+            {CREATOR_CAMPAIGN_PLATFORM_OPTIONS.map((o) =>
               o.value === 'all' ? (
                 <SelectItem key={o.value} value={o.value}>
                   {o.label}
@@ -116,7 +102,7 @@ function FilterControls({
       <div className={cn(vertical && 'space-y-2')}>
         {vertical ? <label className="text-sm font-medium text-foreground">Sort</label> : null}
         <div className={cn('flex gap-2', vertical && 'flex-col')}>
-          {SORT_OPTIONS.map((option) => {
+          {CREATOR_CAMPAIGN_SORT_OPTIONS.map((option) => {
             const Icon = option.icon
             const isActive = sort === option.id
             return (
@@ -132,7 +118,7 @@ function FilterControls({
                 )}
                 onClick={() => setSort(option.id)}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <Icon className="h-4 w-4 shrink-0" aria-hidden />
                 {option.label}
               </Button>
             )
@@ -144,58 +130,33 @@ function FilterControls({
 }
 
 export default function CreatorCampaignsPage() {
-  const { isAuthenticated } = useAuth()
-  const campaigns = useCampaignsStore((s) => s.campaigns)
-  const loadForCreator = useCampaignsStore((s) => s.loadForCreator)
-  const [query] = useState('')
   const [platform, setPlatform] = useState<Platform | 'all'>('all')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [sort, setSort] = useState<SortId>('newest')
+  const [statusFilter, setStatusFilter] = useState<CreatorCampaignStatusFilter>('all')
+  const [sort, setSort] = useState<CreatorCampaignSortId>('newest')
   const [filterOpen, setFilterOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
-  useEffect(() => {
-    if (!isAuthenticated) return
-    void loadForCreator()
-  }, [isAuthenticated, loadForCreator])
+  const listParams = useMemo(
+    () => creatorCampaignListParams(statusFilter, platform, sort),
+    [statusFilter, platform, sort]
+  )
+
+  const { data: campaigns = [], isLoading, isError, refetch, isFetching } =
+    useCreatorCampaigns(listParams)
 
   const runRefresh = async () => {
     setRefreshing(true)
     try {
-      if (isAuthenticated) await loadForCreator()
-      else await new Promise((r) => setTimeout(r, 500))
+      await refetch()
     } finally {
       setRefreshing(false)
     }
   }
 
-  const filtered = useMemo(() => {
-    let list = campaigns.filter((c) => {
-      if (c.status === 'draft') return false
-      if (statusFilter === 'all') return true
-      return c.status === statusFilter
-    })
-    if (query.trim()) {
-      const q = query.trim().toLowerCase()
-      list = list.filter(
-        (c) =>
-          c.title.toLowerCase().includes(q) ||
-          c.brandName.toLowerCase().includes(q) ||
-          c.description.toLowerCase().includes(q)
-      )
-    }
-    if (platform !== 'all') {
-      list = list.filter((c) => c.platforms.includes(platform))
-    }
-    list = [...list].sort((a, b) => {
-      if (sort === 'rate') return creatorHeadlineRatePer1k(b) - creatorHeadlineRatePer1k(a)
-      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-    })
-    return list
-  }, [campaigns, query, platform, sort, statusFilter])
+  const showEmpty = !isLoading && !isError && campaigns.length === 0
 
   return (
-    <div className="px-2 py-4 space-y-4 md:space-y-6  md:p-8 md:pb-8">
+    <div className="px-2 py-4 space-y-4 md:space-y-6 md:p-8 md:pb-8">
       <div>
         <h1 className="mb-2 font-display text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
           Explore <span className="text-phc-gradient">Opportunities</span>
@@ -208,15 +169,18 @@ export default function CreatorCampaignsPage() {
             <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
               Campaigns
             </h2>
-            <span className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-xl bg-muted px-2 py-1 text-center text-sm font-semibold tabular-nums text-muted-foreground bg-phc-gradient-soft">
-              {filtered.length}
-            </span>
+            {!isLoading && !isError ? (
+              <span className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-xl bg-muted px-2 py-1 text-center text-sm font-semibold tabular-nums text-muted-foreground bg-phc-gradient-soft">
+                {campaigns.length}
+              </span>
+            ) : null}
             <RefreshButton
               variant="outline"
               size="icon"
-              isRefreshing={refreshing}
+              isRefreshing={refreshing || isFetching}
               onRefresh={runRefresh}
-              successMessage="Campaigns updated"
+              successMessage={creatorCampaignsRefreshSuccessMessage()}
+              genericErrorMessage={creatorCampaignsRefreshErrorMessage()}
               aria-label="Refresh campaigns"
             />
           </div>
@@ -236,7 +200,7 @@ export default function CreatorCampaignsPage() {
             <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="icon" className="shrink-0 md:hidden">
-                  <Filter className="h-4 w-4" />
+                  <Filter className="h-4 w-4" aria-hidden />
                   <span className="sr-only">Filters</span>
                 </Button>
               </DialogTrigger>
@@ -259,18 +223,33 @@ export default function CreatorCampaignsPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center gap-2 rounded-3xl border border-border bg-card px-4 py-12 text-sm text-muted-foreground sm:p-16">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          Loading campaigns…
+        </div>
+      ) : isError ? (
+        <div className="rounded-3xl border border-border bg-card px-4 py-12 text-center sm:p-16">
+          <p className="wrap-break-word font-display text-lg font-bold">Could not load campaigns</p>
+          <p className="mt-1 text-sm text-muted-foreground wrap-break-word">
+            Check your connection and try again.
+          </p>
+          <Button variant="outline" className="mt-4 gap-1.5" onClick={() => void runRefresh()}>
+            Retry
+          </Button>
+        </div>
+      ) : showEmpty ? (
         <div className="rounded-3xl border border-dashed border-border bg-card px-4 py-12 text-center sm:p-16">
           <p className="wrap-break-word font-display text-lg font-bold">
-            No campaigns match those filters
+            {creatorCampaignEmptyFilterTitle()}
           </p>
           <p className="mt-1 text-sm text-muted-foreground wrap-break-word">
-            Try adjusting filters or search.
+            {creatorCampaignEmptyFilterDescription()}
           </p>
         </div>
       ) : (
         <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((c) => (
+          {campaigns.map((c) => (
             <CampaignCard key={c.id} campaign={c} to={`/campaigns/${c.id}`} />
           ))}
         </div>
