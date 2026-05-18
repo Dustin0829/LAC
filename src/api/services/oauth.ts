@@ -34,3 +34,11 @@ export async function getOAuthTikTokAuthorizeUrl(): Promise<string> {
 export async function getOAuthFacebookAuthorizeUrl(): Promise<string> {
   return oauthAuthorizeUrlFromStart('/oauth/facebook/start', 'Could not start Facebook OAuth.')
 }
+
+/** `GET /oauth/facebook/page/start` — Page app only (re-grant Pages). */
+export async function getOAuthFacebookPageAuthorizeUrl(): Promise<string> {
+  return oauthAuthorizeUrlFromStart(
+    '/oauth/facebook/page/start',
+    'Could not start Facebook Page OAuth.'
+  )
+}

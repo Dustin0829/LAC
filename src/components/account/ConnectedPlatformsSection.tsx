@@ -6,6 +6,7 @@ import { PlatformIcon } from '@/components/PlatformIcon'
 import { Button } from '@/components/ui/button'
 import { isCreatorPlatformConnectEnabled } from '@/lib/constants'
 import { startFacebookOAuth } from '@/lib/auth/startFacebookOAuth'
+import { startFacebookPageOAuth } from '@/lib/auth/startFacebookPageOAuth'
 import { startTikTokOAuth } from '@/lib/auth/startTikTokOAuth'
 import type { Platform } from '@/api/types/shared'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
@@ -42,9 +43,12 @@ export function ConnectedPlatformsSection({
     }
 
     setConnectingPlatform(platform)
+    const link = platformLinks.find((l) => l.platform === platform)
     try {
       if (platform === 'tiktok') {
         await startTikTokOAuth()
+      } else if (link?.status === 'pending_page') {
+        await startFacebookPageOAuth()
       } else {
         await startFacebookOAuth()
       }
