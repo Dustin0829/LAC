@@ -8,12 +8,16 @@ import { VidULogo } from '@/components/VidULogo'
 import { Button } from '@/components/ui/button'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/constants'
 import { startGoogleOAuth } from '@/lib/auth/startGoogleOAuth'
+import { AUTH_DOCUMENT_META } from '@/lib/seo/documentMeta'
+import { useDocumentMeta } from '@/lib/hooks/use-document-meta'
 import { authFlowOutlineButtonClass } from '@/lib/authFlowButtonClasses'
 import { cn } from '@/lib/utils'
 import { FcGoogle } from 'react-icons/fc'
 
 export default function AuthPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
+
+  useDocumentMeta(AUTH_DOCUMENT_META)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
