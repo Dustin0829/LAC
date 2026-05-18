@@ -30,6 +30,8 @@ const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
     'No Facebook Page is linked to your account. Connect Facebook and grant access to the Page where you publish Reels.',
   meta_read_insights_required:
     'Reconnect Facebook in Account settings so we can read view stats (read insights permission).',
+  meta_page_connect_required:
+    'Finish connecting Facebook: complete the Page permissions step (second Meta prompt) so we can read Reel view counts on your Pages.',
   facebook_video_insights_unavailable:
     "We found your Reel, but Meta didn't return view counts for it. Page Reels need Page permissions in our Facebook app; personal Reels may not expose views via Meta's API yet.",
   creator_platform_not_connected: 'Connect this platform in Account settings before submitting.',
