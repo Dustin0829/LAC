@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { PlatformCell, PlatformIcon } from '@/components/PlatformIcon'
+import { VidULoading } from '@/components/VidULoading'
 import { cn, formatPHP, formatNumber, formatViews } from '@/lib/utils'
 import type { Platform } from '@/api/types/shared'
 import { campaignStatusLabel } from '@/lib/campaigns/status'
@@ -372,12 +373,9 @@ export default function CreatorCampaignDetailPage() {
                         }
                         {linkPhase === 'validating' ? (
                           <div
-                            className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-muted/35 px-4 py-10 dark:bg-muted/25"
-                            role="status"
-                            aria-live="polite"
-                            aria-busy="true"
+                            className="flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-muted/35 px-4 py-10 dark:bg-muted/25"
                           >
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+                            <VidULoading size="sm" />
                             <div className="text-center">
                               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 Stats preview
