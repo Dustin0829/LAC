@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Eye, Wallet, Video, TrendingUp, ArrowUpRight, Plus, Scissors } from 'lucide-react'
+import { Eye, Wallet, Video, TrendingUp, ArrowUpRight, Plus } from 'lucide-react'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -43,9 +43,14 @@ import {
   TableContainer,
   TableHead,
   TableHeader,
-  TablePlaceholder,
   TableRow,
 } from '@/components/ui/table'
+import {
+  BrandDashboardPerformanceEmptyState,
+  type BrandDashboardPerformanceEmptyVariant,
+} from '@/components/brand/BrandDashboardPerformanceEmptyState'
+import { brandPerformanceChartHasActivity } from '@/lib/brands/dashboard/brandDashboard'
+import { BrandDashboardRecentSubmissionsEmptyState } from '@/components/brand/BrandDashboardRecentSubmissionsEmptyState'
 import { TablePagination } from '@/components/TablePagination'
 import { RefreshButton } from '@/components/RefreshButton'
 import { RECENT_PAGE_SIZE } from '@/lib/constants'
@@ -85,6 +90,10 @@ export default function BrandDashboardPage() {
   const totalReached = dashboardStats?.totalReached ?? 0
   const totalSpent = dashboardStats?.totalSpent ?? 0
   const avgCostPerView = dashboardStats?.avgCostPerView ?? null
+
+  const hasPerformanceActivity = brandPerformanceChartHasActivity(performanceChartData)
+  const performanceEmptyVariant: BrandDashboardPerformanceEmptyVariant =
+    !statsLoading && totalCampaigns > 0 ? 'waiting' : 'empty'
 
   return (
     <div className="px-2 py-4 md:p-8 space-y-4 md:space-y-6">
@@ -178,10 +187,8 @@ export default function BrandDashboardPage() {
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               Loading performance…
             </div>
-          ) : performanceChartData.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              No performance data yet.
-            </div>
+          ) : !hasPerformanceActivity ? (
+            <BrandDashboardPerformanceEmptyState variant={performanceEmptyVariant} />
           ) : (
             <ResponsiveContainer width="100%" height="100%" key={performanceRange}>
               <AreaChart data={performanceChartData}>
@@ -279,12 +286,7 @@ export default function BrandDashboardPage() {
                   </TableCell>
                 </TableRow>
               ) : recentPageRows.length === 0 ? (
-                <TablePlaceholder
-                  icon={<Scissors className="text-muted-foreground" />}
-                  title="No recent submissions"
-                  description="When creators submit content, it will appear here."
-                  colSpan={6}
-                />
+                <BrandDashboardRecentSubmissionsEmptyState colSpan={6} />
               ) : (
                 recentPageRows.map((row) => (
                   <TableRow

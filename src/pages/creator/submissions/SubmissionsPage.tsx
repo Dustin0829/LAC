@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Scissors, Wallet, Eye, Loader2, Send, Compass } from 'lucide-react'
+import { Scissors, Wallet, Eye, Loader2, Send } from 'lucide-react'
 import { useCreatorDashboardStats } from '@/api/queries/creator/use-dashboard'
 import { useMeSubmissions, useRefreshCreatorSubmissionsPage } from '@/api/queries/creator/use-submissions'
 import {
@@ -9,8 +9,6 @@ import {
 } from '@/lib/creators/submissions/creatorUiMessages'
 import {
   CREATOR_SUBMISSION_TABS,
-  creatorSubmissionEmptyFilterDescription,
-  creatorSubmissionEmptyPlaceholderTitle,
   creatorSubmissionListParams,
   type CreatorSubmissionTab,
 } from '@/lib/creators/submissions/creatorSubmissionsPage'
@@ -30,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { CreatorSubmissionsEmptyState } from '@/components/creator/CreatorSubmissionsEmptyState'
 import { Button } from '@/components/ui/button'
 import { RefreshButton } from '@/components/RefreshButton'
 
@@ -192,27 +191,7 @@ export default function SubmissionsPage() {
             <p className="text-sm text-destructive">Could not load submissions. Try again later.</p>
           </div>
         ) : pageRows.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card px-4 py-12 text-center sm:px-8 sm:py-14">
-            <div className="mb-3 flex justify-center text-muted-foreground">
-              <Scissors className="h-10 w-10 shrink-0" aria-hidden />
-            </div>
-            <h3 className="wrap-break-word font-display text-base font-bold text-foreground sm:text-lg">
-              {creatorSubmissionEmptyPlaceholderTitle(tab, counts.all > 0)}
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground wrap-break-word">
-              {creatorSubmissionEmptyFilterDescription(tab)}
-            </p>
-            {counts.all === 0 ? (
-              <div className="mt-4 flex justify-center">
-                <Button asChild className="gap-1.5 bg-phc-gradient text-white">
-                  <Link to="/campaigns">
-                    <Compass className="h-4 w-4 shrink-0" aria-hidden />
-                    Browse Campaigns
-                  </Link>
-                </Button>
-              </div>
-            ) : null}
-          </div>
+          <CreatorSubmissionsEmptyState tab={tab} showBrowseCampaigns={counts.all === 0} />
         ) : (
           <TableContainer>
             <Table>

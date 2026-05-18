@@ -6,6 +6,7 @@ import { useFundingReturn } from '@/api/queries/brands/use-funding-return'
 import { Button } from '@/components/ui/button'
 import { CampaignCard } from '@/components/CampaignCard'
 import { RefreshButton } from '@/components/RefreshButton'
+import { BrandCampaignsEmptyState } from '@/components/brand/BrandCampaignsEmptyState'
 
 export default function BrandCampaignsPage() {
   const { data: campaigns = [], isLoading, isError, refetch, isFetching } = useBrandCampaigns()
@@ -76,15 +77,7 @@ export default function BrandCampaignsPage() {
           </Button>
         </div>
       ) : showEmpty ? (
-        <div className="rounded-3xl border border-dashed border-border bg-card p-16 text-center">
-          <p className="font-display text-lg font-bold">No campaigns yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create your first campaign to start receiving creator content.
-          </p>
-          <Button asChild className="mt-4 bg-phc-gradient text-white">
-            <Link to="/brand/campaigns/new">Create campaign</Link>
-          </Button>
-        </div>
+        <BrandCampaignsEmptyState />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {campaigns.map((c) => (

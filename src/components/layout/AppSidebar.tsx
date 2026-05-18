@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { VidULogo } from '@/components/VidULogo'
 import { cn } from '@/lib/utils'
 
 interface NavItem {
@@ -89,13 +90,9 @@ export function AppSidebarDesktop({ role }: AppSidebarProps) {
 
   return (
     <aside className="hidden h-dvh w-24 shrink-0 border-r border-gray-800 bg-gray-900 text-gray-100 md:flex md:flex-col">
-      <div className="flex h-20 shrink-0 items-center justify-center border-b border-gray-800">
-        <Link to={homeTo} className="flex items-center justify-center" title="Arpify">
-          <img
-            src="/arpify-logo.svg"
-            alt=""
-            className="h-12 w-12 rounded-sm object-cover object-left"
-          />
+      <div className="flex h-24 shrink-0 items-center justify-center border-b border-gray-800">
+        <Link to={homeTo} className="flex items-center justify-center" aria-label="VidU home">
+          <VidULogo variant="mark" className="h-16 w-16" />
         </Link>
       </div>
 

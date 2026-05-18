@@ -48,5 +48,5 @@ export function creatorCampaignEmptyFilterTitle() {
 }
 
 export function creatorCampaignEmptyFilterDescription() {
-  return 'Try adjusting filters.'
+  return "We couldn't find any campaigns that match your current filters. Try adjusting your filters to discover more opportunities."
 }

@@ -35,3 +35,8 @@ export function brandPerformanceChartFromAnalytics(
     payout: Number(row.payout) || 0,
   }))
 }
+
+/** True when at least one period has views or payout (not an all-zero placeholder series). */
+export function brandPerformanceChartHasActivity(rows: BrandPerformanceChartRow[]): boolean {
+  return rows.some((row) => row.views > 0 || row.payout > 0)
+}

@@ -19,8 +19,6 @@ import {
   CREATOR_CAMPAIGN_PLATFORM_OPTIONS,
   CREATOR_CAMPAIGN_SORT_OPTIONS,
   CREATOR_CAMPAIGN_STATUS_OPTIONS,
-  creatorCampaignEmptyFilterDescription,
-  creatorCampaignEmptyFilterTitle,
   creatorCampaignListParams,
   type CreatorCampaignSortId,
   type CreatorCampaignStatusFilter,
@@ -32,6 +30,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { RefreshButton } from '@/components/RefreshButton'
 import { CampaignCard } from '@/components/CampaignCard'
+import { CreatorCampaignsEmptyState } from '@/components/creator/CreatorCampaignsEmptyState'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { cn } from '@/lib/utils'
 import type { Platform } from '@/api/types/shared'
@@ -244,14 +243,7 @@ export default function CreatorCampaignsPage() {
           </Button>
         </div>
       ) : showEmpty ? (
-        <div className="rounded-3xl border border-dashed border-border bg-card px-4 py-12 text-center sm:p-16">
-          <p className="wrap-break-word font-display text-lg font-bold">
-            {creatorCampaignEmptyFilterTitle()}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground wrap-break-word">
-            {creatorCampaignEmptyFilterDescription()}
-          </p>
-        </div>
+        <CreatorCampaignsEmptyState />
       ) : (
         <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {campaigns.map((c) => (

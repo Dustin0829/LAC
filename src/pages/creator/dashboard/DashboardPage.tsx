@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Wallet, Eye, Scissors, ArrowUpRight, Clock, Loader2 } from 'lucide-react'
+import { Wallet, Eye, ArrowUpRight, Clock, Loader2 } from 'lucide-react'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -34,9 +34,10 @@ import {
   TableContainer,
   TableHead,
   TableHeader,
-  TablePlaceholder,
   TableRow,
 } from '@/components/ui/table'
+import { CreatorDashboardEarningsEmptyState } from '@/components/creator/CreatorDashboardEarningsEmptyState'
+import { CreatorDashboardRecentSubmissionsEmptyState } from '@/components/creator/CreatorDashboardRecentSubmissionsEmptyState'
 import {
   Select,
   SelectContent,
@@ -170,9 +171,7 @@ export default function CreatorDashboardPage() {
               Could not load earnings chart. Try refreshing the dashboard.
             </div>
           ) : earningsChartData.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              No earnings data yet. Paid submissions will appear here over time.
-            </div>
+            <CreatorDashboardEarningsEmptyState />
           ) : (
             <ResponsiveContainer width="100%" height="100%" key={earningsRange}>
               <AreaChart data={earningsChartData}>
@@ -249,12 +248,7 @@ export default function CreatorDashboardPage() {
                   </TableCell>
                 </TableRow>
               ) : recentPageRows.length === 0 ? (
-                <TablePlaceholder
-                  icon={<Scissors className="text-muted-foreground" />}
-                  title="No recent submissions"
-                  description="When you submit content to campaigns, pending and rejected items appear here."
-                  colSpan={6}
-                />
+                <CreatorDashboardRecentSubmissionsEmptyState colSpan={6} />
               ) : (
                 recentPageRows.map((content) => {
                   const postHref = content.url
