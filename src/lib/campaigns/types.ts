@@ -30,6 +30,8 @@ export interface Campaign {
   assetUrl?: string
   coverColor: string
   coverImageUrl?: string
+  /** Signed R2 URL when public CDN fails (rate limits). */
+  coverImageFallbackUrl?: string
 }
 
 /** Creator submissions mock row until creator submissions API ships. */

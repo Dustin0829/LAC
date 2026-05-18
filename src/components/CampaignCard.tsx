@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { CampaignCoverImage } from '@/components/CampaignCoverImage'
 import { CampaignGoalFireLottie } from '@/components/CampaignGoalFireLottie'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { formatPHP, formatNumber } from '@/lib/utils'
@@ -60,11 +61,11 @@ export function CampaignCard({ campaign, to, showProgress = false }: CampaignCar
       {/* Cover */}
       <div className={`relative h-40 overflow-hidden bg-linear-to-br ${campaign.coverColor}`}>
         {campaign.coverImageUrl ? (
-          <img
+          <CampaignCoverImage
             src={campaign.coverImageUrl}
+            fallbackSrc={campaign.coverImageFallbackUrl}
             alt={campaign.title}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
           />
         ) : (
           <div className="absolute inset-0 bg-radial from-white/35 via-white/10 to-transparent opacity-30 mix-blend-overlay" />

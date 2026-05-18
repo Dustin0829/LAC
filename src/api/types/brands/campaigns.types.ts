@@ -8,6 +8,7 @@ export type BrandCampaignCardDto = {
   description: string
   coverImageObjectKey: string | null
   coverImageUrl: string | null
+  coverImageFallbackUrl?: string | null
   goalViews: string
   fundedViewsTotal: string
   platforms: Platform[]
@@ -49,6 +50,7 @@ export type BrandCampaignDetailDto = {
   assetUrls: string[] | null
   coverImageObjectKey: string | null
   coverImageUrl: string | null
+  coverImageFallbackUrl?: string | null
   netBudget: string
   reservedBudget: string
   availableBudget: string

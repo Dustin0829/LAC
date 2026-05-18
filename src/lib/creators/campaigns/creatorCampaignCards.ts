@@ -40,6 +40,7 @@ export function creatorCampaignCardFromApi(dto: DiscoverCampaignPreviewCardDto):
     rules: [],
     coverColor: coverColorForId(dto.id),
     coverImageUrl: dto.coverImageUrl ?? undefined,
+    coverImageFallbackUrl: dto.coverImageFallbackUrl ?? undefined,
   }
 }
 

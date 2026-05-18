@@ -43,6 +43,7 @@ export function brandCampaignCardFromApi(dto: BrandCampaignCardDto, brandUserId:
     rules: [],
     coverColor: coverColorForId(`${dto.id}-cover`),
     coverImageUrl: dto.coverImageUrl ?? undefined,
+    coverImageFallbackUrl: dto.coverImageFallbackUrl ?? undefined,
   }
 }
 
@@ -83,5 +84,6 @@ export function brandCampaignDetailFromApi(
     assetUrl: dto.assetUrls?.[0],
     coverColor: coverColorForId(`${dto.id}-cover`),
     coverImageUrl: dto.coverImageUrl ?? undefined,
+    coverImageFallbackUrl: dto.coverImageFallbackUrl ?? undefined,
   }
 }

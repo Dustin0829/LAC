@@ -20,7 +20,10 @@ export interface DiscoverCampaignPreviewCardDto {
   status: Extract<CampaignStatus, 'active' | 'paused' | 'ended'>
   platforms: Platform[]
   coverImageUrl: string | null
+  /** Signed R2 URL when public CDN may rate-limit; use on img error. */
+  coverImageFallbackUrl?: string | null
   brandLogoUrl: string | null
+  brandLogoFallbackUrl?: string | null
   /** Net pool after platform deposit fee. */
   totalBudget: string
   /** Paid out + reserved for in-flight submissions. */
