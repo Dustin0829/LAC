@@ -143,10 +143,7 @@ export function ProtectedRoute({
 
   if (requireAuth) {
     if (!isAuthenticated) return <Navigate to="/auth" replace />
-    if (hasRole && role) {
-      if (!isProfileOnboardingComplete(user?.id, role)) {
-        return <Navigate to={PROFILE_SETUP_PATH} replace />
-      }
+    if (hasRole && role && isProfileOnboardingComplete(user?.id, role)) {
       return <Navigate to={dashboardForRole(role)} replace />
     }
     return <>{children}</>

@@ -43,7 +43,7 @@ export function usePutMeRole() {
     },
     retry: false,
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: meQueryKeys.profile() })
+      void qc.invalidateQueries({ queryKey: meQueryKeys.all })
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Could not save your role.')

@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -13,7 +13,9 @@ import {
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout'
 import { Button } from '@/components/ui/button'
 import { PROFILE_ONBOARDING_ENABLED } from '@/lib/constants'
+import { useAuth } from '@/lib/hooks/use-auth'
 import { useSignOut } from '@/lib/hooks/use-sign-out'
+import { resetOnboardingDraftStores } from '@/lib/onboarding/resetOnboardingDraftStores'
 import type { UserRole } from '@/lib/stores/authStore'
 import { cn } from '@/lib/utils'
 
@@ -42,20 +44,27 @@ const ROLES: {
 
 export default function RoleSelectionPage() {
   const navigate = useNavigate()
+  const { role: currentRole } = useAuth()
   const { mutate: putMeRole, isPending: submitting } = usePutMeRole()
   const { signOut, isSigningOut } = useSignOut()
-  const [choice, setChoice] = useState<UserRole | null>('creator')
+  const [choice, setChoice] = useState<UserRole | null>(currentRole ?? 'creator')
   const [backPending, setBackPending] = useState(false)
+
+  useEffect(() => {
+    if (currentRole) setChoice(currentRole)
+  }, [currentRole])
 
   function onContinue() {
     if (!choice) {
       toast.error('Choose Creator or Brand to continue.')
       return
     }
+    const switchingRole = Boolean(currentRole && currentRole !== choice)
     putMeRole(
       { role: choice },
       {
         onSuccess: () => {
+          if (switchingRole) resetOnboardingDraftStores()
           navigate(
             PROFILE_ONBOARDING_ENABLED
               ? '/onboarding/profile'

@@ -21,7 +21,6 @@ import {
   isBrandMeProfile,
 } from '@/lib/auth/mapMeProfile'
 import { useAuth } from '@/lib/hooks/use-auth'
-import { useSignOut } from '@/lib/hooks/use-sign-out'
 import { markProfileOnboardingComplete } from '@/lib/profileOnboarding'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useBrandProfileStore } from '@/lib/stores/brandProfileStore'
@@ -35,7 +34,6 @@ const BRAND_STEP_TOTAL = 2
 function CreatorProfileOnboarding() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { signOut, isSigningOut } = useSignOut()
   const userId = user?.id
   const setPlatformLinks = useCreatorProfileStore((s) => s.setPlatformLinks)
   const { data: profileData, isSuccess: profileLoaded } = useMeProfile()
@@ -69,9 +67,9 @@ function CreatorProfileOnboarding() {
     })
   }
 
-  async function handleBack() {
+  function handleBack() {
     if (step <= 1) {
-      await signOut()
+      navigate('/onboarding/role', { replace: true })
       return
     }
     setStep((s) => Math.max(1, s - 1))
@@ -88,11 +86,11 @@ function CreatorProfileOnboarding() {
         variant="ghost"
         size="lg"
         className={cn('h-11 gap-2 px-5', authFlowOutlineButtonClass)}
-        onClick={() => void handleBack()}
-        disabled={saving || isSigningOut}
+        onClick={handleBack}
+        disabled={saving}
       >
         <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-        {isSigningOut ? 'Signing out…' : 'Back'}
+        Back
       </Button>
       <div className="flex flex-wrap items-center justify-end gap-3">
         {step < total ? (
@@ -169,7 +167,6 @@ function CreatorProfileOnboarding() {
 function BrandProfileOnboarding() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { signOut, isSigningOut } = useSignOut()
   const userId = user?.id
   const profile = useBrandProfileStore((s) => s.profile)
   const setProfile = useBrandProfileStore((s) => s.setProfile)
@@ -222,9 +219,9 @@ function BrandProfileOnboarding() {
     })
   }
 
-  async function handleBack() {
+  function handleBack() {
     if (step <= 1) {
-      await signOut()
+      navigate('/onboarding/role', { replace: true })
       return
     }
     setStep((s) => Math.max(1, s - 1))
@@ -248,11 +245,11 @@ function BrandProfileOnboarding() {
         variant="ghost"
         size="lg"
         className={cn('h-11 gap-2 px-5', authFlowOutlineButtonClass)}
-        onClick={() => void handleBack()}
-        disabled={saving || isSigningOut}
+        onClick={handleBack}
+        disabled={saving}
       >
         <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-        {isSigningOut ? 'Signing out…' : 'Back'}
+        Back
       </Button>
       <div className="flex flex-wrap items-center justify-end gap-3">
         {step < total ? (
