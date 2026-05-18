@@ -2,6 +2,7 @@ import {
   CheckCheck,
   ExternalLink,
   Link2,
+  Loader2,
   Monitor,
   PencilLine,
   Plus,
@@ -29,6 +30,7 @@ import {
 export type DetailsTabProps = {
   campaign: Campaign
   canEditPreSubmission: boolean
+  isSavingDetails: boolean
   detailsEditingSections: ReadonlySet<DetailsEditSection>
   draftTitle: string
   setDraftTitle: (value: string) => void
@@ -60,6 +62,7 @@ export function DetailsTab(props: DetailsTabProps) {
   const {
     campaign,
     canEditPreSubmission,
+    isSavingDetails,
     detailsEditingSections,
     draftTitle,
     setDraftTitle,
@@ -106,10 +109,15 @@ export function DetailsTab(props: DetailsTabProps) {
                 type="button"
                 variant="ghost"
                 className={DETAILS_SECTION_ACTION_BTN_CLASS}
+                disabled={isSavingDetails}
                 onClick={saveCopySection}
               >
-                <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
-                Save
+                {isSavingDetails ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                {isSavingDetails ? 'Saving…' : 'Save'}
               </Button>
             ) : (
               <Button
@@ -206,10 +214,15 @@ export function DetailsTab(props: DetailsTabProps) {
               type="button"
               variant="ghost"
               className={DETAILS_SECTION_ACTION_BTN_CLASS}
+              disabled={isSavingDetails}
               onClick={saveGrossRateFromDraft}
             >
-              <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
-              Save
+              {isSavingDetails ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+              ) : (
+                <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
+              )}
+              {isSavingDetails ? 'Saving…' : 'Save'}
             </Button>
           </div>
           <p
@@ -269,10 +282,15 @@ export function DetailsTab(props: DetailsTabProps) {
                 type="button"
                 variant="ghost"
                 className={DETAILS_SECTION_ACTION_BTN_CLASS}
+                disabled={isSavingDetails}
                 onClick={savePlatformsSection}
               >
-                <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
-                Save
+                {isSavingDetails ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                {isSavingDetails ? 'Saving…' : 'Save'}
               </Button>
             ) : (
               <Button
@@ -381,10 +399,15 @@ export function DetailsTab(props: DetailsTabProps) {
                 type="button"
                 variant="ghost"
                 className={DETAILS_SECTION_ACTION_BTN_CLASS}
+                disabled={isSavingDetails}
                 onClick={saveRulesSection}
               >
-                <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
-                Save
+                {isSavingDetails ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                {isSavingDetails ? 'Saving…' : 'Save'}
               </Button>
             ) : (
               <Button
@@ -468,10 +491,15 @@ export function DetailsTab(props: DetailsTabProps) {
                 type="button"
                 variant="ghost"
                 className={DETAILS_SECTION_ACTION_BTN_CLASS}
+                disabled={isSavingDetails}
                 onClick={saveAssetsSection}
               >
-                <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
-                Save
+                {isSavingDetails ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                {isSavingDetails ? 'Saving…' : 'Save'}
               </Button>
             ) : (
               <Button
@@ -540,10 +568,15 @@ export function DetailsTab(props: DetailsTabProps) {
                 type="button"
                 variant="ghost"
                 className={DETAILS_SECTION_ACTION_BTN_CLASS}
+                disabled={isSavingDetails}
                 onClick={saveRefsSection}
               >
-                <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
-                Save
+                {isSavingDetails ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <CheckCheck className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                {isSavingDetails ? 'Saving…' : 'Save'}
               </Button>
             ) : (
               <Button

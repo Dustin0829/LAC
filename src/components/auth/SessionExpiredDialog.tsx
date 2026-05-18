@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Clock } from 'lucide-react'
-import { postAuthSignOut } from '@/api/services/auth'
+import { useAuthSignOut } from '@/api/queries/use-auth'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { useSessionExpiredStore } from '@/lib/auth/sessionExpired'
@@ -11,10 +12,15 @@ export function SessionExpiredDialog() {
   const expired = useSessionExpiredStore((s) => s.expired)
   const clearLocalSession = useAuthStore((s) => s.clearLocalSession)
 
+  const { mutateAsync: signOutApi, isPending: isSigningOut } = useAuthSignOut()
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const busy = isSigningOut || isRedirecting
+
   async function handleSignInAgain() {
+    setIsRedirecting(true)
     clearLocalSession()
     try {
-      await postAuthSignOut()
+      await signOutApi()
     } catch {
       /* cookie may already be gone */
     }
@@ -47,9 +53,10 @@ export function SessionExpiredDialog() {
             type="button"
             size="lg"
             className="mt-7 h-11 w-full rounded-full text-[0.9375rem] font-semibold shadow-md"
-            onClick={handleSignInAgain}
+            loading={busy}
+            onClick={() => void handleSignInAgain()}
           >
-            Sign in again
+            {busy ? 'Redirecting…' : 'Sign in again'}
           </Button>
         </div>
       </DialogContent>

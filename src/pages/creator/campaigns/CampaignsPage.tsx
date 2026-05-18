@@ -234,7 +234,12 @@ export default function CreatorCampaignsPage() {
           <p className="mt-1 text-sm text-muted-foreground wrap-break-word">
             Check your connection and try again.
           </p>
-          <Button variant="outline" className="mt-4 gap-1.5" onClick={() => void runRefresh()}>
+          <Button
+            variant="outline"
+            className="mt-4 gap-1.5"
+            loading={refreshing || isFetching}
+            onClick={() => void runRefresh()}
+          >
             Retry
           </Button>
         </div>

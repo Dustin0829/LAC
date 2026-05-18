@@ -17,12 +17,18 @@ type ConnectedPlatformsSectionProps = {
   embedded?: boolean
   /** Show disconnect control on connected platforms (account page). */
   allowDisconnect?: boolean
+  /** `GET /me/platforms` in flight (account page). */
+  loading?: boolean
+  /** Failed to load platform links from the API. */
+  loadError?: boolean
   className?: string
 }
 
 export function ConnectedPlatformsSection({
   embedded = false,
   allowDisconnect = true,
+  loading = false,
+  loadError = false,
   className,
 }: ConnectedPlatformsSectionProps) {
   const platformLinks = useCreatorProfileStore((s) => s.platformLinks)
@@ -62,11 +68,17 @@ export function ConnectedPlatformsSection({
           Connect TikTok and Facebook once; we reuse them when you submit campaign content.
         </p>
       </div>
+      {loadError ? (
+        <p className="mb-3 text-sm text-destructive">
+          Could not load connected platforms. Refresh the page to try again.
+        </p>
+      ) : null}
       <div className="grid min-w-0 gap-3 md:grid-cols-2">
         {platformLinks.map((link) => {
           const connectEnabled = isCreatorPlatformConnectEnabled(link.platform)
           const isConnecting = connectingPlatform === link.platform
           const isDisconnecting = disconnectingPlatform === link.platform
+          const actionsDisabled = loading || loadError
 
           return (
             <div
@@ -97,10 +109,15 @@ export function ConnectedPlatformsSection({
                       Coming soon
                     </span>
                   )
+                ) : loading ? (
+                  <span className="inline-flex min-h-9 items-center gap-1 rounded-xl border border-border bg-muted px-2.5 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                    Loading…
+                  </span>
                 ) : link.status === 'connected' && allowDisconnect ? (
                   <button
                     type="button"
-                    disabled={isDisconnecting}
+                    disabled={isDisconnecting || actionsDisabled}
                     onClick={() => handleDisconnect(link.platform)}
                     className={cn(
                       'group relative min-h-9 overflow-hidden rounded-xl border px-1 text-xs font-medium transition-colors md:px-2',
@@ -150,7 +167,7 @@ export function ConnectedPlatformsSection({
                     size="sm"
                     variant="outline"
                     className="whitespace-nowrap"
-                    disabled={isConnecting}
+                    disabled={isConnecting || actionsDisabled}
                     onClick={() => void handleConnect(link.platform)}
                   >
                     {isConnecting ? (

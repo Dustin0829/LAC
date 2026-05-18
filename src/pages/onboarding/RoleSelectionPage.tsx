@@ -43,7 +43,7 @@ const ROLES: {
 export default function RoleSelectionPage() {
   const navigate = useNavigate()
   const { mutate: putMeRole, isPending: submitting } = usePutMeRole()
-  const signOut = useSignOut()
+  const { signOut, isSigningOut } = useSignOut()
   const [choice, setChoice] = useState<UserRole | null>('creator')
   const [backPending, setBackPending] = useState(false)
 
@@ -128,13 +128,13 @@ export default function RoleSelectionPage() {
             <button
               type="button"
               onClick={() => void onBackToLogin()}
-              disabled={backPending || submitting}
+              disabled={backPending || submitting || isSigningOut}
               className={cn(
                 'mt-2 cursor-pointer text-center text-sm text-slate-500 underline underline-offset-2',
                 'hover:text-slate-700 disabled:pointer-events-none disabled:opacity-50'
               )}
             >
-              Back to login
+              {isSigningOut ? 'Signing out…' : 'Back to login'}
             </button>
           </div>
         </main>

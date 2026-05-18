@@ -14,6 +14,7 @@ export default function BrandCampaignDetailPage() {
     setCampaignTab,
     apiCampaignLoading,
     apiCampaignError,
+    apiCampaignFetching,
     refetchApiCampaign,
     campaign,
     campaignSubmissions,
@@ -40,7 +41,7 @@ export default function BrandCampaignDetailPage() {
         ) : null}
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {apiCampaignError ? (
-            <Button variant="outline" onClick={() => void refetchApiCampaign()}>
+            <Button variant="outline" loading={apiCampaignFetching} onClick={() => void refetchApiCampaign()}>
               Retry
             </Button>
           ) : null}

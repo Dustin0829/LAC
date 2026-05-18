@@ -63,7 +63,7 @@ function useAppSidebarModel(role: UserRole) {
   const navigation = role === 'brand' ? BRAND_NAV : CREATOR_NAV
   const location = useLocation()
   const { user } = useAuth()
-  const handleSignOut = useSignOut()
+  const { signOut: handleSignOut, isSigningOut } = useSignOut()
 
   const homeTo = role === 'brand' ? '/brand/dashboard' : '/dashboard'
 
@@ -76,6 +76,7 @@ function useAppSidebarModel(role: UserRole) {
     homeTo,
     user,
     handleSignOut,
+    isSigningOut,
     userInitials,
     displayName,
   }
@@ -83,7 +84,7 @@ function useAppSidebarModel(role: UserRole) {
 
 /** Desktop rail only — use as first flex child next to `<main>` (BugHyve-style shell). */
 export function AppSidebarDesktop({ role }: AppSidebarProps) {
-  const { navigation, location, homeTo, user, userInitials, handleSignOut, displayName } =
+  const { navigation, location, homeTo, user, userInitials, handleSignOut, isSigningOut, displayName } =
     useAppSidebarModel(role)
 
   return (
@@ -159,12 +160,13 @@ export function AppSidebarDesktop({ role }: AppSidebarProps) {
               variant="red"
               icon={<LogOut className="h-4 w-4" aria-hidden />}
               className="cursor-pointer"
+              disabled={isSigningOut}
               onSelect={(e) => {
                 e.preventDefault()
-                handleSignOut()
+                void handleSignOut()
               }}
             >
-              Sign out
+              {isSigningOut ? 'Signing out…' : 'Sign out'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -51,6 +51,7 @@ export type SubmissionsTabProps = {
   openRejectForSubmission: (submissionId: string, creatorName: string) => void
   resetRejectDialog: () => void
   confirmBrandReject: () => void
+  isRejectingSubmission: boolean
 }
 
 export function SubmissionsTab(props: SubmissionsTabProps) {
@@ -73,6 +74,7 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
     openRejectForSubmission,
     resetRejectDialog,
     confirmBrandReject,
+    isRejectingSubmission,
   } = props
 
   return (
@@ -289,6 +291,7 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
       <Button
         type="button"
         variant="outline"
+        disabled={isRejectingSubmission}
         onClick={() => {
           resetRejectDialog()
         }}
@@ -298,9 +301,17 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
       <Button
         type="button"
         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        disabled={isRejectingSubmission}
         onClick={confirmBrandReject}
       >
-        Reject
+        {isRejectingSubmission ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Rejecting…
+          </>
+        ) : (
+          'Reject'
+        )}
       </Button>
     </DialogFooter>
   </DialogContent>

@@ -1,4 +1,10 @@
-import type { BrandMeProfileData, CreatorMeProfileData, PutMeBrandProfileBody } from '@/api/types/me.types'
+import type {
+  BrandMeProfileData,
+  CreatorMeProfileData,
+  CreatorPlatformLinkDto,
+  MePlatformsData,
+  PutMeBrandProfileBody,
+} from '@/api/types/me.types'
 import type { BrandProfile } from '@/lib/stores/brandProfileStore'
 import type { Platform } from '@/api/types/shared'
 import type { CreatorPlatformLink } from '@/lib/campaigns/types'
@@ -24,10 +30,10 @@ export function brandProfileFromApi(data: BrandMeProfileData): BrandProfile {
   }
 }
 
-export function creatorLinksFromApi(data: CreatorMeProfileData): CreatorPlatformLink[] {
-  const byPlatform = new Map(
-    data.platformLinks.map((link) => [link.platform as Platform, link])
-  )
+export function creatorLinksFromPlatformDtos(
+  platformLinks: readonly CreatorPlatformLinkDto[],
+): CreatorPlatformLink[] {
+  const byPlatform = new Map(platformLinks.map((link) => [link.platform as Platform, link]))
   return mockCreatorPlatformLinks.map((defaults) => {
     const api = byPlatform.get(defaults.platform)
     if (!api) return defaults
@@ -40,6 +46,14 @@ export function creatorLinksFromApi(data: CreatorMeProfileData): CreatorPlatform
       connectedAt: api.connectedAt ?? undefined,
     }
   })
+}
+
+export function creatorLinksFromApi(data: CreatorMeProfileData): CreatorPlatformLink[] {
+  return creatorLinksFromPlatformDtos(data.platformLinks)
+}
+
+export function creatorLinksFromPlatforms(data: MePlatformsData): CreatorPlatformLink[] {
+  return creatorLinksFromPlatformDtos(data.platformLinks)
 }
 
 export function buildPutMeBrandProfileBody(profile: BrandProfile): PutMeBrandProfileBody {

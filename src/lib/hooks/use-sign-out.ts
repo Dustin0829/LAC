@@ -7,9 +7,9 @@ import { useAuthStore } from '@/lib/stores/authStore'
 export function useSignOut() {
   const navigate = useNavigate()
   const clearLocalSession = useAuthStore((s) => s.clearLocalSession)
-  const { mutateAsync } = useAuthSignOut()
+  const { mutateAsync, isPending: isSigningOut } = useAuthSignOut()
 
-  return useCallback(async () => {
+  const signOut = useCallback(async () => {
     try {
       await mutateAsync()
     } catch {
@@ -19,4 +19,6 @@ export function useSignOut() {
     toast.success('Signed out')
     navigate('/auth', { replace: true })
   }, [navigate, clearLocalSession, mutateAsync])
+
+  return { signOut, isSigningOut }
 }

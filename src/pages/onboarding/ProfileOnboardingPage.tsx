@@ -36,7 +36,7 @@ const BRAND_STEP_TOTAL = 2
 function CreatorProfileOnboarding() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const signOut = useSignOut()
+  const { signOut, isSigningOut } = useSignOut()
   const userId = user?.id
   const setPlatformLinks = useCreatorProfileStore((s) => s.setPlatformLinks)
   const { data: profileData, isSuccess: profileLoaded } = useMeProfile()
@@ -89,9 +89,9 @@ function CreatorProfileOnboarding() {
         size="lg"
         className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
         onClick={() => void handleBack()}
-        disabled={saving}
+        disabled={saving || isSigningOut}
       >
-        Back
+        {isSigningOut ? 'Signing out…' : 'Back'}
       </Button>
       <div className="flex flex-wrap items-center justify-end gap-2">
         {step < total ? (
@@ -154,7 +154,7 @@ function CreatorProfileOnboarding() {
 function BrandProfileOnboarding() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const signOut = useSignOut()
+  const { signOut, isSigningOut } = useSignOut()
   const userId = user?.id
   const profile = useBrandProfileStore((s) => s.profile)
   const setProfile = useBrandProfileStore((s) => s.setProfile)
@@ -227,9 +227,9 @@ function BrandProfileOnboarding() {
         size="lg"
         className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
         onClick={() => void handleBack()}
-        disabled={saving}
+        disabled={saving || isSigningOut}
       >
-        Back
+        {isSigningOut ? 'Signing out…' : 'Back'}
       </Button>
       <div className="flex flex-wrap items-center justify-end gap-2">
         {step < total ? (

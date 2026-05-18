@@ -2,6 +2,7 @@ import api from '@/api/client'
 import type {
   BrandMeProfileData,
   CreatorMeProfileData,
+  MePlatformsData,
   MeResponseData,
   PatchMeBody,
   PostMeOnboardingCompleteData,
@@ -32,6 +33,11 @@ export async function postMeOnboardingComplete(): Promise<PostMeOnboardingComple
 
 export async function getMeProfile(): Promise<BrandMeProfileData | CreatorMeProfileData> {
   const res = await api.get<BrandMeProfileData | CreatorMeProfileData>('/me/profile')
+  return res.data
+}
+
+export async function getMePlatforms(): Promise<MePlatformsData> {
+  const res = await api.get<MePlatformsData>('/me/platforms')
   return res.data
 }
 

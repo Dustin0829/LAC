@@ -47,6 +47,7 @@ export type CampaignDetailHeaderProps = {
   setIsFundingPublish: (value: boolean) => void
   handleFundPublishSubmit: (e: React.FormEvent) => void | Promise<void>
   togglePause: () => void
+  isPatchingCampaign: boolean
   openFundAndPublishDialog: () => void
   countedViewsForReach: number
   reachGoal: number
@@ -90,6 +91,7 @@ export function CampaignDetailHeader(props: CampaignDetailHeaderProps) {
     setIsFundingPublish,
     handleFundPublishSubmit,
     togglePause,
+    isPatchingCampaign,
     openFundAndPublishDialog,
     countedViewsForReach,
     reachGoal,
@@ -133,8 +135,18 @@ export function CampaignDetailHeader(props: CampaignDetailHeaderProps) {
                 </Button>
               ) : (
                 <>
-                  <Button variant="outline" className="border font-semibold" onClick={togglePause}>
-                    {campaign.status === 'paused' ? (
+                  <Button
+                    variant="outline"
+                    className="border font-semibold"
+                    disabled={isPatchingCampaign}
+                    onClick={togglePause}
+                  >
+                    {isPatchingCampaign ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Updating…
+                      </>
+                    ) : campaign.status === 'paused' ? (
                       <>
                         <Play className="h-4 w-4" /> Resume
                       </>

@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   deleteMePlatform,
+  getMePlatforms,
   getMeProfile,
   patchMe,
   postMeOnboardingComplete,
@@ -12,7 +13,7 @@ import {
   putMeRole,
 } from '@/api/services/me'
 import type { PatchMeBody, PutMeBrandProfileBody, PutMeRoleBody } from '@/api/types/me.types'
-import { creatorLinksFromApi } from '@/lib/auth/mapMeProfile'
+import { creatorLinksFromPlatforms } from '@/lib/auth/mapMeProfile'
 import {
   meNameUpdatedMessage,
   meNameUpdateErrorMessage,
@@ -27,6 +28,7 @@ import { toast } from 'sonner'
 export const meQueryKeys = {
   all: ['me'] as const,
   profile: () => [...meQueryKeys.all, 'profile'] as const,
+  platforms: () => [...meQueryKeys.all, 'platforms'] as const,
 }
 
 /** Role selection (`PUT /me/role`) then refresh session (`GET /me`). */
@@ -66,6 +68,17 @@ export function usePatchMe() {
     onError: (err) => {
       toast.error(meNameUpdateErrorMessage(err))
     },
+  })
+}
+
+/** Creator linked platforms (`GET /me/platforms`). */
+export function useMePlatforms() {
+  const user = useAuthStore((s) => s.user)
+  const role = useAuthStore((s) => s.role)
+  return useQuery({
+    queryKey: meQueryKeys.platforms(),
+    queryFn: () => getMePlatforms(),
+    enabled: Boolean(user && role === 'creator'),
   })
 }
 
@@ -120,10 +133,9 @@ export function useDeleteMePlatform() {
     mutationFn: (platform: Platform) => deleteMePlatform(platform),
     retry: false,
     onSuccess: async (_data, platform) => {
-      const profile = await getMeProfile()
-      if ('platformLinks' in profile) {
-        useCreatorProfileStore.getState().setPlatformLinks(creatorLinksFromApi(profile))
-      }
+      const platforms = await getMePlatforms()
+      useCreatorProfileStore.getState().setPlatformLinks(creatorLinksFromPlatforms(platforms))
+      void qc.invalidateQueries({ queryKey: meQueryKeys.platforms() })
       void qc.invalidateQueries({ queryKey: meQueryKeys.profile() })
       toast.success(mePlatformDisconnectedMessage(platform))
     },

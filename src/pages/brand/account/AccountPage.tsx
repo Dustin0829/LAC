@@ -16,7 +16,7 @@ import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSectio
 
 export default function BrandAccountPage() {
   const { user } = useAuth()
-  const signOut = useSignOut()
+  const { signOut, isSigningOut } = useSignOut()
 
   const { data: profileData, isSuccess: profileLoaded, isLoading: profileLoading } = useMeProfile()
   const { mutate: putBrandProfile, isPending: saving } = usePutMeBrandProfile()
@@ -78,10 +78,11 @@ export default function BrandAccountPage() {
           type="button"
           variant="outline"
           className="mt-4 w-full border-destructive/40 text-destructive hover:bg-destructive/10"
-          onClick={() => signOut()}
+          loading={isSigningOut}
+          onClick={() => void signOut()}
         >
           <LogOut className="mr-2 h-4 w-4 shrink-0" aria-hidden />
-          Sign out
+          {isSigningOut ? 'Signing out…' : 'Sign out'}
         </Button>
       </section>
     </div>

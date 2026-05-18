@@ -64,4 +64,9 @@ export type CreatorMeProfileData = {
   platformLinks: CreatorPlatformLinkDto[]
 }
 
+/** `GET /me/platforms` — linked TikTok / Meta accounts (creator only). */
+export type MePlatformsData = {
+  platformLinks: CreatorPlatformLinkDto[]
+}
+
 export type MeProfileData = BrandMeProfileData | CreatorMeProfileData

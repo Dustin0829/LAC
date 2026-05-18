@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
-import { Building2, Wallet } from 'lucide-react'
+import { Building2, Loader2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   addPaymentMethodFormFieldErrors,
@@ -68,7 +68,10 @@ export function AddPaymentMethodDialog({
   const addMethodLocal = usePaymentMethodsStore((s) => s.addMethod)
   const { data: apiMethods = [] } = usePaymentMethods(useApi)
   const methods = useApi ? apiMethods : storeMethods
-  const { mutate: postPaymentMethod } = usePostPaymentMethod({ surface: mode, suppressToasts })
+  const { mutate: postPaymentMethod, isPending: isSaving } = usePostPaymentMethod({
+    surface: mode,
+    suppressToasts,
+  })
 
   const [methodType, setMethodType] = useState<AddMethodType>(null)
   const [provider, setProvider] = useState('')
@@ -322,11 +325,26 @@ export function AddPaymentMethodDialog({
                 ) : null}
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={goBackFromForm}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isSaving}
+                  onClick={goBackFromForm}
+                >
                   {openedWithPreset ? 'Cancel' : 'Go Back'}
                 </Button>
-                <Button type="submit" className="flex-1 bg-phc-gradient text-white">
-                  {creator ? 'Save Payment Method' : 'Save Receiving Account'}
+                <Button type="submit" className="flex-1 bg-phc-gradient text-white" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Saving…
+                    </>
+                  ) : creator ? (
+                    'Save Payment Method'
+                  ) : (
+                    'Save Receiving Account'
+                  )}
                 </Button>
               </div>
             </form>

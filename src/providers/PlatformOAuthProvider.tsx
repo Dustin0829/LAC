@@ -2,8 +2,8 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { meQueryKeys } from '@/api/queries/use-me'
-import { getMeProfile } from '@/api/services/me'
-import { creatorLinksFromApi } from '@/lib/auth/mapMeProfile'
+import { getMePlatforms } from '@/api/services/me'
+import { creatorLinksFromPlatforms } from '@/lib/auth/mapMeProfile'
 import { consumeCreatorPlatformOAuthSearchParams } from '@/lib/auth/oauthPlatformCallback'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { useAuthStore } from '@/lib/stores/authStore'
@@ -36,14 +36,15 @@ export function PlatformOAuthProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       try {
-        const profile = await getMeProfile()
-        if ('platformLinks' in profile) {
-          useCreatorProfileStore.getState().setPlatformLinks(creatorLinksFromApi(profile))
-        }
+        const platforms = await getMePlatforms()
+        useCreatorProfileStore.getState().setPlatformLinks(creatorLinksFromPlatforms(platforms))
+        void queryClient.invalidateQueries({ queryKey: meQueryKeys.platforms() })
         void queryClient.invalidateQueries({ queryKey: meQueryKeys.profile() })
         toast.success(`${PLATFORM_LABEL[result.platform]} connected.`)
       } catch {
-        toast.error('TikTok connected, but profile could not be refreshed. Reload the page.')
+        toast.error(
+          `${PLATFORM_LABEL[result.platform]} connected, but platforms could not be refreshed. Reload the page.`,
+        )
       }
     })()
   }, [loading, user, role, queryClient])

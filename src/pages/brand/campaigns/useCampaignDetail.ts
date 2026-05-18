@@ -89,11 +89,12 @@ export function useCampaignDetail() {
     return brandCampaignDetailFromApi(apiCampaignDto, brandUserId)
   }, [apiCampaignDto, brandUserId])
 
-  const { mutate: patchCampaign } = usePatchBrandCampaign(id)
+  const { mutate: patchCampaign, isPending: isPatchingCampaign } = usePatchBrandCampaign(id)
   const { mutate: createCheckout } = useBrandCampaignCheckout(id)
   const { mutate: releasePayout, isPending: isReleasingPayout } = useReleaseBrandCampaignPayout(id)
   const { mutate: refundCampaign } = useRefundBrandCampaign(id)
-  const { mutate: rejectSubmission } = useRejectBrandCampaignSubmission(id)
+  const { mutate: rejectSubmission, isPending: isRejectingSubmission } =
+    useRejectBrandCampaignSubmission(id)
 
   const { data: refundReceivingMethods = [] } = usePaymentMethods()
   const hasRefundReceivingAccount = refundReceivingMethods.length > 0
@@ -582,6 +583,7 @@ export function useCampaignDetail() {
       setIsFundingPublish,
       handleFundPublishSubmit,
       togglePause,
+      isPatchingCampaign,
       openFundAndPublishDialog,
       countedViewsForReach,
       reachGoal,
@@ -619,6 +621,7 @@ export function useCampaignDetail() {
     setIsFundingPublish,
     handleFundPublishSubmit,
     togglePause,
+    isPatchingCampaign,
     openFundAndPublishDialog,
     countedViewsForReach,
     reachGoal,
@@ -639,6 +642,7 @@ export function useCampaignDetail() {
       details: {
         campaign,
         canEditPreSubmission,
+        isSavingDetails: isPatchingCampaign,
         detailsEditingSections,
         draftTitle,
         setDraftTitle,
@@ -720,12 +724,14 @@ export function useCampaignDetail() {
         openRejectForSubmission,
         resetRejectDialog,
         confirmBrandReject,
+        isRejectingSubmission,
       },
     }
   }, [
     campaign,
     id,
     canEditPreSubmission,
+    isPatchingCampaign,
     detailsEditingSections,
     draftTitle,
     draftDescription,
@@ -777,6 +783,7 @@ export function useCampaignDetail() {
     openRejectForSubmission,
     resetRejectDialog,
     confirmBrandReject,
+    isRejectingSubmission,
     confirmReleasePayouts,
     refundPoolSettled,
     refundSettlingMessage,
@@ -788,6 +795,7 @@ export function useCampaignDetail() {
     setCampaignTab,
     apiCampaignLoading,
     apiCampaignError,
+    apiCampaignFetching,
     refetchApiCampaign,
     campaign,
     campaignSubmissions,

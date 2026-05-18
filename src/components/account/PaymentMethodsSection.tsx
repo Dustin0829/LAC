@@ -47,8 +47,10 @@ export function PaymentMethodsSection({
   const setDefaultLocal = usePaymentMethodsStore((s) => s.setDefault)
   const mutationOptions = { surface: mode, suppressToasts }
   const { data: apiMethods = [], isLoading, isError } = usePaymentMethods(useApi)
-  const { mutate: patchPaymentMethod } = usePatchPaymentMethod(mutationOptions)
-  const { mutate: deletePaymentMethod } = useDeletePaymentMethod(mutationOptions)
+  const { mutate: patchPaymentMethod, isPending: isPatching, variables: patchVariables } =
+    usePatchPaymentMethod(mutationOptions)
+  const { mutate: deletePaymentMethod, isPending: isDeleting, variables: deletingId } =
+    useDeletePaymentMethod(mutationOptions)
   const methods = useApi ? apiMethods : storeMethods
 
   const [addOpen, setAddOpen] = useState(false)
@@ -136,18 +138,24 @@ export function PaymentMethodsSection({
               <ul className="space-y-2">
                 {displayed.map((m) => {
                   const isDefault = m.isDefault
+                  const isSettingDefault =
+                    isPatching && patchVariables?.paymentMethodId === m.id
+                  const isRemoving = isDeleting && deletingId === m.id
+                  const rowBusy = isSettingDefault || isRemoving
                   return (
                     <li
                       key={m.id}
                       role="button"
-                      tabIndex={0}
+                      tabIndex={rowBusy ? -1 : 0}
                       onClick={() => {
-                        if (!isDefault) handleSetDefault(m.id)
+                        if (rowBusy || isDefault) return
+                        handleSetDefault(m.id)
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          if (!isDefault) handleSetDefault(m.id)
+                          if (rowBusy || isDefault) return
+                          handleSetDefault(m.id)
                         }
                       }}
                       className={`flex cursor-pointer items-center justify-between gap-4 rounded-2xl border px-4 py-2 md:p-4 transition-colors ${
@@ -178,10 +186,15 @@ export function PaymentMethodsSection({
                           variant="ghost"
                           size="icon"
                           className="shrink-0 text-muted-foreground hover:text-destructive"
+                          disabled={rowBusy || isPatching || isDeleting}
                           onClick={(e) => handleRemove(m.id, e)}
                           aria-label={creator ? 'Remove payment method' : 'Remove refund account'}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {isRemoving ? (
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
                         </Button>
                       ) : null}
                     </li>

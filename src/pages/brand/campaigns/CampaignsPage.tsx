@@ -66,7 +66,12 @@ export default function BrandCampaignsPage() {
         <div className="rounded-3xl border border-border bg-card p-16 text-center">
           <p className="font-display text-lg font-bold">Could not load campaigns</p>
           <p className="mt-1 text-sm text-muted-foreground">Check your connection and try again.</p>
-          <Button variant="outline" className="mt-4" onClick={() => void runRefresh()}>
+          <Button
+            variant="outline"
+            className="mt-4"
+            loading={refreshing || isFetching}
+            onClick={() => void runRefresh()}
+          >
             Retry
           </Button>
         </div>
