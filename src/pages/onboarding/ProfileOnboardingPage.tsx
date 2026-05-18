@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { ArrowRight, Loader2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCompleteMeOnboarding,
@@ -10,11 +10,10 @@ import {
 } from '@/api/queries/use-me'
 import { OnboardingWizardShell } from '@/components/onboarding/OnboardingWizardShell'
 import { ConnectedPlatformsSection } from '@/components/account/ConnectedPlatformsSection'
-import { BrandSocialLinkFields } from '@/components/account/BrandSocialLinkFields'
+import { BrandOnboardingBasicsStep } from '@/components/onboarding/BrandOnboardingBasicsStep'
+import { BrandOnboardingSocialStep } from '@/components/onboarding/BrandOnboardingSocialStep'
 import { PaymentMethodsSection } from '@/components/account/PaymentMethodsSection'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   brandProfileFromApi,
   buildPutMeBrandProfileBody,
@@ -87,26 +86,34 @@ function CreatorProfileOnboarding() {
         type="button"
         variant="ghost"
         size="lg"
-        className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
+        className={cn('h-11 gap-2 px-5', authFlowOutlineButtonClass)}
         onClick={() => void handleBack()}
         disabled={saving || isSigningOut}
       >
+        <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
         {isSigningOut ? 'Signing out…' : 'Back'}
       </Button>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {step < total ? (
           <>
-            <Button type="button" variant="ghost" className="text-muted-foreground" onClick={goToNextStep}>
-              Skip
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-sm font-medium text-slate-500 hover:text-slate-700"
+              onClick={goToNextStep}
+            >
+              Skip for now
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="lg"
-              className={cn('h-[46px] min-w-[7.5rem] justify-between gap-2 px-5', authFlowPrimaryButtonClass)}
+              className={cn(
+                'h-11 min-w-[7.5rem] gap-2 rounded-xl px-6',
+                authFlowPrimaryButtonClass
+              )}
               onClick={goToNextStep}
             >
-              <span />
               Next
               <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
             </Button>
@@ -116,7 +123,7 @@ function CreatorProfileOnboarding() {
             type="button"
             variant="ghost"
             size="lg"
-            className={cn('h-[46px] min-w-[7.5rem] px-6', authFlowPrimaryButtonClass)}
+            className={cn('h-11 min-w-[7.5rem] rounded-xl px-6', authFlowPrimaryButtonClass)}
             onClick={() => void finish()}
             disabled={saving}
           >
@@ -142,9 +149,16 @@ function CreatorProfileOnboarding() {
           Finish your <span className="text-phc-gradient">profile</span>
         </>
       }
+      subtitle={
+        step === 1
+          ? 'Connect your platforms to start submitting content. This helps us deliver the right opportunities for you.'
+          : 'Add how you want to get paid so we can send your earnings when campaigns pay out.'
+      }
       footer={footer}
     >
-      {step === 1 && <ConnectedPlatformsSection embedded allowDisconnect={false} />}
+      {step === 1 && (
+        <ConnectedPlatformsSection embedded onboarding allowDisconnect={false} />
+      )}
 
       {step === 2 && <PaymentMethodsSection mode="creator" suppressToasts />}
     </OnboardingWizardShell>
@@ -166,6 +180,8 @@ function BrandProfileOnboarding() {
   const [step, setStep] = useState(1)
   const total = BRAND_STEP_TOTAL
   const saving = putBrandPending || completePending
+  const brandNameTrimmed = profile.brandName.trim()
+  const canProceedFromBasics = brandNameTrimmed.length > 0
 
   useEffect(() => {
     if (user?.name) seedBrandNameIfEmpty(user.name)
@@ -213,7 +229,11 @@ function BrandProfileOnboarding() {
   }
 
   function goToNextStep() {
-    if (step === 1 && profile.brandName.trim()) {
+    if (step === 1) {
+      if (!canProceedFromBasics) {
+        toast.error('Brand name is required.')
+        return
+      }
       saveBrandProfilePartial()
     }
     setStep((s) => Math.min(total, s + 1))
@@ -225,45 +245,38 @@ function BrandProfileOnboarding() {
         type="button"
         variant="ghost"
         size="lg"
-        className={cn('h-[46px] gap-2 px-5', authFlowOutlineButtonClass)}
+        className={cn('h-11 gap-2 px-5', authFlowOutlineButtonClass)}
         onClick={() => void handleBack()}
         disabled={saving || isSigningOut}
       >
+        <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
         {isSigningOut ? 'Signing out…' : 'Back'}
       </Button>
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {step < total ? (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-muted-foreground"
-              onClick={() => void goToNextStep()}
-              disabled={saving}
-            >
-              Skip
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="lg"
-              className={cn('h-[46px] min-w-[7.5rem] justify-between gap-2 px-5', authFlowPrimaryButtonClass)}
-              onClick={() => void goToNextStep()}
-              disabled={saving}
-            >
-              <span />
-              Next
-              <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-            </Button>
-          </>
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className={cn(
+              'h-11 min-w-[7.5rem] gap-2 rounded-xl px-6',
+              authFlowPrimaryButtonClass,
+              !canProceedFromBasics && 'pointer-events-none opacity-45'
+            )}
+            onClick={() => void goToNextStep()}
+            disabled={saving || !canProceedFromBasics}
+          >
+            Next
+            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+          </Button>
         ) : (
           <Button
             type="button"
             variant="ghost"
             size="lg"
-            className={cn('h-[46px] min-w-[7.5rem] px-6', authFlowPrimaryButtonClass)}
+            className={cn('h-11 min-w-[7.5rem] rounded-xl px-6', authFlowPrimaryButtonClass)}
             onClick={() => void finish()}
-            disabled={saving}
+            disabled={saving || !canProceedFromBasics}
           >
             {saving ? (
               <span className="inline-flex items-center gap-2">
@@ -287,33 +300,25 @@ function BrandProfileOnboarding() {
           Finish your <span className="text-phc-gradient">brand profile</span>
         </>
       }
+      subtitle={
+        step === 1
+          ? 'Tell us about your brand so we can personalize your experience and opportunities.'
+          : 'Add your social links so creators can find and tag your brand.'
+      }
       footer={footer}
     >
       {step === 1 && (
-        <div className="space-y-4">
-          <h2 className="font-display text-xl font-extrabold">Brand basics</h2>
-          <div className="space-y-2">
-            <Label htmlFor="onb-brand-name">Brand name</Label>
-            <Input
-              id="onb-brand-name"
-              value={profile.brandName}
-              onChange={(e) => setProfile({ brandName: e.target.value })}
-              placeholder="Your brand or company name"
-              autoComplete="organization"
-            />
-          </div>
-        </div>
+        <BrandOnboardingBasicsStep
+          brandName={profile.brandName}
+          onBrandNameChange={(value) => setProfile({ brandName: value })}
+        />
       )}
 
       {step === 2 && (
-        <div className="space-y-4">
-          <h2 className="font-display text-xl font-extrabold">Social links</h2>
-          <BrandSocialLinkFields
-            values={profile}
-            onChange={(key, value) => setProfile({ [key]: value })}
-            idPrefix="onb"
-          />
-        </div>
+        <BrandOnboardingSocialStep
+          values={profile}
+          onChange={(key, value) => setProfile({ [key]: value })}
+        />
       )}
     </OnboardingWizardShell>
   )

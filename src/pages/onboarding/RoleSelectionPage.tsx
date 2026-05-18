@@ -80,10 +80,6 @@ export default function RoleSelectionPage() {
 
   return (
     <AuthPageLayout className="md:h-dvh md:max-h-dvh md:overflow-y-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_100%_0%,rgba(221,214,254,0.45),transparent_58%)]"
-      />
       <OnboardingDotGrid />
 
       <div className="relative z-10 flex w-full flex-1 flex-col max-md:min-h-0 md:min-h-dvh md:justify-center">

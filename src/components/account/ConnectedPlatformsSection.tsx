@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BadgeCheck, Loader2, Plug, Unplug } from 'lucide-react'
+import { BadgeCheck, Link2, Loader2, Plus, Plug, Unplug } from 'lucide-react'
 import { toast } from 'sonner'
 import { useDeleteMePlatform } from '@/api/queries/use-me'
 import { PlatformIcon } from '@/components/PlatformIcon'
@@ -66,6 +66,8 @@ function PlatformLinkHandle({
 type ConnectedPlatformsSectionProps = {
   /** When true, omit outer card section (e.g. inside onboarding wizard). */
   embedded?: boolean
+  /** Creator onboarding step — matches profile setup mock. */
+  onboarding?: boolean
   /** Show disconnect control on connected platforms (account page). */
   allowDisconnect?: boolean
   /** `GET /me/platforms` in flight (account page). */
@@ -77,6 +79,7 @@ type ConnectedPlatformsSectionProps = {
 
 export function ConnectedPlatformsSection({
   embedded = false,
+  onboarding = false,
   allowDisconnect = true,
   loading = false,
   loadError = false,
@@ -114,46 +117,84 @@ export function ConnectedPlatformsSection({
   const disconnectingPlatform =
     deletePlatform.isPending && deletePlatform.variables ? deletePlatform.variables : null
 
+  const isOnboarding = embedded && onboarding
+
   const content = (
     <>
-      <div className="mb-5">
-        <h2 className="font-display text-xl font-bold">Connected platforms</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Connect TikTok and Facebook once; we reuse them when you submit campaign content. For
-          Facebook, you must grant access to the Page where you post Reels (not only your profile).
-        </p>
+      <div className={cn(isOnboarding ? 'mb-6' : 'mb-5')}>
+        {isOnboarding ? (
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
+              <Link2 className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 pt-0.5">
+              <h2 className="font-display text-lg font-bold text-slate-950">Connected platforms</h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                Connect TikTok and Facebook once; we&apos;ll reuse them when you submit campaign
+                content. For Facebook, you must grant access to the Page where you post Reels (not
+                only your profile).
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h2 className="font-display text-xl font-bold">Connected platforms</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Connect TikTok and Facebook once; we reuse them when you submit campaign content. For
+              Facebook, you must grant access to the Page where you post Reels (not only your
+              profile).
+            </p>
+          </>
+        )}
       </div>
       {loadError ? (
         <p className="mb-3 text-sm text-destructive">
           Could not load connected platforms. Refresh the page to try again.
         </p>
       ) : null}
-      <div className="grid min-w-0 gap-3 md:grid-cols-2">
+      <div className={cn('min-w-0 gap-3', isOnboarding ? 'flex flex-col' : 'grid md:grid-cols-2')}>
         {platformLinks.map((link) => {
           const connectEnabled = isCreatorPlatformConnectEnabled(link.platform)
           const pendingPage = link.status === 'pending_page'
           const isConnecting = connectingPlatform === link.platform
           const isDisconnecting = disconnectingPlatform === link.platform
           const actionsDisabled = loading || loadError
+          const isDisconnected =
+            link.status !== 'connected' && link.status !== 'pending_page'
+          const statusLabel =
+            link.status === 'connected'
+              ? link.handle
+              : pendingPage
+                ? 'Finish setup'
+                : isOnboarding && isDisconnected
+                  ? 'Not connected'
+                  : link.handle
 
           return (
             <div
               key={link.platform}
               className={cn(
-                'flex min-w-0 items-center justify-between gap-4 rounded-2xl border border-border bg-muted/40 p-4',
+                'flex min-w-0 items-center justify-between gap-4 rounded-2xl border p-4',
+                isOnboarding
+                  ? 'border-slate-200 bg-slate-50/80'
+                  : 'border-border bg-muted/40',
                 !connectEnabled && link.status !== 'connected' && 'opacity-80'
               )}
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 <PlatformIcon platform={link.platform} className="h-8 w-8 shrink-0 md:h-9 md:w-9" />
                 <div className="min-w-0">
-                  <p className="font-semibold leading-tight">{link.label}</p>
-                  <PlatformLinkHandle
-                    platform={link.platform}
-                    handle={link.handle}
-                    linkedPages={link.linkedPages}
-                    inactive={!connectEnabled && link.status !== 'connected'}
-                  />
+                  <p className="font-semibold leading-tight text-slate-950">{link.label}</p>
+                  {isOnboarding ? (
+                    <p className="mt-0.5 text-xs text-slate-500">{statusLabel}</p>
+                  ) : (
+                    <PlatformLinkHandle
+                      platform={link.platform}
+                      handle={link.handle}
+                      linkedPages={link.linkedPages}
+                      inactive={!connectEnabled && link.status !== 'connected'}
+                    />
+                  )}
                 </div>
               </div>
               <div className="shrink-0">
@@ -240,16 +281,22 @@ export function ConnectedPlatformsSection({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="whitespace-nowrap"
+                    className={cn(
+                      'whitespace-nowrap',
+                      isOnboarding &&
+                        'h-9 gap-1 rounded-lg border-sky-300 bg-white px-3 text-sm font-semibold text-sky-600 shadow-none hover:bg-sky-50 hover:text-sky-700'
+                    )}
                     disabled={isConnecting || actionsDisabled}
                     onClick={() => void handleConnect(link.platform)}
                   >
                     {isConnecting ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    ) : isOnboarding ? (
+                      <Plus className="h-3.5 w-3.5" aria-hidden />
                     ) : (
                       <Plug className="h-3.5 w-3.5" aria-hidden />
                     )}
-                    {isConnecting ? 'Connecting…' : 'Connect'}
+                    {isConnecting ? 'Connecting…' : isOnboarding ? 'Connect' : 'Connect'}
                   </Button>
                 )}
               </div>
