@@ -37,6 +37,16 @@ export function isOnboardingPath(pathname: string): boolean {
   return pathname === '/onboarding/role' || pathname.startsWith('/onboarding/profile')
 }
 
+/** Authenticated app routes where the bootstrap splash may cover the UI. */
+export function isDashboardPath(pathname: string): boolean {
+  if (pathname.startsWith('/brand/')) return true
+  if (pathname === '/dashboard') return true
+  if (pathname === '/campaigns' || pathname.startsWith('/campaigns/')) return true
+  if (pathname === '/submissions') return true
+  if (pathname === '/account') return true
+  return false
+}
+
 /** User can go straight to the dashboard (role + profile onboarding done). */
 export function isDashboardReady(
   userId: string | undefined | null,

@@ -42,6 +42,8 @@ interface AuthState {
   loading: boolean
   /** Full-screen VidU loader when entering the dashboard (not during onboarding). */
   bootstrapSplash: boolean
+  /** Run splash + prefetch when the user lands on a dashboard route (after sign-in or onboarding). */
+  pendingBootstrapSplash: boolean
   signIn: (user: AuthUser) => void
   setRole: (role: UserRole | null) => void
   clearRole: () => void
@@ -118,6 +120,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profileOnboardingComplete: {},
   loading: true,
   bootstrapSplash: false,
+  pendingBootstrapSplash: false,
   signIn: (user) => set({ user }),
   setRole: (role) => set({ role }),
   clearRole: () => set({ role: null }),
@@ -130,7 +133,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   clearLocalSession: () => {
     useSessionExpiredStore.getState().clearExpired()
-    set({ user: null, role: null, profileOnboardingComplete: {}, bootstrapSplash: false })
+    set({
+      user: null,
+      role: null,
+      profileOnboardingComplete: {},
+      bootstrapSplash: false,
+      pendingBootstrapSplash: false,
+    })
   },
   startBootstrapSplash: async () => {
     if (bootstrapSplashInFlight) return bootstrapSplashInFlight
@@ -232,8 +241,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         hydrateInFlight = null
 
         if (user && isFreshLogin && isDashboardReady(user.id, role)) {
-          authLog('post_login_dashboard_splash', { userId: user.id, role })
-          void get().startBootstrapSplash()
+          authLog('post_login_pending_dashboard_splash', { userId: user.id, role })
+          set({ pendingBootstrapSplash: true })
         }
 
         authLog('hydrate_done', {

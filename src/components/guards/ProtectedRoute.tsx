@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { VidULoading } from '@/components/VidULoading'
 import { authLog } from '@/lib/auth/authLog'
-import { isOnboardingPath } from '@/lib/auth/postLoginSplash'
+import { isDashboardPath } from '@/lib/auth/postLoginSplash'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { isProfileOnboardingComplete } from '@/lib/profileOnboarding'
@@ -40,10 +40,17 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { isAuthenticated, hasRole, role, loading, user } = useAuth()
   const bootstrapSplash = useAuthStore((s) => s.bootstrapSplash)
+  const pendingBootstrapSplash = useAuthStore((s) => s.pendingBootstrapSplash)
+  const startBootstrapSplash = useAuthStore((s) => s.startBootstrapSplash)
   const location = useLocation()
-  const onOnboardingRoute =
-    isOnboardingPath(location.pathname) || requireAuth || profileSetup
+  const onDashboardRoute = isDashboardPath(location.pathname)
   const lastRedirectLog = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!requiredRole || !pendingBootstrapSplash) return
+    useAuthStore.setState({ pendingBootstrapSplash: false })
+    void startBootstrapSplash()
+  }, [requiredRole, pendingBootstrapSplash, startBootstrapSplash])
 
   useEffect(() => {
     if (loading) return
@@ -108,11 +115,9 @@ export function ProtectedRoute({
     location.pathname,
   ])
 
-  if (loading && !onOnboardingRoute && !guestOnly) {
-    return <VidULoading fullScreen label="Getting things ready…" size="lg" />
-  }
+  if (loading) return null
 
-  if (bootstrapSplash && !onOnboardingRoute) {
+  if (bootstrapSplash && onDashboardRoute) {
     return <VidULoading fullScreen label="Getting things ready…" size="lg" />
   }
 
