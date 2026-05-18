@@ -1,9 +1,6 @@
 import { ApiRequestError } from '@/api/client'
 import { PLATFORM_RECONNECT_MESSAGE } from '@/lib/auth/sessionExpired'
-import {
-  SUBMISSION_MIN_VIEWS,
-  SUBMISSION_VIEWS_FLOOR_API_SNIPPET,
-} from '@/lib/constants'
+import { SUBMISSION_MIN_VIEWS, SUBMISSION_VIEWS_FLOOR_API_SNIPPET } from '@/lib/constants'
 import type { Platform } from '@/api/types/shared'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { formatViews } from '@/lib/utils'
@@ -11,7 +8,7 @@ import { formatViews } from '@/lib/utils'
 /** Maps stable API error codes to creator-facing copy (preview + submit). */
 const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
   tiktok_video_not_owned_or_missing:
-    "This TikTok video isn't on your connected account, or we can't access its stats. Use a link to a video you posted with the TikTok account you connected to VidU.",
+    "This TikTok video isn't on your connected account. Use a link to a video you posted with the TikTok account you connected to VidU.",
   invalid_tiktok_url:
     'Enter a valid TikTok video link (for example, tiktok.com/@username/video/...).',
   instagram_urls_not_supported_for_facebook_connect:
@@ -19,16 +16,15 @@ const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
   unsupported_facebook_content_url:
     "We don't recognize that Facebook link. Try a Reel or facebook.com/watch link from your connected account.",
   unsupported_platform: "This platform isn't supported for campaign submissions.",
-  facebook_object_not_found:
-    "We couldn't find that video on your connected Facebook account.",
+  facebook_object_not_found: "We couldn't find that video on your connected Facebook account.",
   facebook_reel_not_accessible:
-    "We can't access this Reel with your connected Facebook account. Use a Reel you posted on your profile or Page, and reconnect Facebook if you recently changed permissions.",
+    "We can't access this Reel with your connected Facebook account. Check the link and reconnect Facebook in Account settings if you recently changed permissions.",
   facebook_reel_not_on_connected_page:
-    "We can't access this Reel with your connected Facebook account. Use a Reel you posted on your profile or Page, and reconnect Facebook if you recently changed permissions.",
-  facebook_reel_not_owned:
-    "This Reel wasn't posted by your connected Facebook account. Use a link to a Reel you published with that account.",
+    "We can't access this Reel with your connected Facebook account. Check the link and reconnect Facebook in Account settings if you recently changed permissions.",
+  facebook_no_pages_linked:
+    'No Facebook Page is linked to your account. Connect Facebook and grant access to the Page where you publish Reels.',
   facebook_page_required_for_reels:
-    "We can't access this Reel with your connected Facebook account. Use a Reel you posted on your profile or Page, and reconnect Facebook if you recently changed permissions.",
+    'No Facebook Page is linked to your account. Connect Facebook and grant access to the Page where you publish Reels.',
   meta_read_insights_required:
     'Reconnect Facebook in Account settings so we can read view stats (read insights permission).',
   facebook_video_insights_unavailable:
@@ -44,7 +40,7 @@ const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
 function humanizeSubmissionApiError(
   message: string,
   platform?: Platform,
-  context: 'preview' | 'confirm' = 'preview',
+  context: 'preview' | 'confirm' = 'preview'
 ): string {
   if (message === 'creator_default_payment_method_required') {
     return context === 'preview'
@@ -95,10 +91,7 @@ export function isCampaignSubmissionViewsFloorError(err: unknown): boolean {
   )
 }
 
-export function campaignSubmissionPreviewErrorMessage(
-  err: unknown,
-  platform?: Platform
-): string {
+export function campaignSubmissionPreviewErrorMessage(err: unknown, platform?: Platform): string {
   if (err instanceof ApiRequestError) {
     if (isCampaignSubmissionViewsFloorError(err)) {
       return campaignSubmissionBelowMinViewsMessage()

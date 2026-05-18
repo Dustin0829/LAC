@@ -60,9 +60,6 @@ import { creatorHeadlineRatePer1k } from '@/lib/campaigns/utils'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { toast } from 'sonner'
 
-/** Placeholder preview still (replace with thumbnail from oEmbed/API). */
-const STATS_PREVIEW_IMAGE_SRC = '/sear-preview.jpg'
-
 // v1 (post-MVP): when yellow basket was enabled, TikTok + checked used a lower effective ₱/1k.
 // function effectiveCreatorRatePer1k(
 //   basePer1k: number,
@@ -429,78 +426,57 @@ export default function CreatorCampaignDetailPage() {
                               )}
                             </div>
 
-                            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-stretch">
-                              <div className="relative mx-auto aspect-9/16 w-[118px] shrink-0 overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-black/6 dark:bg-black/40 dark:ring-white/15 sm:mx-0 sm:w-[128px]">
-                                <img
-                                  src={STATS_PREVIEW_IMAGE_SRC}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                  loading="lazy"
-                                  decoding="async"
-                                  onError={(e) => {
-                                    const el = e.currentTarget
-                                    el.src = '/sear-cover.jpg'
-                                  }}
-                                />
-                                <div className="absolute bottom-2 left-2 flex h-7 w-7 items-center justify-center rounded-md bg-background/95 p-0.5 shadow-sm ring-1 ring-black/10 dark:bg-background/90 dark:ring-white/10">
-                                  <PlatformIcon platform={platform} className="h-[18px] w-[18px]" />
-                                </div>
+                            <dl className="grid w-full grid-cols-2 grid-rows-2 gap-2 sm:gap-2.5">
+                              <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2 dark:bg-black/35">
+                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Views
+                                </dt>
+                                <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
+                                  {formatViews(snapshot.views)}
+                                </dd>
                               </div>
-
-                              <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-                                <dl className="grid h-full min-h-54 w-full grid-cols-2 grid-rows-2 gap-2 sm:min-h-[calc(128px*16/9)] sm:flex-1 sm:gap-2.5">
-                                  <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2 dark:bg-black/35">
-                                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                      Views
-                                    </dt>
-                                    <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
-                                      {formatViews(snapshot.views)}
-                                    </dd>
-                                  </div>
-                                  <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2  dark:bg-black/35">
-                                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                      Likes
-                                    </dt>
-                                    <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
-                                      {formatNumber(snapshot.likes)}
-                                    </dd>
-                                  </div>
-                                  <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2 dark:bg-black/35">
-                                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                      Comments
-                                    </dt>
-                                    <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
-                                      {formatNumber(snapshot.comments)}
-                                    </dd>
-                                  </div>
-                                  <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2  dark:bg-black/35">
-                                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                      Payout
-                                    </dt>
-                                    <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-phc-gradient sm:text-xl">
-                                      {/* v1 (post-MVP): payout preview used `tikTokYellowBasket` as third arg to effectiveCreatorRatePer1k */}
-                                      {formatPHP(
-                                        Math.round(
-                                          (snapshot.views / 1_000) *
-                                            effectiveCreatorRatePer1k(
-                                              creatorRatePer1k,
-                                              platform,
-                                              false
-                                            ) *
-                                            100
-                                        ) / 100,
-                                        { decimals: false }
-                                      )}
-                                    </dd>
-                                  </div>
-                                </dl>
-                                {linkPhase === 'below_quota' ? (
-                                  <p className="mt-2 rounded-lg border border-amber-200/80 bg-white/80 px-3 py-2 text-center text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/50 dark:text-amber-100">
-                                    {campaignSubmissionBelowMinViewsMessage(snapshot.views)}
-                                  </p>
-                                ) : null}
+                              <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2  dark:bg-black/35">
+                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Likes
+                                </dt>
+                                <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
+                                  {formatNumber(snapshot.likes)}
+                                </dd>
                               </div>
-                            </div>
+                              <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2 dark:bg-black/35">
+                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Comments
+                                </dt>
+                                <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
+                                  {formatNumber(snapshot.comments)}
+                                </dd>
+                              </div>
+                              <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2  dark:bg-black/35">
+                                <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Payout
+                                </dt>
+                                <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-phc-gradient sm:text-xl">
+                                  {/* v1 (post-MVP): payout preview used `tikTokYellowBasket` as third arg to effectiveCreatorRatePer1k */}
+                                  {formatPHP(
+                                    Math.round(
+                                      (snapshot.views / 1_000) *
+                                        effectiveCreatorRatePer1k(
+                                          creatorRatePer1k,
+                                          platform,
+                                          false
+                                        ) *
+                                        100
+                                    ) / 100,
+                                    { decimals: false }
+                                  )}
+                                </dd>
+                              </div>
+                            </dl>
+                            {linkPhase === 'below_quota' ? (
+                              <p className="mt-2 rounded-lg border border-amber-200/80 bg-white/80 px-3 py-2 text-center text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/50 dark:text-amber-100">
+                                {campaignSubmissionBelowMinViewsMessage(snapshot.views)}
+                              </p>
+                            ) : null}
                           </div>
                         ) : null}
                       </>
