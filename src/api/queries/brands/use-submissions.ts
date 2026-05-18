@@ -3,6 +3,7 @@ import {
   getBrandCampaignSubmissions,
   getBrandRecentSubmissions,
   rejectBrandCampaignSubmission,
+  restoreBrandCampaignSubmission,
 } from '@/api/services/brands/submissions'
 import type { RejectBrandSubmissionBody } from '@/api/types/brands/submissions.types'
 import { brandCampaignsQueryKeys } from '@/api/queries/brands/use-campaigns'
@@ -72,6 +73,26 @@ export function useRejectBrandCampaignSubmission(campaignId: string) {
       })
       void qc.invalidateQueries({ queryKey: brandCampaignsQueryKeys.detail(campaignId) })
       toast.success('Submission rejected.')
+    },
+    onError: (err) => toast.error(brandCampaignApiErrorMessage(err)),
+  })
+}
+
+/** Restore a rejected submission to pending (`POST …/submissions/:submissionId/restore`). */
+export function useRestoreBrandCampaignSubmission(campaignId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: [...brandSubmissionsQueryKeys.all, 'restore', campaignId] as const,
+    mutationFn: (submissionId: string) =>
+      restoreBrandCampaignSubmission(campaignId, submissionId),
+    retry: false,
+    onSuccess: () => {
+      void qc.invalidateQueries({
+        queryKey: brandSubmissionsQueryKeys.campaign(campaignId, {}),
+      })
+      void qc.invalidateQueries({ queryKey: brandCampaignsQueryKeys.detail(campaignId) })
+      void qc.invalidateQueries({ queryKey: brandCampaignsQueryKeys.all })
+      toast.success('Submission restored to pending.')
     },
     onError: (err) => toast.error(brandCampaignApiErrorMessage(err)),
   })

@@ -1,4 +1,4 @@
-import { Loader2, Send } from 'lucide-react'
+import { Loader2, RotateCcw, Send } from 'lucide-react'
 import type { BrandSubmissionRow } from '@/api/types/brands/submissions.types'
 import type { Campaign } from '@/lib/campaigns/types'
 import { cn, formatPHP, formatViews } from '@/lib/utils'
@@ -24,10 +24,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   BRAND_REJECT_OUTLINE_BTN_CLASS,
   BRAND_REJECT_PRESETS,
   BRAND_REJECTED_ROW_CLASS,
+  BRAND_REJECTED_STRIKETHROUGH_CLASS,
   type BrandRejectPresetId,
   type BrandRejectTarget,
 } from '@/lib/brands/campaigns/campaignDetailUi'
@@ -43,6 +45,10 @@ export type SubmissionsTabProps = {
   setReleasePayoutOpen: (open: boolean) => void
   openReleasePayoutDialog: () => void
   confirmReleasePayouts: () => void
+  /** False while Xendit split to brand sub-account is pending. */
+  payoutPoolSettled: boolean
+  /** Shown on disabled release button while settlement is pending. */
+  payoutSettlingMessage?: string
   rejectTarget: BrandRejectTarget | null
   rejectPreset: BrandRejectPresetId
   setRejectPreset: (id: BrandRejectPresetId) => void
@@ -52,6 +58,8 @@ export type SubmissionsTabProps = {
   resetRejectDialog: () => void
   confirmBrandReject: () => void
   isRejectingSubmission: boolean
+  restoreRejectedSubmission: (submissionId: string) => void
+  isRestoringSubmission: boolean
 }
 
 export function SubmissionsTab(props: SubmissionsTabProps) {
@@ -66,6 +74,8 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
     setReleasePayoutOpen,
     openReleasePayoutDialog,
     confirmReleasePayouts,
+    payoutPoolSettled,
+    payoutSettlingMessage,
     rejectTarget,
     rejectPreset,
     setRejectPreset,
@@ -75,6 +85,8 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
     resetRejectDialog,
     confirmBrandReject,
     isRejectingSubmission,
+    restoreRejectedSubmission,
+    isRestoringSubmission,
   } = props
 
   return (
@@ -99,13 +111,33 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
     <div className="space-y-4">
       {pendingPayoutSubmissions.length > 0 && campaign.status !== 'draft' ? (
         <div className="flex justify-end">
-          <Button
-            type="button"
-            className="bg-phc-gradient font-semibold text-white hover:opacity-90"
-            onClick={openReleasePayoutDialog}
-          >
-            <Send className="h-4 w-4" /> Release payout
-          </Button>
+          {payoutSettlingMessage && !payoutPoolSettled ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex cursor-not-allowed">
+                  <Button
+                    type="button"
+                    className="pointer-events-none bg-phc-gradient font-semibold text-white hover:opacity-90"
+                    disabled
+                  >
+                    <Send className="h-4 w-4" /> Release payout
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <p className="text-sm leading-relaxed">{payoutSettlingMessage}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button
+              type="button"
+              className="bg-phc-gradient font-semibold text-white hover:opacity-90"
+              disabled={!payoutPoolSettled}
+              onClick={openReleasePayoutDialog}
+            >
+              <Send className="h-4 w-4" /> Release payout
+            </Button>
+          )}
         </div>
       ) : null}
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -123,6 +155,8 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
           <TableBody>
             {campaignSubmissions.map((row) => {
               const canReject = row.status === 'pending' || row.status === 'payout_failed'
+              const isRejected = row.status === 'rejected'
+              const strikethrough = isRejected ? BRAND_REJECTED_STRIKETHROUGH_CLASS : undefined
               return (
                 <TableRow
                   key={row.id}
@@ -143,16 +177,21 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
                         size="xs"
                         className="shrink-0"
                       />
-                      <span className="font-medium">{row.creatorName}</span>
+                      <span className={cn('font-medium', strikethrough)}>{row.creatorName}</span>
                     </div>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <PlatformCell platform={row.platform} iconClassName="h-5 w-5" />
                   </TableCell>
-                  <TableCell className="font-display font-semibold tabular-nums">
+                  <TableCell className={cn('font-display font-semibold tabular-nums', strikethrough)}>
                     {formatViews(row.views)}
                   </TableCell>
-                  <TableCell className="font-display font-semibold tabular-nums text-phc-gradient">
+                  <TableCell
+                    className={cn(
+                      'font-display font-semibold tabular-nums',
+                      isRejected ? strikethrough : 'text-phc-gradient'
+                    )}
+                  >
                     {formatPHP(row.payoutGross, { decimals: false })}
                   </TableCell>
                   <TableCell>
@@ -171,6 +210,22 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
                         onClick={() => openRejectForSubmission(row.id, row.creatorName)}
                       >
                         Reject
+                      </Button>
+                    ) : isRejected ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        className="rounded-md font-normal"
+                        disabled={isRestoringSubmission}
+                        onClick={() => restoreRejectedSubmission(row.id)}
+                      >
+                        {isRestoringSubmission ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                        ) : (
+                          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                        )}
+                        Restore
                       </Button>
                     ) : (
                       <span className="inline-block min-w-17" aria-hidden />

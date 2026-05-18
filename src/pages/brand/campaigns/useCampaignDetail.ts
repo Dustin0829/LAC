@@ -11,6 +11,7 @@ import {
 import {
   useBrandCampaignSubmissions,
   useRejectBrandCampaignSubmission,
+  useRestoreBrandCampaignSubmission,
 } from '@/api/queries/brands/use-submissions'
 import { usePaymentMethods } from '@/api/queries/use-payment-methods'
 import { brandCampaignDetailFromApi } from '@/lib/brands/campaigns/campaignCards'
@@ -95,6 +96,8 @@ export function useCampaignDetail() {
   const { mutate: refundCampaign } = useRefundBrandCampaign(id)
   const { mutate: rejectSubmission, isPending: isRejectingSubmission } =
     useRejectBrandCampaignSubmission(id)
+  const { mutate: restoreSubmission, isPending: isRestoringSubmission } =
+    useRestoreBrandCampaignSubmission(id)
 
   const { data: refundReceivingMethods = [] } = usePaymentMethods()
   const hasRefundReceivingAccount = refundReceivingMethods.length > 0
@@ -141,7 +144,11 @@ export function useCampaignDetail() {
   >(() => new Set())
 
   const countedViewsForReach = useMemo(
-    () => campaignSubmissions.reduce((sum, row) => sum + row.views, 0),
+    () =>
+      campaignSubmissions.reduce(
+        (sum, row) => (row.status === 'rejected' ? sum : sum + row.views),
+        0
+      ),
     [campaignSubmissions]
   )
 
@@ -434,6 +441,10 @@ export function useCampaignDetail() {
   const refundSettlingMessage = refundPoolSettled
     ? undefined
     : formatCampaignRefundSettlingToast(apiCampaignDto?.createdAt)
+  const payoutPoolSettled = refundPoolSettled
+  const payoutSettlingMessage = payoutPoolSettled
+    ? undefined
+    : formatCampaignPayoutReleaseSettlingToast(apiCampaignDto?.createdAt)
 
   const confirmRefundAvailable = useCallback(() => {
     if (!refundPoolSettled) return
@@ -498,14 +509,12 @@ export function useCampaignDetail() {
   }, [campaign])
 
   const openReleasePayoutDialog = useCallback(() => {
-    if (apiCampaignDto?.xenditPoolSettled === false) {
-      toast.error(formatCampaignPayoutReleaseSettlingToast(apiCampaignDto.createdAt))
-      return
-    }
+    if (!payoutPoolSettled) return
     setReleasePayoutOpen(true)
-  }, [apiCampaignDto?.xenditPoolSettled, apiCampaignDto?.createdAt])
+  }, [payoutPoolSettled])
 
   const confirmReleasePayouts = useCallback(() => {
+    if (!payoutPoolSettled) return
     if (pendingPayoutSubmissions.length === 0) {
       toast.error('No pending submissions ready for payout.')
       return
@@ -516,7 +525,7 @@ export function useCampaignDetail() {
         void refetchSubmissions()
       },
     })
-  }, [pendingPayoutSubmissions.length, releasePayout, refetchSubmissions])
+  }, [payoutPoolSettled, pendingPayoutSubmissions.length, releasePayout, refetchSubmissions])
 
   const openRejectForSubmission = useCallback((submissionId: string, creatorName: string) => {
     setRejectTarget({ submissionId, creatorName })
@@ -549,6 +558,13 @@ export function useCampaignDetail() {
       { onSuccess: resetRejectDialog }
     )
   }, [rejectTarget, rejectPreset, rejectOtherDetail, rejectSubmission, resetRejectDialog])
+
+  const restoreRejectedSubmission = useCallback(
+    (submissionId: string) => {
+      restoreSubmission(submissionId)
+    },
+    [restoreSubmission]
+  )
 
   const header: CampaignDetailHeaderProps | null = useMemo(() => {
     if (!campaign) return null
@@ -716,6 +732,8 @@ export function useCampaignDetail() {
         setReleasePayoutOpen,
         openReleasePayoutDialog,
         confirmReleasePayouts,
+        payoutPoolSettled,
+        payoutSettlingMessage,
         rejectTarget,
         rejectPreset,
         setRejectPreset,
@@ -725,6 +743,8 @@ export function useCampaignDetail() {
         resetRejectDialog,
         confirmBrandReject,
         isRejectingSubmission,
+        restoreRejectedSubmission,
+        isRestoringSubmission,
       },
     }
   }, [
@@ -784,7 +804,11 @@ export function useCampaignDetail() {
     resetRejectDialog,
     confirmBrandReject,
     isRejectingSubmission,
+    restoreRejectedSubmission,
+    isRestoringSubmission,
     confirmReleasePayouts,
+    payoutPoolSettled,
+    payoutSettlingMessage,
     refundPoolSettled,
     refundSettlingMessage,
   ])

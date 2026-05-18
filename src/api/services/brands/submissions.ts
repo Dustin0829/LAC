@@ -37,3 +37,10 @@ export async function rejectBrandCampaignSubmission(
 ): Promise<void> {
   await api.post(`/brands/campaigns/${campaignId}/submissions/${submissionId}/reject`, body)
 }
+
+export async function restoreBrandCampaignSubmission(
+  campaignId: string,
+  submissionId: string
+): Promise<void> {
+  await api.post(`/brands/campaigns/${campaignId}/submissions/${submissionId}/restore`)
+}

@@ -116,6 +116,10 @@ export function brandCampaignApiErrorMessage(
         : formatCampaignRefundSettlingToast(context?.createdAt)
     case 'already_paying':
       return 'A payout is already in progress for this submission.'
+    case 'submission_not_rejected':
+      return 'Only rejected submissions can be restored.'
+    case 'duplicate_submission':
+      return 'This creator already has another active submission for the same content.'
     case 'Cannot reject paid submission':
       return 'Paid submissions cannot be rejected.'
     case 'We could not reach the payment provider. Try again in a moment.':

@@ -66,6 +66,9 @@ export function getCampaignReachViewGoal(
   const gross = campaign.grossBudget ?? 0
   if (campaign.status === 'draft' && gross <= 0) return 0
 
+  const apiGoal = Math.max(0, campaign.estimatedReach)
+  if (apiGoal > 0) return apiGoal
+
   const counted = context?.countedViews ?? 0
   const reserved = context?.reservedBalance ?? 0
   const paidOut = context?.paidOut ?? 0
@@ -76,10 +79,8 @@ export function getCampaignReachViewGoal(
 
   if (!hasFundedBalance && !hasConsumedViews) return 0
 
-  const apiGoal = Math.max(0, campaign.estimatedReach)
-
   if (hasFundedBalance) {
-    return apiGoal > 0 ? apiGoal : counted
+    return counted
   }
 
   return counted

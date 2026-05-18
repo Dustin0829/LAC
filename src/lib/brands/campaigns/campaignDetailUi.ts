@@ -20,6 +20,10 @@ export const BRAND_REJECT_PRESETS = [
 /** Rejected table row — submissions, payout accordion, release modal. */
 export const BRAND_REJECTED_ROW_CLASS = 'bg-red-50/90 dark:bg-red-950/35'
 
+/** Strikethrough on views/payout/creator text for rejected rows. */
+export const BRAND_REJECTED_STRIKETHROUGH_CLASS =
+  'text-muted-foreground line-through decoration-muted-foreground/70'
+
 /** Red-outlined Reject CTA (outline variant + destructive border/text). */
 export const BRAND_REJECT_OUTLINE_BTN_CLASS =
   'border-destructive text-destructive shadow-none hover:border-destructive hover:bg-destructive/10 hover:text-destructive'
