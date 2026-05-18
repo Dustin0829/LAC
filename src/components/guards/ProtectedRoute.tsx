@@ -1,20 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { VidULoading } from '@/components/VidULoading'
 import { authLog } from '@/lib/auth/authLog'
+import { isOnboardingPath } from '@/lib/auth/postLoginSplash'
 import { useAuth } from '@/lib/hooks/use-auth'
+import { useAuthStore } from '@/lib/stores/authStore'
 import { isProfileOnboardingComplete } from '@/lib/profileOnboarding'
 import type { UserRole } from '@/lib/stores/authStore'
-
-function AuthLoading() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-      <div className="flex flex-col items-center gap-3">
-        <div className="h-2 w-2 rounded-full bg-phc-gradient animate-pulse" />
-        Loading…
-      </div>
-    </div>
-  )
-}
 
 function dashboardForRole(role: UserRole | null) {
   if (role === 'brand') return '/brand/dashboard'
@@ -47,7 +39,10 @@ export function ProtectedRoute({
   children,
 }: ProtectedRouteProps) {
   const { isAuthenticated, hasRole, role, loading, user } = useAuth()
+  const bootstrapSplash = useAuthStore((s) => s.bootstrapSplash)
   const location = useLocation()
+  const onOnboardingRoute =
+    isOnboardingPath(location.pathname) || requireAuth || profileSetup
   const lastRedirectLog = useRef<string | null>(null)
 
   useEffect(() => {
@@ -113,7 +108,13 @@ export function ProtectedRoute({
     location.pathname,
   ])
 
-  if (loading) return <AuthLoading />
+  if (loading && !onOnboardingRoute && !guestOnly) {
+    return <VidULoading fullScreen label="Getting things ready…" size="lg" />
+  }
+
+  if (bootstrapSplash && !onOnboardingRoute) {
+    return <VidULoading fullScreen label="Getting things ready…" size="lg" />
+  }
 
   if (index) {
     if (!isAuthenticated) return <Navigate to="/auth" replace />

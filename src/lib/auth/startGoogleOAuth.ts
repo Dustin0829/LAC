@@ -1,6 +1,7 @@
 import { toast } from 'sonner'
 import { getApiBaseUrl } from '@/api/config'
 import { authLog } from '@/lib/auth/authLog'
+import { markPendingPostLoginSplash } from '@/lib/auth/postLoginSplash'
 
 /**
  * Full-page redirect to backend `GET /auth/google/start`.
@@ -20,6 +21,7 @@ export function startGoogleOAuth(onWillRedirect?: () => void): void {
     pageOrigin: window.location.origin,
     pagePath: window.location.pathname,
   })
+  markPendingPostLoginSplash()
   onWillRedirect?.()
   requestAnimationFrame(() => {
     window.location.assign(startUrl)

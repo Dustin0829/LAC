@@ -4,7 +4,15 @@ import { postAuthSignOut } from '@/api/services/auth'
 import { getMe } from '@/api/services/me'
 import type { MeResponseData } from '@/api/types/me.types'
 import { authLog } from '@/lib/auth/authLog'
+import {
+  consumePendingPostLoginSplash,
+  isDashboardReady,
+  postLoginMinLoadMs,
+  runBootstrapSplashMinimum,
+} from '@/lib/auth/postLoginSplash'
+import { prefetchDashboardData } from '@/lib/dashboard/prefetchDashboard'
 import { purgeLegacyAuthStorage } from '@/lib/auth/purgeLegacyAuthStorage'
+import { getQueryClient } from '@/lib/queryClientRef'
 import {
   expireSession,
   isAuthSessionUnauthorized,
@@ -16,6 +24,7 @@ import {
 /** React Strict Mode runs `AuthProvider` effects twice in dev — dedupe `GET /me` + stale-cookie sign-out. */
 let initialBrowserHydrateDone = false
 let hydrateInFlight: Promise<void> | null = null
+let bootstrapSplashInFlight: Promise<void> | null = null
 
 export type UserRole = 'creator' | 'brand'
 
@@ -31,6 +40,8 @@ interface AuthState {
   role: UserRole | null
   profileOnboardingComplete: Record<string, boolean>
   loading: boolean
+  /** Full-screen VidU loader when entering the dashboard (not during onboarding). */
+  bootstrapSplash: boolean
   signIn: (user: AuthUser) => void
   setRole: (role: UserRole | null) => void
   clearRole: () => void
@@ -38,6 +49,8 @@ interface AuthState {
   /** Clears in-memory session only (cookie cleared via `POST /auth/sign-out`). */
   clearLocalSession: () => void
   hydrate: () => Promise<void>
+  /** Minimum-duration logo splash before showing dashboard content. */
+  startBootstrapSplash: () => Promise<void>
 }
 
 type AuthActions = Pick<AuthState, 'signIn' | 'setRole' | 'clearRole'>
@@ -104,6 +117,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   role: null,
   profileOnboardingComplete: {},
   loading: true,
+  bootstrapSplash: false,
   signIn: (user) => set({ user }),
   setRole: (role) => set({ role }),
   clearRole: () => set({ role: null }),
@@ -116,7 +130,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   clearLocalSession: () => {
     useSessionExpiredStore.getState().clearExpired()
-    set({ user: null, role: null, profileOnboardingComplete: {} })
+    set({ user: null, role: null, profileOnboardingComplete: {}, bootstrapSplash: false })
+  },
+  startBootstrapSplash: async () => {
+    if (bootstrapSplashInFlight) return bootstrapSplashInFlight
+    if (get().bootstrapSplash) return
+
+    bootstrapSplashInFlight = (async () => {
+      const startedAt = Date.now()
+      set({ bootstrapSplash: true })
+      authLog('bootstrap_splash_start', { minMs: postLoginMinLoadMs() })
+      try {
+        const role = get().role
+        await Promise.all([
+          runBootstrapSplashMinimum(startedAt),
+          (async () => {
+            const qc = getQueryClient()
+            if (qc) await prefetchDashboardData(qc, role)
+          })(),
+        ])
+      } finally {
+        set({ bootstrapSplash: false })
+        authLog('bootstrap_splash_complete', { elapsedMs: Date.now() - startedAt })
+        bootstrapSplashInFlight = null
+      }
+    })()
+
+    return bootstrapSplashInFlight
   },
   hydrate: async () => {
     if (typeof window === 'undefined') {
@@ -131,6 +171,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     hydrateInFlight = (async () => {
+      const hydrateStartedAt = Date.now()
+      let isFreshLogin = false
+
       try {
         set({ loading: true, user: null, role: null })
         purgeLegacyAuthStorage()
@@ -144,7 +187,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           })
         }
         const hadRequiresRole = params.has('requires_role')
-        if (params.has('requires_role') || params.has('session_token')) {
+        const hadSessionToken = params.has('session_token')
+        isFreshLogin =
+          hadRequiresRole || hadSessionToken || consumePendingPostLoginSplash()
+        if (hadRequiresRole || hadSessionToken) {
           authLog('post_login_query_params', {
             requiresRole: hadRequiresRole,
             hadSessionToken: params.has('session_token'),
@@ -161,6 +207,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           pageOrigin: window.location.origin,
           pagePath: window.location.pathname,
           hadRequiresRole,
+          hadSessionToken,
+          isFreshLogin,
           oauthError,
         })
 
@@ -179,14 +227,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         get().clearLocalSession()
       } finally {
         const { user, role } = get()
+        set({ loading: false })
+        initialBrowserHydrateDone = true
+        hydrateInFlight = null
+
+        if (user && isFreshLogin && isDashboardReady(user.id, role)) {
+          authLog('post_login_dashboard_splash', { userId: user.id, role })
+          void get().startBootstrapSplash()
+        }
+
         authLog('hydrate_done', {
           isAuthenticated: Boolean(user),
           hasRole: Boolean(role),
           role,
+          isFreshLogin,
+          dashboardReady: isDashboardReady(user?.id, role),
+          elapsedMs: Date.now() - hydrateStartedAt,
         })
-        set({ loading: false })
-        initialBrowserHydrateDone = true
-        hydrateInFlight = null
       }
     })()
 

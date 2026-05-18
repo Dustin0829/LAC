@@ -62,6 +62,7 @@ function CreatorProfileOnboarding() {
           onSuccess: () => {
             markProfileOnboardingComplete(userId, 'creator')
             navigate('/dashboard', { replace: true })
+            void useAuthStore.getState().startBootstrapSplash()
           },
         })
       },
@@ -214,6 +215,7 @@ function BrandProfileOnboarding() {
           onSuccess: () => {
             markProfileOnboardingComplete(userId, 'brand')
             navigate('/brand/dashboard', { replace: true })
+            void useAuthStore.getState().startBootstrapSplash()
           },
         })
       },
