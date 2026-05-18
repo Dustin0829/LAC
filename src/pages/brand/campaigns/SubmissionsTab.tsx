@@ -14,6 +14,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ContentStatusBadge } from '@/components/ContentStatusBadge'
+import { VidULoading } from '@/components/VidULoading'
 import { PersonAvatar } from '@/components/PersonAvatar'
 import { PlatformCell } from '@/components/PlatformIcon'
 import {
@@ -134,8 +135,8 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
   aria-labelledby="campaign-tab-submissions-payout"
 >
   {submissionsLoading ? (
-    <div className="rounded-3xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
-      Loading submissions…
+    <div className="rounded-3xl border border-border bg-card p-12">
+      <VidULoading label="Loading submissions…" size="lg" />
     </div>
   ) : campaignSubmissions.length === 0 ? (
     <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">

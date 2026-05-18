@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Wallet, Eye, ArrowUpRight, Clock, Loader2 } from 'lucide-react'
+import { Wallet, Eye, ArrowUpRight, Clock } from 'lucide-react'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/select'
 import { TablePagination } from '@/components/TablePagination'
 import { RefreshButton } from '@/components/RefreshButton'
+import { VidULoading } from '@/components/VidULoading'
 import { CREATOR_SUBMISSIONS_PAGE_SIZE } from '@/lib/constants'
 
 export default function CreatorDashboardPage() {
@@ -162,10 +163,7 @@ export default function CreatorDashboardPage() {
         </div>
         <div className="h-72 w-full min-w-0">
           {analyticsLoading ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              Loading chart…
-            </div>
+            <VidULoading label="Loading chart…" size="md" className="h-full" />
           ) : analyticsError ? (
             <div className="flex h-full items-center justify-center text-sm text-destructive">
               Could not load earnings chart. Try refreshing the dashboard.
@@ -237,8 +235,8 @@ export default function CreatorDashboardPage() {
             <TableBody>
               {recentLoading ? (
                 <TableRow className="cursor-default hover:bg-transparent">
-                  <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
-                    Loading submissions…
+                  <TableCell colSpan={6} className="py-12">
+                    <VidULoading label="Loading submissions…" size="sm" />
                   </TableCell>
                 </TableRow>
               ) : recentError ? (

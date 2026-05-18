@@ -6,6 +6,7 @@ import { useFundingReturn } from '@/api/queries/brands/use-funding-return'
 import { Button } from '@/components/ui/button'
 import { CampaignCard } from '@/components/CampaignCard'
 import { RefreshButton } from '@/components/RefreshButton'
+import { VidULoading } from '@/components/VidULoading'
 import { BrandCampaignsEmptyState } from '@/components/brand/BrandCampaignsEmptyState'
 
 export default function BrandCampaignsPage() {
@@ -60,8 +61,8 @@ export default function BrandCampaignsPage() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-3xl border border-border bg-card p-16 text-center text-sm text-muted-foreground">
-          Loading campaigns…
+        <div className="rounded-3xl border border-border bg-card p-16">
+          <VidULoading label="Loading campaigns…" size="lg" className="py-4" />
         </div>
       ) : isError ? (
         <div className="rounded-3xl border border-border bg-card p-16 text-center">

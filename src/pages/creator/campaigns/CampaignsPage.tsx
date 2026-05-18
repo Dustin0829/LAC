@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Filter, Loader2 } from 'lucide-react'
+import { Filter } from 'lucide-react'
 import { useCreatorCampaigns } from '@/api/queries/creator/use-campaigns'
 import {
   CREATOR_CAMPAIGN_PLATFORM_OPTIONS,
@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshButton } from '@/components/RefreshButton'
 import { CampaignCard } from '@/components/CampaignCard'
 import { CreatorCampaignsEmptyState } from '@/components/creator/CreatorCampaignsEmptyState'
+import { VidULoading } from '@/components/VidULoading'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { cn } from '@/lib/utils'
 import type { Platform } from '@/api/types/shared'
@@ -223,9 +224,8 @@ export default function CreatorCampaignsPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center gap-2 rounded-3xl border border-border bg-card px-4 py-12 text-sm text-muted-foreground sm:p-16">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          Loading campaigns…
+        <div className="rounded-3xl border border-border bg-card px-4 py-12 sm:p-16">
+          <VidULoading label="Loading campaigns…" size="lg" className="py-4" />
         </div>
       ) : isError ? (
         <div className="rounded-3xl border border-border bg-card px-4 py-12 text-center sm:p-16">

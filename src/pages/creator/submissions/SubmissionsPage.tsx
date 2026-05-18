@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Scissors, Wallet, Eye, Loader2, Send } from 'lucide-react'
+import { Scissors, Wallet, Eye, Send } from 'lucide-react'
 import { useCreatorDashboardStats } from '@/api/queries/creator/use-dashboard'
 import { useMeSubmissions, useRefreshCreatorSubmissionsPage } from '@/api/queries/creator/use-submissions'
 import {
@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { CreatorSubmissionsEmptyState } from '@/components/creator/CreatorSubmissionsEmptyState'
+import { VidULoading } from '@/components/VidULoading'
 import { Button } from '@/components/ui/button'
 import { RefreshButton } from '@/components/RefreshButton'
 
@@ -182,9 +183,8 @@ export default function SubmissionsPage() {
 
       <div id="submissions-tabpanel" role="tabpanel" aria-labelledby={`submissions-tab-${tab}`}>
         {listLoading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            Loading submissions…
+          <div className="py-12">
+            <VidULoading label="Loading submissions…" size="md" />
           </div>
         ) : listError ? (
           <div className="rounded-2xl border border-border bg-card px-4 py-12 text-center sm:px-8 sm:py-14">

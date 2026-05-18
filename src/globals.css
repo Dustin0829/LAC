@@ -194,4 +194,18 @@
   .scrollbar-thin {
     scrollbar-width: thin;
   }
+  @keyframes vidu-load-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.65;
+      transform: scale(0.94);
+    }
+  }
+  .animate-vidu-load {
+    animation: vidu-load-pulse 1.75s ease-in-out infinite;
+  }
 }

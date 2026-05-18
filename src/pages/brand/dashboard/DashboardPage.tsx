@@ -53,6 +53,7 @@ import { brandPerformanceChartHasActivity } from '@/lib/brands/dashboard/brandDa
 import { BrandDashboardRecentSubmissionsEmptyState } from '@/components/brand/BrandDashboardRecentSubmissionsEmptyState'
 import { TablePagination } from '@/components/TablePagination'
 import { RefreshButton } from '@/components/RefreshButton'
+import { VidULoading } from '@/components/VidULoading'
 import { RECENT_PAGE_SIZE } from '@/lib/constants'
 
 export default function BrandDashboardPage() {
@@ -184,9 +185,7 @@ export default function BrandDashboardPage() {
         </div>
         <div className="h-72 w-full min-w-0">
           {analyticsLoading ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Loading performance…
-            </div>
+            <VidULoading label="Loading performance…" size="md" className="h-full" />
           ) : !hasPerformanceActivity ? (
             <BrandDashboardPerformanceEmptyState variant={performanceEmptyVariant} />
           ) : (
@@ -272,11 +271,8 @@ export default function BrandDashboardPage() {
             <TableBody>
               {recentLoading ? (
                 <TableRow className="cursor-default hover:bg-transparent">
-                  <TableCell
-                    colSpan={6}
-                    className="py-12 text-center text-sm text-muted-foreground"
-                  >
-                    Loading submissions…
+                  <TableCell colSpan={6} className="py-12">
+                    <VidULoading label="Loading submissions…" size="sm" />
                   </TableCell>
                 </TableRow>
               ) : recentError ? (
