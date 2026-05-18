@@ -37,8 +37,15 @@ export function creatorLinksFromPlatformDtos(
   return mockCreatorPlatformLinks.map((defaults) => {
     const api = byPlatform.get(defaults.platform)
     if (!api) return defaults
-    const status =
-      api.linkStatus === 'connected'
+    const needsPageSetup =
+      api.platform === 'facebook' &&
+      api.linkStatus === 'connected' &&
+      (api.displayHandle === 'Facebook Page' ||
+        api.displayHandle === 'Select your Facebook Page' ||
+        api.displayHandle === 'Finish Page setup')
+    const status = needsPageSetup
+      ? 'pending_page'
+      : api.linkStatus === 'connected'
         ? 'connected'
         : api.linkStatus === 'pending_page'
           ? 'pending_page'

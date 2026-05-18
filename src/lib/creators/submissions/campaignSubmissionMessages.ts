@@ -27,7 +27,9 @@ const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
   facebook_reel_not_on_connected_page:
     "This Reel isn't on your connected Facebook account, or we can't access it. Paste a link to a Reel you posted with the account you connected to VidU.",
   facebook_no_pages_linked:
-    'No Facebook Page is linked to your account. Connect Facebook and grant access to the Page where you publish Reels.',
+    'No Facebook Page is linked. In Account, tap Finish setup (or disconnect and reconnect), then select the Page where you publish Reels when Meta asks.',
+  facebook_page_app_required:
+    'Facebook Page insights are not configured on this server. The brand needs META_PAGE_APP_ID set, or your login app needs Page permissions — contact support.',
   facebook_page_required_for_reels:
     'No Facebook Page is linked to your account. Connect Facebook and grant access to the Page where you publish Reels.',
   meta_read_insights_required:

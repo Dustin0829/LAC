@@ -65,7 +65,8 @@ export function ConnectedPlatformsSection({
       <div className="mb-5">
         <h2 className="font-display text-xl font-bold">Connected platforms</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Connect TikTok and Facebook once; we reuse them when you submit campaign content.
+          Connect TikTok and Facebook once; we reuse them when you submit campaign content. For
+          Facebook, you must grant access to the Page where you post Reels (not only your profile).
         </p>
       </div>
       {loadError ? (
