@@ -6,6 +6,7 @@ import { getMePlatforms } from '@/api/services/me'
 import { creatorLinksFromPlatforms } from '@/lib/auth/mapMeProfile'
 import { consumeCreatorPlatformOAuthSearchParams } from '@/lib/auth/oauthPlatformCallback'
 import { startFacebookPageOAuth } from '@/lib/auth/startFacebookPageOAuth'
+import { submissionApiErrorMessage } from '@/lib/creators/submissions/campaignSubmissionMessages'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
@@ -26,7 +27,8 @@ export function PlatformOAuthProvider({ children }: { children: ReactNode }) {
     handledRef.current = true
 
     if (result.status === 'error') {
-      toast.error(result.reason ?? `Could not connect ${PLATFORM_LABEL[result.platform]}.`)
+      const mapped = result.reason ? submissionApiErrorMessage(result.reason) : undefined
+      toast.error(mapped ?? result.reason ?? `Could not connect ${PLATFORM_LABEL[result.platform]}.`)
       return
     }
 

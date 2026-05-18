@@ -53,11 +53,18 @@ export type PutMeBrandProfileBody = {
   logoObjectKey?: string
 }
 
+export type MetaLinkedPageDto = {
+  id: string
+  name: string
+}
+
 export type CreatorPlatformLinkDto = {
   platform: string
   displayHandle: string
   linkStatus: string
   connectedAt: string | null
+  /** Facebook Pages from last successful sync (for account UI tooltips). */
+  linkedPages?: MetaLinkedPageDto[]
 }
 
 export type CreatorMeProfileData = {

@@ -51,10 +51,17 @@ export interface Content {
 }
 
 /** Creator account connected platforms (mapped from `GET /me` + defaults). */
+export interface MetaLinkedPage {
+  id: string
+  name: string
+}
+
 export interface CreatorPlatformLink {
   platform: Platform
   label: string
   handle: string
   status: 'connected' | 'reconnect' | 'pending_page'
   connectedAt?: string
+  /** Facebook Page list when connected (hover on “+N more”). */
+  linkedPages?: MetaLinkedPage[]
 }

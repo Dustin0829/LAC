@@ -27,7 +27,7 @@ const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
   facebook_reel_not_on_connected_page:
     "This Reel isn't on your connected Facebook account, or we can't access it. Paste a link to a Reel you posted with the account you connected to VidU.",
   facebook_no_pages_linked:
-    'No Facebook Page is linked. In Account, tap Finish setup (or disconnect and reconnect), then select the Page where you publish Reels when Meta asks.',
+    'Meta did not grant access to any Facebook Page. Disconnect, tap Finish setup, check the Page where you post Reels, and tap Continue. Your Meta Page app also needs business_management and pages_show_list (Advanced Access in the Meta developer portal).',
   facebook_page_app_required:
     'Facebook Page insights are not configured on this server. The brand needs META_PAGE_APP_ID set, or your login app needs Page permissions — contact support.',
   facebook_page_required_for_reels:
@@ -48,6 +48,11 @@ const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
   below_minimum_payout:
     'Estimated payout is below the minimum for your payout channel. Try a post with more views.',
   campaign_pool_exhausted: 'This campaign has run out of budget for new submissions.',
+}
+
+/** Stable API error code → user-facing copy (OAuth, preview, submit). */
+export function submissionApiErrorMessage(code: string): string | undefined {
+  return SUBMISSION_API_ERROR_MESSAGES[code]
 }
 
 function humanizeSubmissionApiError(

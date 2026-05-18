@@ -56,6 +56,7 @@ export function creatorLinksFromPlatformDtos(
       handle: api.displayHandle || 'Not connected',
       status,
       connectedAt: api.connectedAt ?? undefined,
+      linkedPages: api.platform === 'facebook' ? api.linkedPages : undefined,
     }
   })
 }

@@ -4,14 +4,64 @@ import { toast } from 'sonner'
 import { useDeleteMePlatform } from '@/api/queries/use-me'
 import { PlatformIcon } from '@/components/PlatformIcon'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { isCreatorPlatformConnectEnabled } from '@/lib/constants'
 import { startFacebookOAuth } from '@/lib/auth/startFacebookOAuth'
 import { startFacebookPageOAuth } from '@/lib/auth/startFacebookPageOAuth'
 import { startTikTokOAuth } from '@/lib/auth/startTikTokOAuth'
 import type { Platform } from '@/api/types/shared'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
+import type { MetaLinkedPage } from '@/lib/campaigns/types'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
 import { cn } from '@/lib/utils'
+
+function PlatformLinkHandle({
+  platform,
+  handle,
+  linkedPages,
+  inactive,
+}: {
+  platform: Platform
+  handle: string
+  linkedPages?: MetaLinkedPage[]
+  inactive?: boolean
+}) {
+  if (inactive) {
+    return <p className="mt-0.5 text-xs text-muted-foreground">Coming soon</p>
+  }
+
+  const showPagesTooltip =
+    platform === 'facebook' && linkedPages != null && linkedPages.length > 1
+
+  if (!showPagesTooltip) {
+    return (
+      <p className="mt-0.5 break-all text-xs text-muted-foreground sm:truncate sm:break-normal">
+        {handle}
+      </p>
+    )
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <p
+          tabIndex={0}
+          className="mt-0.5 cursor-help break-all text-xs text-muted-foreground underline decoration-dotted underline-offset-2 sm:truncate sm:break-normal"
+        >
+          {handle}
+        </p>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" align="start" className="max-w-[16rem]">
+        <p className="mb-1.5 font-medium text-popover-foreground">Connected Pages</p>
+        <ul className="space-y-0.5">
+          {linkedPages.map((page) => (
+            <li key={page.id}>{page.name}</li>
+          ))}
+        </ul>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 
 type ConnectedPlatformsSectionProps = {
   /** When true, omit outer card section (e.g. inside onboarding wizard). */
@@ -98,9 +148,12 @@ export function ConnectedPlatformsSection({
                 <PlatformIcon platform={link.platform} className="h-8 w-8 shrink-0 md:h-9 md:w-9" />
                 <div className="min-w-0">
                   <p className="font-semibold leading-tight">{link.label}</p>
-                  <p className="mt-0.5 break-all text-xs text-muted-foreground sm:truncate sm:break-normal">
-                    {!connectEnabled && link.status !== 'connected' ? 'Coming soon' : link.handle}
-                  </p>
+                  <PlatformLinkHandle
+                    platform={link.platform}
+                    handle={link.handle}
+                    linkedPages={link.linkedPages}
+                    inactive={!connectEnabled && link.status !== 'connected'}
+                  />
                 </div>
               </div>
               <div className="shrink-0">
