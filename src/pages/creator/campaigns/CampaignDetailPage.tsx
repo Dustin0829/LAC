@@ -135,29 +135,22 @@ export default function CreatorCampaignDetailPage() {
     }
   }, [meProfile, setPlatformLinks])
 
-  const {
-    linkPhase,
-    snapshot,
-    previewError,
-    resetLinkPreview,
-    clearLinkPreviewProgress,
-  } = useCampaignSubmissionLinkPreview({
-    campaignId,
-    open: open && Boolean(campaign),
-    url,
-    platform,
-    platformsAllowed: campaign?.platforms ?? [],
-    hasPayoutMethod,
-    platformConnected,
-    onPaymentMethodRequired: openAddPaymentFromSubmit,
-    onPlatformReconnect: handlePlatformReconnect,
-  })
+  const { linkPhase, snapshot, previewError, resetLinkPreview, clearLinkPreviewProgress } =
+    useCampaignSubmissionLinkPreview({
+      campaignId,
+      open: open && Boolean(campaign),
+      url,
+      platform,
+      platformsAllowed: campaign?.platforms ?? [],
+      hasPayoutMethod,
+      platformConnected,
+      onPaymentMethodRequired: openAddPaymentFromSubmit,
+      onPlatformReconnect: handlePlatformReconnect,
+    })
 
   useEffect(() => {
     if (!campaign) return
-    setPlatform((p) =>
-      campaign.platforms.includes(p) ? p : (campaign.platforms[0] ?? 'tiktok')
-    )
+    setPlatform((p) => (campaign.platforms.includes(p) ? p : (campaign.platforms[0] ?? 'tiktok')))
   }, [campaign, campaignPlatformsKey])
 
   useEffect(() => {

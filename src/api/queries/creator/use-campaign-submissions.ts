@@ -41,8 +41,7 @@ export const creatorCampaignSubmissionsQueryKeys = {
 export function usePostCampaignSubmissionPreview(campaignId: string) {
   return useMutation({
     mutationKey: creatorCampaignSubmissionsQueryKeys.preview(campaignId),
-    mutationFn: (body: CampaignSubmissionBody) =>
-      postCampaignSubmissionPreview(campaignId, body),
+    mutationFn: (body: CampaignSubmissionBody) => postCampaignSubmissionPreview(campaignId, body),
     retry: false,
   })
 }
@@ -132,8 +131,7 @@ export function useCampaignSubmissionLinkPreview(options: {
           const snap = submissionPreviewSnapshotFromApi(data, platform)
           setSnapshot(snap)
           setPreviewError(undefined)
-          const belowMin =
-            !data.eligible || isSubmissionBelowMinViews(snap.views)
+          const belowMin = !data.eligible || isSubmissionBelowMinViews(snap.views)
           setLinkPhase(belowMin ? 'below_quota' : 'ready')
         } catch (err) {
           if (gen !== validationGenRef.current) return

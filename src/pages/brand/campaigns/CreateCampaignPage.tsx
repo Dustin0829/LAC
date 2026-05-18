@@ -32,7 +32,7 @@ export default function CreateCampaignPage() {
   const [description, setDescription] = useState('')
   const [ratePer1k, setRatePer1k] = useState(String(MIN_BRAND_RATE_PER_1K))
   const [budget, setBudget] = useState('10000')
-  const [platforms, setPlatforms] = useState<Platform[]>(['tiktok'])
+  const [platforms, setPlatforms] = useState<Platform[]>([...CAMPAIGN_PLATFORMS])
   const [coverImageUrl, setCoverImageUrl] = useState('')
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [assetPackUrl, setAssetPackUrl] = useState('')
