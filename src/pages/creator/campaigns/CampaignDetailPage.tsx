@@ -496,7 +496,7 @@ export default function CreatorCampaignDetailPage() {
                                 </dl>
                                 {linkPhase === 'below_quota' ? (
                                   <p className="mt-2 rounded-lg border border-amber-200/80 bg-white/80 px-3 py-2 text-center text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/50 dark:text-amber-100">
-                                    {campaignSubmissionBelowMinViewsMessage()}
+                                    {campaignSubmissionBelowMinViewsMessage(snapshot.views)}
                                   </p>
                                 ) : null}
                               </div>

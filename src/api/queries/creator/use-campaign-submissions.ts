@@ -132,7 +132,9 @@ export function useCampaignSubmissionLinkPreview(options: {
           const snap = submissionPreviewSnapshotFromApi(data)
           setSnapshot(snap)
           setPreviewError(undefined)
-          setLinkPhase(isSubmissionBelowMinViews(snap.views) ? 'below_quota' : 'ready')
+          const belowMin =
+            !data.eligible || isSubmissionBelowMinViews(snap.views)
+          setLinkPhase(belowMin ? 'below_quota' : 'ready')
         } catch (err) {
           if (gen !== validationGenRef.current) return
 

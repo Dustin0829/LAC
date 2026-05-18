@@ -6,9 +6,85 @@ import {
 } from '@/lib/constants'
 import type { Platform } from '@/api/types/shared'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
+import { formatViews } from '@/lib/utils'
 
-export function campaignSubmissionBelowMinViewsMessage(): string {
-  return `This post needs more than ${SUBMISSION_MIN_VIEWS.toLocaleString('en-PH')} views to submit for this campaign.`
+/** Maps stable API error codes to creator-facing copy (preview + submit). */
+const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
+  tiktok_video_not_owned_or_missing:
+    "This TikTok video isn't on your connected account, or we can't access its stats. Use a link to a video you posted with the TikTok account you connected to VidU.",
+  invalid_tiktok_url:
+    'Enter a valid TikTok video link (for example, tiktok.com/@username/video/...).',
+  instagram_urls_not_supported_for_facebook_connect:
+    "Instagram links aren't supported when you connected Facebook. Use a Facebook Reel or video link instead.",
+  unsupported_facebook_content_url:
+    "We don't recognize that Facebook link. Try a Reel or facebook.com/watch link from your connected account.",
+  unsupported_platform: "This platform isn't supported for campaign submissions.",
+  facebook_object_not_found:
+    "We couldn't find that video on your connected Facebook account.",
+  facebook_reel_not_accessible:
+    "We can't access this Reel with your connected Facebook account. Use a Reel you posted on your profile or Page, and reconnect Facebook if you recently changed permissions.",
+  facebook_reel_not_on_connected_page:
+    "We can't access this Reel with your connected Facebook account. Use a Reel you posted on your profile or Page, and reconnect Facebook if you recently changed permissions.",
+  facebook_reel_not_owned:
+    "This Reel wasn't posted by your connected Facebook account. Use a link to a Reel you published with that account.",
+  facebook_page_required_for_reels:
+    "We can't access this Reel with your connected Facebook account. Use a Reel you posted on your profile or Page, and reconnect Facebook if you recently changed permissions.",
+  meta_read_insights_required:
+    'Reconnect Facebook in Account settings so we can read view stats (read insights permission).',
+  facebook_video_insights_unavailable:
+    "We couldn't load view stats for this Facebook video. Try again in a few minutes.",
+  creator_platform_not_connected: 'Connect this platform in Account settings before submitting.',
+  campaign_not_active: 'This campaign is not accepting submissions right now.',
+  duplicate_submission: 'You already submitted this content for a campaign.',
+  below_minimum_payout:
+    'Estimated payout is below the minimum for your payout channel. Try a post with more views.',
+  campaign_pool_exhausted: 'This campaign has run out of budget for new submissions.',
+}
+
+function humanizeSubmissionApiError(
+  message: string,
+  platform?: Platform,
+  context: 'preview' | 'confirm' = 'preview',
+): string {
+  if (message === 'creator_default_payment_method_required') {
+    return context === 'preview'
+      ? 'Add a payout method before previewing or submitting content.'
+      : 'Add a default payout method before submitting content.'
+  }
+
+  if (message === PLATFORM_RECONNECT_MESSAGE) {
+    return context === 'confirm'
+      ? platform
+        ? `Reconnect ${PLATFORM_LABEL[platform]} before submitting.`
+        : 'Reconnect your platform account before submitting.'
+      : platform
+        ? `Reconnect ${PLATFORM_LABEL[platform]} to fetch live post stats.`
+        : 'Reconnect your platform account to fetch live post stats.'
+  }
+
+  const mapped = SUBMISSION_API_ERROR_MESSAGES[message]
+  if (mapped) return mapped
+
+  if (message.includes('read_insights')) {
+    return SUBMISSION_API_ERROR_MESSAGES.meta_read_insights_required
+  }
+  if (message.includes('Unsupported get request') || message.includes('does not exist')) {
+    return SUBMISSION_API_ERROR_MESSAGES.facebook_reel_not_accessible
+  }
+
+  if (/^[a-z][a-z0-9_]+$/.test(message)) {
+    return 'We could not verify this link. Check the URL and try again.'
+  }
+
+  return message
+}
+
+export function campaignSubmissionBelowMinViewsMessage(currentViews?: number): string {
+  const minLabel = SUBMISSION_MIN_VIEWS.toLocaleString('en-PH')
+  if (currentViews != null && Number.isFinite(currentViews)) {
+    return `This post has ${formatViews(currentViews)} views. You need more than ${minLabel} views to submit for this campaign.`
+  }
+  return `This post needs more than ${minLabel} views to submit for this campaign.`
 }
 
 export function isCampaignSubmissionViewsFloorError(err: unknown): boolean {
@@ -24,48 +100,20 @@ export function campaignSubmissionPreviewErrorMessage(
   platform?: Platform
 ): string {
   if (err instanceof ApiRequestError) {
-    switch (err.message) {
-      case 'creator_default_payment_method_required':
-        return 'Add a payout method before previewing or submitting content.'
-      case PLATFORM_RECONNECT_MESSAGE:
-        return platform
-          ? `Reconnect ${PLATFORM_LABEL[platform]} to fetch live post stats.`
-          : 'Reconnect your platform account to fetch live post stats.'
-      case 'campaign_not_active':
-        return 'This campaign is not accepting submissions right now.'
-      default:
-        if (isCampaignSubmissionViewsFloorError(err)) {
-          return campaignSubmissionBelowMinViewsMessage()
-        }
-        return err.message
+    if (isCampaignSubmissionViewsFloorError(err)) {
+      return campaignSubmissionBelowMinViewsMessage()
     }
+    return humanizeSubmissionApiError(err.message, platform, 'preview')
   }
   return err instanceof Error ? err.message : 'Could not fetch post stats.'
 }
 
 export function campaignSubmissionConfirmErrorMessage(err: unknown, platform?: Platform): string {
   if (err instanceof ApiRequestError) {
-    switch (err.message) {
-      case 'creator_default_payment_method_required':
-        return 'Add a default payout method before submitting content.'
-      case PLATFORM_RECONNECT_MESSAGE:
-        return platform
-          ? `Reconnect ${PLATFORM_LABEL[platform]} before submitting.`
-          : 'Reconnect your platform account before submitting.'
-      case 'campaign_not_active':
-        return 'This campaign is not accepting submissions right now.'
-      case 'duplicate_submission':
-        return 'You already submitted this content for a campaign.'
-      case 'below_minimum_payout':
-        return 'Estimated payout is below the minimum for your payout channel. Try a post with more views.'
-      case 'campaign_pool_exhausted':
-        return 'This campaign has run out of budget for new submissions.'
-      default:
-        if (isCampaignSubmissionViewsFloorError(err)) {
-          return campaignSubmissionBelowMinViewsMessage()
-        }
-        return err.message
+    if (isCampaignSubmissionViewsFloorError(err)) {
+      return campaignSubmissionBelowMinViewsMessage()
     }
+    return humanizeSubmissionApiError(err.message, platform, 'confirm')
   }
   return err instanceof Error ? err.message : 'Could not submit content.'
 }

@@ -17,6 +17,7 @@ export function submissionPreviewSnapshotFromApi(
   }
 }
 
+/** Matches backend: views must be **greater than** `SUBMISSION_MIN_VIEWS` to submit. */
 export function isSubmissionBelowMinViews(views: number): boolean {
-  return views <= SUBMISSION_MIN_VIEWS
+  return views < SUBMISSION_MIN_VIEWS
 }
