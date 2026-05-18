@@ -50,19 +50,28 @@ function Button({
     /** Shows spinner and disables the button while an async action is in progress. */
     loading?: boolean
   }) {
-  const Comp = asChild ? Slot : 'button'
+  const classes = cn(buttonVariants({ variant, size, className }))
+
+  if (asChild) {
+    return (
+      <Slot data-slot="button" className={classes} {...props}>
+        {children}
+      </Slot>
+    )
+  }
 
   return (
-    <Comp
+    <button
+      type="button"
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={classes}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...props}
     >
       {loading ? <Loader2 className="animate-spin" aria-hidden /> : null}
       {children}
-    </Comp>
+    </button>
   )
 }
 
