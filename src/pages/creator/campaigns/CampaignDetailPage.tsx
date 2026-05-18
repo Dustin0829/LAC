@@ -57,7 +57,7 @@ import { cn, formatPHP, formatNumber, formatViews } from '@/lib/utils'
 import type { Platform } from '@/api/types/shared'
 import { campaignStatusLabel } from '@/lib/campaigns/status'
 import { creatorHeadlineRatePer1k } from '@/lib/campaigns/utils'
-import { PLATFORM_LABEL } from '@/lib/platforms/labels'
+import { PLATFORM_CONTENT_URL_PLACEHOLDER, PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { toast } from 'sonner'
 
 // v1 (post-MVP): when yellow basket was enabled, TikTok + checked used a lower effective ₱/1k.
@@ -353,7 +353,7 @@ export default function CreatorCampaignDetailPage() {
                           <Label htmlFor="content-url">Content URL</Label>
                           <Input
                             id="content-url"
-                            placeholder="https://www.tiktok.com/@you/video/..."
+                            placeholder={PLATFORM_CONTENT_URL_PLACEHOLDER[platform]}
                             value={url}
                             autoFocus
                             onChange={(e) => {
