@@ -20,10 +20,12 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { BrandCampaignSubmissionsSummaryLine } from '@/lib/brands/submissions/brandSubmissionsSummary'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   BRAND_REJECT_OUTLINE_BTN_CLASS,
@@ -89,6 +91,41 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
     isRestoringSubmission,
   } = props
 
+  const showReleasePayout =
+    pendingPayoutSubmissions.length > 0 && campaign.status !== 'draft'
+
+  const releasePayoutButton = showReleasePayout ? (
+    payoutSettlingMessage && !payoutPoolSettled ? (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex cursor-not-allowed">
+            <Button
+              type="button"
+              size="sm"
+              className="pointer-events-none bg-phc-gradient font-semibold text-white hover:opacity-90"
+              disabled
+            >
+              <Send className="h-4 w-4" /> Release payout
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-xs">
+          <p className="text-sm leading-relaxed">{payoutSettlingMessage}</p>
+        </TooltipContent>
+      </Tooltip>
+    ) : (
+      <Button
+        type="button"
+        size="sm"
+        className="shrink-0 bg-phc-gradient font-semibold text-white hover:opacity-90"
+        disabled={!payoutPoolSettled}
+        onClick={openReleasePayoutDialog}
+      >
+        <Send className="h-4 w-4" /> Release payout
+      </Button>
+    )
+  ) : null
+
   return (
     <>
 <div
@@ -108,40 +145,19 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
       </p>
     </div>
   ) : (
-    <div className="space-y-4">
-      {pendingPayoutSubmissions.length > 0 && campaign.status !== 'draft' ? (
-        <div className="flex justify-end">
-          {payoutSettlingMessage && !payoutPoolSettled ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex cursor-not-allowed">
-                  <Button
-                    type="button"
-                    className="pointer-events-none bg-phc-gradient font-semibold text-white hover:opacity-90"
-                    disabled
-                  >
-                    <Send className="h-4 w-4" /> Release payout
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
-                <p className="text-sm leading-relaxed">{payoutSettlingMessage}</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button
-              type="button"
-              className="bg-phc-gradient font-semibold text-white hover:opacity-90"
-              disabled={!payoutPoolSettled}
-              onClick={openReleasePayoutDialog}
-            >
-              <Send className="h-4 w-4" /> Release payout
-            </Button>
-          )}
+    <TableContainer>
+      <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="font-display text-lg font-bold tracking-tight">Submissions</h3>
+          <BrandCampaignSubmissionsSummaryLine
+            totalCount={campaignSubmissions.length}
+            pendingCount={pendingPayoutSubmissions.length}
+            pendingGrossPhp={pendingPayoutTotal}
+          />
         </div>
-      ) : null}
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <Table>
+        {releasePayoutButton}
+      </div>
+      <Table>
           <TableHeader>
             <TableRow className="border-border bg-muted/40 hover:bg-muted/40">
               <TableHead>Creator</TableHead>
@@ -195,7 +211,10 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
                     {formatPHP(row.payoutGross, { decimals: false })}
                   </TableCell>
                   <TableCell>
-                    <ContentStatusBadge status={row.status} />
+                    <ContentStatusBadge
+                      status={row.status}
+                      rejectionReason={row.rejectionReason}
+                    />
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     {canReject ? (
@@ -236,8 +255,7 @@ export function SubmissionsTab(props: SubmissionsTabProps) {
             })}
           </TableBody>
         </Table>
-      </section>
-    </div>
+    </TableContainer>
   )}
 </div>
 

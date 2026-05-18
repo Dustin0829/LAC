@@ -14,6 +14,7 @@ export function brandSubmissionRowFromApi(dto: BrandSubmissionDto): BrandSubmiss
     views: Number(dto.viewsLocked) || 0,
     payoutGross: Number(dto.grossAmount) || 0,
     status: dto.status,
+    rejectionReason: dto.rejectionReason,
     submittedAt: dto.submittedAt,
   }
 }

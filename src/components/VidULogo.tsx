@@ -1,10 +1,10 @@
 import { cn } from '@/lib/utils'
 
-/** Symbol mark only (`VID-U LOGO-07.png`). */
-export const VIDU_LOGO_MARK_SRC = '/Vidu-logo/VID-U%20LOGO-07.png'
+/** Symbol mark only (`public/vidu-logo/mark.png`). */
+export const VIDU_LOGO_MARK_SRC = '/vidu-logo/mark.png'
 
-/** Icon + wordmark lockup (`VID-U LOGO-04.png`). */
-export const VIDU_LOGO_LOCKUP_SRC = '/Vidu-logo/VID-U%20LOGO-04.png'
+/** Icon + wordmark lockup (`public/vidu-logo/lockup.png`). */
+export const VIDU_LOGO_LOCKUP_SRC = '/vidu-logo/lockup.png'
 
 type VidULogoProps = {
   className?: string

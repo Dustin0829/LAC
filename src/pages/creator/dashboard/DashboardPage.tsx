@@ -288,7 +288,10 @@ export default function CreatorDashboardPage() {
                         {formatPHP(content.earnings, { decimals: false })}
                       </TableCell>
                       <TableCell>
-                        <ContentStatusBadge status={content.status} />
+                        <ContentStatusBadge
+                          status={content.status}
+                          rejectionReason={content.rejectionReason}
+                        />
                       </TableCell>
                     </TableRow>
                   )

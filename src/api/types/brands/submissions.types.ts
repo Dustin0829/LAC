@@ -21,6 +21,7 @@ export type BrandSubmissionDto = {
   creatorNet: string
   partialReason: 'pool_exhausted' | 'channel_max' | null
   status: BrandSubmissionStatus
+  rejectionReason: string | null
   submittedAt: string
 }
 
@@ -36,6 +37,7 @@ export type BrandSubmissionRow = {
   views: number
   payoutGross: number
   status: ContentStatus
+  rejectionReason?: string | null
   submittedAt: string
 }
 

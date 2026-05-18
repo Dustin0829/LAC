@@ -11,6 +11,7 @@ export function creatorSubmissionRowFromApi(dto: MeSubmissionDto): CreatorSubmis
     views: Number(dto.viewsLocked) || 0,
     earnings: Number(dto.payout) || 0,
     status: dto.status,
+    rejectionReason: dto.rejectionReason,
     submittedAt: dto.submittedAt,
   }
 }

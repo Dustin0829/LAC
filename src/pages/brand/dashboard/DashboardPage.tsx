@@ -321,7 +321,10 @@ export default function BrandDashboardPage() {
                       {formatPHP(row.payoutGross, { decimals: false })}
                     </TableCell>
                     <TableCell>
-                      <ContentStatusBadge status={brandReviewStatusForBadge(row.status, false)} />
+                      <ContentStatusBadge
+                        status={brandReviewStatusForBadge(row.status, false)}
+                        rejectionReason={row.rejectionReason}
+                      />
                     </TableCell>
                   </TableRow>
                 ))

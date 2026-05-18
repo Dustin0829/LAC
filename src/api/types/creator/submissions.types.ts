@@ -41,6 +41,7 @@ export type CreatorSubmissionRow = {
   views: number
   earnings: number
   status: ContentStatus
+  rejectionReason?: string | null
   submittedAt: string
 }
 
