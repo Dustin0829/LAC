@@ -102,7 +102,7 @@ export function DetailsTab(props: DetailsTabProps) {
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Title &amp; description
+              Title
             </p>
             {detailsEditingSections.has('copy') ? (
               <Button
@@ -142,16 +142,6 @@ export function DetailsTab(props: DetailsTabProps) {
                   className="bg-white font-normal dark:bg-card"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="campaign-detail-description">Description</Label>
-                <Textarea
-                  id="campaign-detail-description"
-                  value={draftDescription}
-                  onChange={(e) => setDraftDescription(e.target.value)}
-                  rows={5}
-                  className="min-h-[120px] resize-y bg-white text-sm leading-relaxed dark:bg-card"
-                />
-              </div>
             </>
           ) : (
             <>
@@ -159,11 +149,6 @@ export function DetailsTab(props: DetailsTabProps) {
                 {campaign.title}
               </h3>
               <div className="h-px w-full min-w-0 bg-border" aria-hidden />
-              <div className="min-w-0 space-y-2">
-                <p className="max-w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-base">
-                  {campaign.description}
-                </p>
-              </div>
             </>
           )}
         </div>
@@ -174,15 +159,14 @@ export function DetailsTab(props: DetailsTabProps) {
           {campaign.title}
         </h3>
         <div className="h-px w-full min-w-0 bg-border" aria-hidden />
-
-        <div className="min-w-0 space-y-2">
-          <p className="max-w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-base">
-            {campaign.description}
-          </p>
-        </div>
       </>
     )}
 
+    <div className="min-w-0 space-y-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Deal terms
+      </p>
+      <div className="space-y-3">
     <div className="rounded-2xl border border-border bg-muted/25 p-5">
       {canEditPreSubmission && detailsEditingSections.has('grossRate') ? (
         <>
@@ -371,6 +355,29 @@ export function DetailsTab(props: DetailsTabProps) {
         </div>
       </div>
     )}
+      </div>
+    </div>
+
+    <div className="min-w-0 space-y-2">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Description
+      </p>
+      {canEditPreSubmission && detailsEditingSections.has('copy') ? (
+        <Textarea
+          id="campaign-detail-description"
+          value={draftDescription}
+          onChange={(e) => setDraftDescription(e.target.value)}
+          rows={8}
+          className="min-h-[160px] resize-y bg-white text-sm leading-relaxed dark:bg-card"
+        />
+      ) : (
+        <div className="max-h-72 overflow-y-auto rounded-2xl border border-border bg-muted/20 px-4 py-3 md:max-h-96">
+          <p className="max-w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-base">
+            {campaign.description}
+          </p>
+        </div>
+      )}
+    </div>
   </section>
 
   <section className="min-w-0 space-y-6 overflow-hidden rounded-3xl border border-border bg-card p-6 md:p-8">

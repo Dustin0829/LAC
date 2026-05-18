@@ -554,12 +554,11 @@ export default function CreatorCampaignDetailPage() {
           </h3>
           <div className="h-px w-full min-w-0 bg-border" aria-hidden />
 
-          <div className="min-w-0 space-y-2">
-            <p className="max-w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-base">
-              {campaign.description}
+          <div className="min-w-0 space-y-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Deal terms
             </p>
-          </div>
-
+            <div className="space-y-3">
           <div className="rounded-2xl border border-border bg-muted/25 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div
@@ -600,6 +599,19 @@ export default function CreatorCampaignDetailPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+            </div>
+          </div>
+
+          <div className="min-w-0 space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Description
+            </p>
+            <div className="max-h-72 overflow-y-auto rounded-2xl border border-border bg-muted/20 px-4 py-3 md:max-h-96">
+              <p className="max-w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-muted-foreground md:text-base">
+                {campaign.description}
+              </p>
             </div>
           </div>
 
