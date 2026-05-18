@@ -129,7 +129,7 @@ export function useCampaignSubmissionLinkPreview(options: {
           const data = await runSubmissionPreview(parsed.data)
           if (gen !== validationGenRef.current) return
 
-          const snap = submissionPreviewSnapshotFromApi(data)
+          const snap = submissionPreviewSnapshotFromApi(data, platform)
           setSnapshot(snap)
           setPreviewError(undefined)
           const belowMin =

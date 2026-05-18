@@ -316,7 +316,9 @@ export default function CreatorCampaignDetailPage() {
                         disabled={!hasPayoutMethod}
                         onValueChange={(v) => {
                           const p = v as Platform
+                          if (p === platform) return
                           setPlatform(p)
+                          setUrl('')
                           // v1 (post-MVP): if (p !== 'tiktok') setTikTokYellowBasket(false)
                           clearLinkPreviewProgress()
                         }}
@@ -437,18 +439,18 @@ export default function CreatorCampaignDetailPage() {
                               </div>
                               <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2  dark:bg-black/35">
                                 <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Likes
+                                  {platform === 'facebook' ? 'Reactions' : 'Likes'}
                                 </dt>
                                 <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
-                                  {formatNumber(snapshot.likes)}
+                                  {formatNumber(snapshot.engagementPrimary)}
                                 </dd>
                               </div>
                               <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2 dark:bg-black/35">
                                 <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Comments
+                                  {platform === 'facebook' ? 'Engagements' : 'Comments'}
                                 </dt>
                                 <dd className="font-display mt-1 text-lg font-extrabold tabular-nums leading-tight text-foreground sm:text-xl">
-                                  {formatNumber(snapshot.comments)}
+                                  {formatNumber(snapshot.engagementSecondary)}
                                 </dd>
                               </div>
                               <div className="flex min-h-0 flex-col justify-center rounded-lg border border-border bg-background/65 px-4 py-2  dark:bg-black/35">
