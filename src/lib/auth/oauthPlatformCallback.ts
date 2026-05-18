@@ -4,7 +4,7 @@ export type PlatformOAuthCallbackResult =
   | { handled: false }
   | {
       handled: true
-      status: 'success' | 'error'
+      status: 'success' | 'error' | 'pending_page'
       platform: Platform
       reason?: string
     }
@@ -40,6 +40,10 @@ export function consumeCreatorPlatformOAuthSearchParams(): PlatformOAuthCallback
 
   if (oauth === 'success') {
     return { handled: true, status: 'success', platform: platformParam }
+  }
+
+  if (oauth === 'pending_page') {
+    return { handled: true, status: 'pending_page', platform: platformParam }
   }
 
   return {

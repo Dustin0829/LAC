@@ -37,12 +37,17 @@ export function creatorLinksFromPlatformDtos(
   return mockCreatorPlatformLinks.map((defaults) => {
     const api = byPlatform.get(defaults.platform)
     if (!api) return defaults
-    const connected = api.linkStatus === 'connected'
+    const status =
+      api.linkStatus === 'connected'
+        ? 'connected'
+        : api.linkStatus === 'pending_page'
+          ? 'pending_page'
+          : 'reconnect'
     return {
       platform: defaults.platform,
       label: PLATFORM_LABELS[defaults.platform] ?? defaults.platform,
       handle: api.displayHandle || 'Not connected',
-      status: connected ? 'connected' : 'reconnect',
+      status,
       connectedAt: api.connectedAt ?? undefined,
     }
   })

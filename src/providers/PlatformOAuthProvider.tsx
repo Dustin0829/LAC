@@ -5,6 +5,7 @@ import { meQueryKeys } from '@/api/queries/use-me'
 import { getMePlatforms } from '@/api/services/me'
 import { creatorLinksFromPlatforms } from '@/lib/auth/mapMeProfile'
 import { consumeCreatorPlatformOAuthSearchParams } from '@/lib/auth/oauthPlatformCallback'
+import { startFacebookOAuth } from '@/lib/auth/startFacebookOAuth'
 import { PLATFORM_LABEL } from '@/lib/platforms/labels'
 import { useAuthStore } from '@/lib/stores/authStore'
 import { useCreatorProfileStore } from '@/lib/stores/creatorProfileStore'
@@ -26,6 +27,14 @@ export function PlatformOAuthProvider({ children }: { children: ReactNode }) {
 
     if (result.status === 'error') {
       toast.error(result.reason ?? `Could not connect ${PLATFORM_LABEL[result.platform]}.`)
+      return
+    }
+
+    if (result.status === 'pending_page' && result.platform === 'facebook') {
+      toast.message('Finish connecting Facebook', {
+        description: 'Allow access to your Facebook Page so we can verify Page Reels.',
+      })
+      void startFacebookOAuth()
       return
     }
 

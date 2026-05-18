@@ -18,8 +18,10 @@ const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
   unsupported_platform: "This platform isn't supported for campaign submissions.",
   facebook_object_not_found:
     "This Reel isn't on your connected Facebook account, or we can't access it. Paste a link to a Reel you posted with the account you connected to VidU.",
+  facebook_page_reel_required:
+    'Only Facebook Page Reels qualify for campaigns. Post the Reel on a Page you manage, then paste that link.',
   facebook_reel_not_owned:
-    "This Reel isn't on your connected Facebook account, or we can't access it. Paste a link to a Reel you posted with the account you connected to VidU.",
+    "This Reel isn't on a Facebook Page linked to your account, or we can't access it. Paste a Page Reel link from a Page you connected to VidU.",
   facebook_reel_not_accessible:
     "This Reel isn't on your connected Facebook account, or we can't access it. Paste a link to a Reel you posted with the account you connected to VidU.",
   facebook_reel_not_on_connected_page:
@@ -33,7 +35,11 @@ const SUBMISSION_API_ERROR_MESSAGES: Record<string, string> = {
   meta_page_connect_required:
     'Finish connecting Facebook: complete the Page permissions step (second Meta prompt) so we can read Reel view counts on your Pages.',
   facebook_video_insights_unavailable:
-    "We found your Reel, but Meta didn't return view counts for it. Page Reels need Page permissions in our Facebook app; personal Reels may not expose views via Meta's API yet.",
+    "We found your Reel, but Meta didn't return view counts. Try again later, or use a Page Reel link if this was posted on a Page.",
+  facebook_personal_reel_views_unavailable:
+    "We found your Reel on your personal profile, but Meta's API doesn't provide view counts for personal Reels. Post the campaign Reel on a Facebook Page you manage, then paste that link.",
+  facebook_page_reel_views_unavailable:
+    "We found your Page Reel, but Meta didn't return view counts. Reconnect Facebook (both permission prompts), confirm the Reel is on a Page you selected, and try again in a few minutes.",
   creator_platform_not_connected: 'Connect this platform in Account settings before submitting.',
   campaign_not_active: 'This campaign is not accepting submissions right now.',
   duplicate_submission: 'You already submitted this content for a campaign.',

@@ -55,6 +55,6 @@ export interface CreatorPlatformLink {
   platform: Platform
   label: string
   handle: string
-  status: 'connected' | 'reconnect'
+  status: 'connected' | 'reconnect' | 'pending_page'
   connectedAt?: string
 }

@@ -76,6 +76,7 @@ export function ConnectedPlatformsSection({
       <div className="grid min-w-0 gap-3 md:grid-cols-2">
         {platformLinks.map((link) => {
           const connectEnabled = isCreatorPlatformConnectEnabled(link.platform)
+          const pendingPage = link.status === 'pending_page'
           const isConnecting = connectingPlatform === link.platform
           const isDisconnecting = disconnectingPlatform === link.platform
           const actionsDisabled = loading || loadError
@@ -114,6 +115,21 @@ export function ConnectedPlatformsSection({
                     <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
                     Loading…
                   </span>
+                ) : pendingPage ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                    disabled={isConnecting || actionsDisabled}
+                    onClick={() => void handleConnect(link.platform)}
+                  >
+                    {isConnecting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    ) : (
+                      <Plug className="h-3.5 w-3.5" aria-hidden />
+                    )}
+                    {isConnecting ? 'Connecting…' : 'Finish setup'}
+                  </Button>
                 ) : link.status === 'connected' && allowDisconnect ? (
                   <button
                     type="button"
