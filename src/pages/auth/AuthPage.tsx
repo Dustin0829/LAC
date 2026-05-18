@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { authLog } from '@/lib/auth/authLog'
 import { Loader2 } from 'lucide-react'
 import { AuthPageLayout } from '@/components/layout/AuthPageLayout'
 import { AuthLoginSocialProof } from '@/components/auth/AuthLoginShowcase'
@@ -12,6 +14,19 @@ import { FcGoogle } from 'react-icons/fc'
 
 export default function AuthPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('oauth') !== 'error') return
+    const reason = params.get('reason') ?? 'unknown'
+    authLog('auth_page_oauth_error', { reason })
+    toast.error(`Google sign-in failed: ${reason}`)
+    params.delete('oauth')
+    params.delete('reason')
+    const search = params.toString()
+    const path = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`
+    window.history.replaceState(null, '', path)
+  }, [])
 
   function handleGoogle() {
     startGoogleOAuth(() => setGoogleLoading(true))

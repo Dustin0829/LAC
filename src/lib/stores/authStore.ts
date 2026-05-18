@@ -3,6 +3,7 @@ import { ApiRequestError, registerHasAuthenticatedSession } from '@/api/client'
 import { postAuthSignOut } from '@/api/services/auth'
 import { getMe } from '@/api/services/me'
 import type { MeResponseData } from '@/api/types/me.types'
+import { authLog } from '@/lib/auth/authLog'
 import { purgeLegacyAuthStorage } from '@/lib/auth/purgeLegacyAuthStorage'
 import {
   expireSession,
@@ -73,15 +74,28 @@ function handleHydrateAuthError(err: unknown, clearLocalSession: () => void): vo
   if (isAuthSessionUnauthorized(status, message)) {
     /* Hydrate clears `user` before `getMe` — 401 here is a cold/stale cookie, not mid-session expiry. */
     if (useAuthStore.getState().user) {
+      authLog('hydrate_me_unauthorized', { status, message, action: 'expire_session' })
       expireSession()
     } else {
+      authLog('hydrate_me_unauthorized', {
+        status,
+        message,
+        action: 'clear_local_and_sign_out',
+        pageOrigin: window.location.origin,
+        pagePath: window.location.pathname,
+      })
       clearLocalSession()
       void postAuthSignOut().catch(() => {
-        /* cookie may already be gone */
+        authLog('hydrate_sign_out_failed', { status, message })
       })
     }
     return
   }
+  authLog('hydrate_me_error', {
+    status,
+    message: message || 'unknown',
+    action: 'clear_local_session',
+  })
   clearLocalSession()
 }
 
@@ -122,7 +136,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         purgeLegacyAuthStorage()
 
         const params = new URLSearchParams(window.location.search)
+        const oauthError = params.get('oauth') === 'error' ? params.get('reason') : null
+        if (oauthError) {
+          authLog('oauth_return_error', {
+            reason: oauthError,
+            pageOrigin: window.location.origin,
+          })
+        }
+        const hadRequiresRole = params.has('requires_role')
         if (params.has('requires_role') || params.has('session_token')) {
+          authLog('post_login_query_params', {
+            requiresRole: hadRequiresRole,
+            hadSessionToken: params.has('session_token'),
+          })
           params.delete('requires_role')
           params.delete('session_token')
           const search = params.toString()
@@ -130,8 +156,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           window.history.replaceState(null, '', path)
         }
 
+        authLog('hydrate_start', {
+          apiBase: import.meta.env.VITE_API_URL ?? '(unset)',
+          pageOrigin: window.location.origin,
+          pagePath: window.location.pathname,
+          hadRequiresRole,
+          oauthError,
+        })
+
         try {
           const me = await getMe()
+          authLog('hydrate_me_ok', {
+            userId: me.user.id,
+            requiresRoleSelection: me.requiresRoleSelection,
+            primaryRole: me.primaryRole ?? null,
+          })
           applyMePayload(me, get(), (flags) => set({ profileOnboardingComplete: flags }))
         } catch (err) {
           handleHydrateAuthError(err, get().clearLocalSession)
@@ -139,6 +178,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch {
         get().clearLocalSession()
       } finally {
+        const { user, role } = get()
+        authLog('hydrate_done', {
+          isAuthenticated: Boolean(user),
+          hasRole: Boolean(role),
+          role,
+        })
         set({ loading: false })
         initialBrowserHydrateDone = true
         hydrateInFlight = null

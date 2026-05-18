@@ -1,4 +1,6 @@
-import { Navigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
+import { authLog } from '@/lib/auth/authLog'
 import { useAuth } from '@/lib/hooks/use-auth'
 import { isProfileOnboardingComplete } from '@/lib/profileOnboarding'
 import type { UserRole } from '@/lib/stores/authStore'
@@ -45,6 +47,71 @@ export function ProtectedRoute({
   children,
 }: ProtectedRouteProps) {
   const { isAuthenticated, hasRole, role, loading, user } = useAuth()
+  const location = useLocation()
+  const lastRedirectLog = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (loading) return
+    let redirectTo: string | null = null
+    let reason = ''
+
+    if (index) {
+      if (!isAuthenticated) {
+        redirectTo = '/auth'
+        reason = 'index_not_authenticated'
+      } else if (!hasRole || !role) {
+        redirectTo = '/onboarding/role'
+        reason = 'index_missing_role'
+      } else if (!isProfileOnboardingComplete(user?.id, role)) {
+        redirectTo = PROFILE_SETUP_PATH
+        reason = 'index_profile_incomplete'
+      } else {
+        redirectTo = dashboardForRole(role)
+        reason = 'index_to_dashboard'
+      }
+    } else if (guestOnly && isAuthenticated && hasRole && role) {
+      redirectTo = isProfileOnboardingComplete(user?.id, role)
+        ? dashboardForRole(role)
+        : PROFILE_SETUP_PATH
+      reason = 'guest_only_already_signed_in'
+    } else if (guestOnly && isAuthenticated && !hasRole) {
+      redirectTo = '/onboarding/role'
+      reason = 'guest_only_needs_role'
+    } else if (requireAuth && !isAuthenticated) {
+      redirectTo = '/auth'
+      reason = 'require_auth'
+    } else if (profileSetup && !isAuthenticated) {
+      redirectTo = '/auth'
+      reason = 'profile_setup_not_authenticated'
+    } else if (!profileSetup && !guestOnly && !requireAuth && !index && !isAuthenticated) {
+      redirectTo = '/auth'
+      reason = 'default_not_authenticated'
+    }
+
+    if (!redirectTo) return
+    const key = `${location.pathname}:${reason}:${redirectTo}`
+    if (lastRedirectLog.current === key) return
+    lastRedirectLog.current = key
+    authLog('route_redirect', {
+      from: location.pathname,
+      to: redirectTo,
+      reason,
+      isAuthenticated,
+      hasRole,
+      role,
+    })
+  }, [
+    loading,
+    index,
+    guestOnly,
+    requireAuth,
+    profileSetup,
+    isAuthenticated,
+    hasRole,
+    role,
+    user?.id,
+    location.pathname,
+  ])
 
   if (loading) return <AuthLoading />
 
